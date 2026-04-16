@@ -26,7 +26,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Analytics dashboard (views by day/week/month, top countries)
 - Trending profiles discovery page
 - Dark mode, pure black theme (keefnow.com.br aesthetic)
-- Admin moderation panel at `/devkeefnow`
+- Admin moderation panel at `/devkeefnow` and `/keefaren`
 - Footer credits Faren and links Keefnow to `https://keefnow.com.br`
 
 ### Routes
@@ -38,8 +38,19 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `/dashboard/edit` — Live profile editor (split-screen)
 - `/discover` — Trending profiles grid
 - `/devkeefnow` — Private admin/moderation panel (not linked in nav)
+- `/keefaren` — Alias for admin panel (faren.com.br/keefaren)
 - GitHub Pages custom domain is configured with `artifacts/faren/public/CNAME` as `faren.com.br`
-- GitHub Pages SPA deep links use `artifacts/faren/public/404.html` to preserve routes like `/keefaren`
+- GitHub Pages SPA deep links use `artifacts/faren/public/404.html` + `index.html` redirect script to preserve routes like `/keefaren`
+
+### Deployment (GitHub + Render)
+- **GitHub repo**: https://github.com/22ez0/faren
+- **GitHub username**: 22ez0
+- **Frontend**: GitHub Pages → faren.com.br (auto-deploys on push to main via `.github/workflows/deploy-frontend.yml`)
+- **Backend (API)**: Render → https://faren-api.onrender.com (auto-deploys via `.github/workflows/deploy-backend.yml` + `render.yaml`)
+- **Render setup**: Import repo at render.com/new, pick "Blueprint" and select `render.yaml` — it will create the web service + PostgreSQL database automatically
+- **GitHub Actions secrets needed**: `RENDER_DEPLOY_HOOK_URL` (from Render dashboard → service → deploy hook URL)
+- **DNS for faren.com.br**: Add CNAME record pointing `www` → `22ez0.github.io` and A records for apex (185.199.108-111.153.153.153) → GitHub Pages IP addresses
+- **Portability**: All configuration is in env vars (`.env.example`). Switching hosts = change `DATABASE_URL`, `SESSION_SECRET`, `CORS_ALLOWED_ORIGINS`, `VITE_API_URL`
 
 ### Admin Access
 - Admin route: `/devkeefnow`
