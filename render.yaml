@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: faren-api
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install -g pnpm@10 && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: faren-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_SECRET
+        generateValue: true
+      - key: ADMIN_LOGIN
+        value: keefaren
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://faren.com.br,https://www.faren.com.br
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX
+        value: 300
+      - key: ENABLE_BOT_BLOCKING
+        value: "true"
+
+databases:
+  - name: faren-db
+    region: oregon
+    plan: free
+    databaseName: faren
+    user: faren

@@ -11,6 +11,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
+    <script>
+      (function () {
+        var redirect = sessionStorage.getItem("faren:redirect");
+        if (redirect) {
+          sessionStorage.removeItem("faren:redirect");
+          var base = document.querySelector("base");
+          var basePath = base ? base.getAttribute("href") || "/" : "/";
+          var cleanBase = basePath.replace(/\/$/, "");
+          var cleanRedirect = redirect.startsWith(cleanBase) ? redirect.slice(cleanBase.length) : redirect;
+          if (cleanRedirect && cleanRedirect !== "/" && window.history && window.history.replaceState) {
+            window.history.replaceState(null, "", basePath.replace(/\/$/, "") + cleanRedirect);
+          }
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

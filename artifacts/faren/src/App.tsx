@@ -26,6 +26,7 @@ function Router() {
       <Route path="/dashboard/edit" component={EditProfile} />
       <Route path="/discover" component={Discover} />
       <Route path="/devkeefnow" component={DevKeefnow} />
+      <Route path="/keefaren" component={DevKeefnow} />
       <Route path="/:username" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>
