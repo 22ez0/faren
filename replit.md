@@ -38,6 +38,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `/dashboard/edit` — Live profile editor (split-screen)
 - `/discover` — Trending profiles grid
 - `/devkeefnow` — Private admin/moderation panel (not linked in nav)
+- GitHub Pages custom domain is configured with `artifacts/faren/public/CNAME` as `faren.com.br`
+- GitHub Pages SPA deep links use `artifacts/faren/public/404.html` to preserve routes like `/keefaren`
 
 ### Admin Access
 - Admin route: `/devkeefnow`
@@ -53,6 +55,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Banned users cannot log in and public banned profiles return not found.
 - Email verification and password reset token endpoints exist; outbound email still needs an email provider integration.
 - `profile_views` stores IP address and user agent for analytics/moderation.
+- API supports production CORS allowlisting via `CORS_ALLOWED_ORIGINS` and defaults to `https://faren.com.br,https://www.faren.com.br`.
+- API includes production security headers, IP-based request throttling, and optional bot/user-agent blocking (`ENABLE_BOT_BLOCKING=false` disables it).
 
 ### Demo Accounts (password: `password123`)
 - `demo@faren.com` → username: `xdemo`
@@ -89,6 +93,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - After running codegen, fix `lib/api-zod/src/index.ts` to only export from `./generated/api` (not `./generated/types` — this causes conflicts)
 - Dark mode is applied via `document.documentElement.classList.add("dark")` in `main.tsx`
 - JWT auth token stored in `localStorage` via `setAuthTokenGetter` from api-client-react
+- Frontend supports external production API hosting through `VITE_API_URL`; this is required for GitHub Pages because GitHub Pages cannot run the Express API or PostgreSQL database.
 - After any DB schema change, run `pnpm --filter @workspace/db run push`
 - Pending production integrations: Discord OAuth, Spotify OAuth, and email sending provider for verification/reset emails
 

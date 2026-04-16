@@ -13,7 +13,7 @@ interface AdminUser {
   badges: string[] | null;
 }
 
-const apiBase = `${import.meta.env.BASE_URL}api`;
+const apiBase = `${(import.meta.env.VITE_API_URL || import.meta.env.BASE_URL).replace(/\/+$/, "")}/api`;
 
 export default function DevKeefnow() {
   const [login, setLogin] = useState("");

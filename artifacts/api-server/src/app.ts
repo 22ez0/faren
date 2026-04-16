@@ -5,6 +5,55 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins = new Set(
+  (process.env.CORS_ALLOWED_ORIGINS || "https://faren.com.br,https://www.faren.com.br")
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean),
+);
+const blockedUserAgents = /(bot|crawler|spider|scrapy|curl|wget|python-requests|httpclient|headless|phantom|selenium|playwright|puppeteer)/i;
+const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function getClientIp(req: express.Request) {
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return (raw?.split(",")[0] || req.socket.remoteAddress || "unknown").trim();
+}
+
+function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
+  const max = Number(process.env.RATE_LIMIT_MAX || (isProduction ? 240 : 2_000));
+  const key = `${getClientIp(req)}:${req.path.startsWith("/api/auth") ? "auth" : "api"}`;
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + windowMs });
+    next();
+    return;
+  }
+  bucket.count += 1;
+  if (bucket.count > max) {
+    res.status(429).json({ error: "Muitas requisições. Tente novamente em instantes." });
+    return;
+  }
+  next();
+}
+
+function botBlock(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!isProduction || process.env.ENABLE_BOT_BLOCKING === "false") {
+    next();
+    return;
+  }
+  const userAgent = req.get("user-agent") || "";
+  if (blockedUserAgents.test(userAgent)) {
+    res.status(403).json({ error: "Acesso bloqueado." });
+    return;
+  }
+  next();
+}
+
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -25,7 +74,26 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("X-Frame-Options", "DENY");
+  next();
+});
+app.use(cors({
+  origin(origin, callback) {
+    if (!isProduction || !origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("Origin not allowed"));
+  },
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+app.use(botBlock);
+app.use(rateLimit);
 app.use(express.json({ limit: "75mb" }));
 app.use(express.urlencoded({ extended: true, limit: "75mb" }));
 

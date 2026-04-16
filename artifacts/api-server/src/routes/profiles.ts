@@ -102,10 +102,14 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     typewriterTexts, profileTitle, showViews, showDiscordAvatar, showDiscordPresence,
   } = parsed.data;
 
-  await db.update(usersTable).set({
+  const userUpdates = {
     ...(displayName !== undefined ? { displayName } : {}),
     ...(avatarUrl !== undefined ? { avatarUrl } : {}),
-  }).where(eq(usersTable.id, userId));
+  };
+
+  if (Object.keys(userUpdates).length > 0) {
+    await db.update(usersTable).set(userUpdates).where(eq(usersTable.id, userId));
+  }
 
   const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
 
