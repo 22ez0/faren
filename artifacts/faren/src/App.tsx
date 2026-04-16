@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard";
 import EditProfile from "@/pages/dashboard/edit";
 import Discover from "@/pages/discover";
 import ProfilePage from "@/pages/profile";
+import DevKeefnow from "@/pages/devkeefnow";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/dashboard/edit" component={EditProfile} />
       <Route path="/discover" component={Discover} />
+      <Route path="/devkeefnow" component={DevKeefnow} />
       <Route path="/:username" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>

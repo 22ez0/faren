@@ -29,6 +29,9 @@ interface ProfileFormState {
   backgroundBlur: number;
   cursorStyle: string;
   musicUrl: string;
+  musicTitle: string;
+  musicIconUrl: string;
+  musicPrivate: boolean;
   particleEffect: string;
   clickEffect: string;
   fontFamily: string;
@@ -36,6 +39,8 @@ interface ProfileFormState {
   typewriterTexts: string[];
   profileTitle: string;
   showViews: boolean;
+  showDiscordAvatar: boolean;
+  showDiscordPresence: boolean;
   badges: string[];
 }
 
@@ -221,11 +226,11 @@ export default function EditProfile() {
     backgroundUrl: '', backgroundType: 'image',
     accentColor: '#ffffff', glowColor: '#ffffff',
     backgroundOpacity: 60, backgroundBlur: 0,
-    cursorStyle: 'auto', musicUrl: '',
+    cursorStyle: 'auto', musicUrl: '', musicTitle: '', musicIconUrl: '', musicPrivate: false,
     particleEffect: 'none', clickEffect: 'none',
     fontFamily: 'default', layoutStyle: 'centered',
     typewriterTexts: [], profileTitle: '',
-    showViews: true, badges: [],
+    showViews: true, showDiscordAvatar: true, showDiscordPresence: true, badges: [],
   });
 
   useEffect(() => {
@@ -243,6 +248,9 @@ export default function EditProfile() {
         backgroundBlur: (profile as any).backgroundBlur ?? 0,
         cursorStyle: profile.cursorStyle || 'auto',
         musicUrl: profile.musicUrl || '',
+        musicTitle: (profile as any).musicTitle || '',
+        musicIconUrl: (profile as any).musicIconUrl || '',
+        musicPrivate: (profile as any).musicPrivate === true,
         particleEffect: (profile as any).particleEffect || 'none',
         clickEffect: (profile as any).clickEffect || 'none',
         fontFamily: (profile as any).fontFamily || 'default',
@@ -250,6 +258,8 @@ export default function EditProfile() {
         typewriterTexts: (profile as any).typewriterTexts || [],
         profileTitle: (profile as any).profileTitle || '',
         showViews: (profile as any).showViews !== false,
+        showDiscordAvatar: (profile as any).showDiscordAvatar !== false,
+        showDiscordPresence: (profile as any).showDiscordPresence !== false,
         badges: profile.badges || [],
       });
     }
@@ -355,6 +365,13 @@ export default function EditProfile() {
     discordAvatarUrl: (profile as any)?.discordAvatarUrl,
     nowPlaying: (profile as any)?.nowPlaying,
     musicService: (profile as any)?.musicService,
+    musicTitle: form.musicTitle,
+    musicIconUrl: form.musicIconUrl,
+    musicPrivate: form.musicPrivate,
+    showDiscordAvatar: form.showDiscordAvatar,
+    showDiscordPresence: form.showDiscordPresence,
+    discordNitro: (profile as any)?.discordNitro,
+    discordBoost: (profile as any)?.discordBoost,
   };
 
   const selectedPlatformInfo = SOCIAL_PLATFORMS.find(p => p.value === selectedPlatform);
@@ -862,6 +879,36 @@ export default function EditProfile() {
                       }
                     />
                   )}
+                  <div className="grid grid-cols-1 gap-3 mt-3">
+                    <StyledInput
+                      value={form.musicTitle}
+                      onChange={e => set('musicTitle', e.target.value)}
+                      placeholder="Nome personalizado da música"
+                    />
+                    <div className="flex gap-2">
+                      <StyledInput
+                        value={form.musicIconUrl}
+                        onChange={e => set('musicIconUrl', e.target.value)}
+                        placeholder="URL do ícone/capa da música"
+                        className="flex-1"
+                      />
+                      <FileUploadButton onFile={url => set('musicIconUrl', url)} accept="image/*">
+                        Ícone
+                      </FileUploadButton>
+                    </div>
+                    <button
+                      onClick={() => set('musicPrivate', !form.musicPrivate)}
+                      className="flex items-center justify-between gap-3 px-4 py-3 border rounded-sm transition-all text-sm w-full"
+                      style={{
+                        backgroundColor: form.musicPrivate ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        borderColor: form.musicPrivate ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
+                        color: form.musicPrivate ? '#fff' : 'rgba(255,255,255,0.4)',
+                      }}
+                    >
+                      <span className="font-semibold uppercase tracking-wider text-xs">Privar música ao vivo</span>
+                      <span className="label-caps">{form.musicPrivate ? 'Ativo' : 'Desativado'}</span>
+                    </button>
+                  </div>
                   <p className="text-xs text-white/25 mt-1">A música toca quando visitantes acessam seu perfil.</p>
                 </div>
 
@@ -875,6 +922,20 @@ export default function EditProfile() {
                   <button className="btn-outline-white text-xs w-full py-2.5">
                     Conectar Discord (OAuth)
                   </button>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button
+                      onClick={() => set('showDiscordAvatar', !form.showDiscordAvatar)}
+                      className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
+                    >
+                      Avatar Discord: {form.showDiscordAvatar ? 'sim' : 'não'}
+                    </button>
+                    <button
+                      onClick={() => set('showDiscordPresence', !form.showDiscordPresence)}
+                      className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
+                    >
+                      Status: {form.showDiscordPresence ? 'sim' : 'não'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="p-4 border border-white/8 rounded-sm bg-white/[0.02]">

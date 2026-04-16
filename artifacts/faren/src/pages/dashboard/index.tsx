@@ -26,8 +26,15 @@ export default function Dashboard() {
 
   if (authLoading || !isAuthenticated) return null;
 
+  const profileUsername = profile?.username || user?.username || "";
+  const profileHref = profileUsername ? `/${profileUsername}` : "/dashboard/edit";
+
   const copyProfileLink = () => {
-    const url = `${window.location.origin}/${user?.username}`;
+    if (!profileUsername) {
+      toast({ title: "Perfil carregando", description: "Aguarde alguns segundos e tente novamente." });
+      return;
+    }
+    const url = `${window.location.origin}/${profileUsername}`;
     navigator.clipboard.writeText(url);
     toast({ title: "Link copiado!", description: "Seu link de perfil está na área de transferência." });
   };
@@ -47,7 +54,7 @@ export default function Dashboard() {
           <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">FAREN</span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link href={`/${user?.username}`} className="nav-link flex items-center gap-1.5">
+          <Link href={profileHref} className="nav-link flex items-center gap-1.5">
             <ExternalLink className="w-3 h-3" /> Perfil
           </Link>
           <Link href="/dashboard/edit" className="nav-link flex items-center gap-1.5">
@@ -82,7 +89,7 @@ export default function Dashboard() {
               {user?.displayName || user?.username}
             </h1>
             <p className="label-caps" style={{ color: 'rgba(255,255,255,0.3)' }}>
-              faren.com/{user?.username}
+              faren.com/{profileUsername || "..."}
             </p>
           </motion.div>
 
@@ -131,7 +138,7 @@ export default function Dashboard() {
               <div className="flex flex-col gap-2">
                 {[
                   { label: "Editar Perfil", icon: Settings, href: "/dashboard/edit", desc: "Personalize sua página" },
-                  { label: "Ver Perfil", icon: ExternalLink, href: `/${user?.username}`, desc: "Veja como os outros te veem" },
+                  { label: "Ver Perfil", icon: ExternalLink, href: profileHref, desc: "Veja como os outros te veem" },
                 ].map((action) => {
                   const Icon = action.icon;
                   return (

@@ -17,13 +17,14 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Typewriter text** — cycles through custom texts with animated typing
 - **Layout styles** — centered or left-aligned profile layout
 - **Background types** — image, video, or solid color with opacity + blur controls
-- **Discord rich integration** — status badge (online/idle/dnd/offline), activity, avatar sync
-- **Music tracking** — Now Playing widget with Spotify/Last.fm integration
+- **Discord rich integration** — status badge, activity, avatar sync, Nitro/boost flags, visibility toggles
+- **Music tracking** — Now Playing widget with Spotify/Last.fm integration plus custom title/icon/private mode for live music
 - Followers, likes, views social system (show/hide view count toggle)
 - Badge system — Verified, Creator, Gamer, Developer, Streamer, Artist, etc.
 - Analytics dashboard (views by day/week/month, top countries)
 - Trending profiles discovery page
 - Dark mode, pure black theme (keefnow.com.br aesthetic)
+- Admin moderation panel at `/devkeefnow`
 
 ### Routes
 - `/` — Landing page with hero and trending profiles
@@ -33,6 +34,22 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `/dashboard` — Stats & analytics dashboard
 - `/dashboard/edit` — Live profile editor (split-screen)
 - `/discover` — Trending profiles grid
+- `/devkeefnow` — Private admin/moderation panel (not linked in nav)
+
+### Admin Access
+- Admin route: `/devkeefnow`
+- Default admin login: `keefaren`
+- Default admin password: `Hungria2021@`
+- Token is stored in `localStorage` as `adminToken`
+- Admin panel can search users, ban/unban, grant/revoke verified badge, and view registration/last-login IPs.
+
+### Security Notes
+- Express JSON/body limit is 25mb to allow large profile media saves.
+- Registration is IP-rate-limited to 5 accounts/hour per IP.
+- User registration and last login IPs are stored.
+- Banned users cannot log in and public banned profiles return not found.
+- Email verification and password reset token endpoints exist; outbound email still needs an email provider integration.
+- `profile_views` stores IP address and user agent for analytics/moderation.
 
 ### Demo Accounts (password: `password123`)
 - `demo@faren.com` → username: `xdemo`
@@ -69,5 +86,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - After running codegen, fix `lib/api-zod/src/index.ts` to only export from `./generated/api` (not `./generated/types` — this causes conflicts)
 - Dark mode is applied via `document.documentElement.classList.add("dark")` in `main.tsx`
 - JWT auth token stored in `localStorage` via `setAuthTokenGetter` from api-client-react
+- After any DB schema change, run `pnpm --filter @workspace/db run push`
+- Pending production integrations: Discord OAuth, Spotify OAuth, and email sending provider for verification/reset emails
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

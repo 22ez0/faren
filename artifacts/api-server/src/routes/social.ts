@@ -105,6 +105,8 @@ router.post("/analytics/record-view", async (req, res): Promise<void> => {
     profileUserId: targetUser.id,
     country: parsed.data.country ?? null,
     device: parsed.data.device ?? null,
+    ipAddress: ((req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0] || req.socket.remoteAddress || "unknown").trim(),
+    userAgent: req.headers["user-agent"] ?? null,
   });
 
   await db.update(profilesTable)
@@ -148,6 +150,7 @@ router.get("/discover/trending", async (req, res): Promise<void> => {
     })
     .from(profilesTable)
     .innerJoin(usersTable, eq(profilesTable.userId, usersTable.id))
+    .where(eq(usersTable.banned, false))
     .orderBy(desc(profilesTable.viewsCount))
     .limit(limit);
 

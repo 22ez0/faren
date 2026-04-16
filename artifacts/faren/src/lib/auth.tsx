@@ -35,8 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   const login = (newToken: string) => {
+    localStorage.setItem("token", newToken);
     setToken(newToken);
-    refetch();
+    setTimeout(() => refetch(), 0);
   };
 
   const logout = () => {

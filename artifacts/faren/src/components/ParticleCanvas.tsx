@@ -32,7 +32,7 @@ const EFFECTS: Record<string, { colors: string[], count: number }> = {
   sakura: { colors: ['#ffb7c5', '#ff8fab', '#ffc4d0', '#ffb3c1'], count: 50 },
   fireflies: { colors: ['#aaff80', '#80ff80', '#d4ff80'], count: 40 },
   bubbles: { colors: ['rgba(255,255,255,0.15)', 'rgba(200,200,255,0.2)', 'rgba(255,255,255,0.1)'], count: 35 },
-  rain: { colors: ['rgba(255,255,255,0.15)', 'rgba(100,150,255,0.2)'], count: 100 },
+  rain: { colors: ['rgba(210,230,255,0.75)', 'rgba(130,170,255,0.65)', 'rgba(255,255,255,0.55)'], count: 180 },
   raio: { colors: ['#fff', '#a78bfa', '#60a5fa', '#fbbf24', '#e0e0e0'], count: 0 },
 };
 
@@ -94,10 +94,10 @@ export default function ParticleCanvas({ effect, accentColor }: ParticleCanvasPr
       return {
         x: Math.random() * canvas.width,
         y: isRain ? Math.random() * -100 : Math.random() * canvas.height,
-        vx: isRain ? 0.5 : isFirefly ? (Math.random() - 0.5) * 0.8 : (Math.random() - 0.5) * 0.4,
-        vy: isRain ? 6 + Math.random() * 4 : isBubble ? -(0.3 + Math.random() * 0.5) : 0.5 + Math.random() * 1,
+        vx: isRain ? -1.5 + Math.random() * 0.8 : isFirefly ? (Math.random() - 0.5) * 0.8 : (Math.random() - 0.5) * 0.4,
+        vy: isRain ? 12 + Math.random() * 8 : isBubble ? -(0.3 + Math.random() * 0.5) : 0.5 + Math.random() * 1,
         alpha: 0.7 + Math.random() * 0.3,
-        size: isRain ? (1 + Math.random() * 1.5) : isBubble ? (8 + Math.random() * 20) : isFirefly ? (2 + Math.random() * 3) : (3 + Math.random() * 5),
+        size: isRain ? (12 + Math.random() * 18) : isBubble ? (8 + Math.random() * 20) : isFirefly ? (2 + Math.random() * 3) : (3 + Math.random() * 5),
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: (Math.random() - 0.5) * 0.05,
         color: cfg.colors[Math.floor(Math.random() * cfg.colors.length)],
@@ -211,12 +211,12 @@ export default function ParticleCanvas({ effect, accentColor }: ParticleCanvasPr
           drawSakura(ctx, p);
         } else if (effect === 'rain') {
           ctx.save();
-          ctx.globalAlpha = p.alpha * 0.4;
+          ctx.globalAlpha = p.alpha;
           ctx.strokeStyle = p.color;
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 1.2;
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x + 2, p.y + p.size * 3);
+          ctx.lineTo(p.x - 6, p.y + p.size);
           ctx.stroke();
           ctx.restore();
         } else {

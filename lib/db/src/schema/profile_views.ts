@@ -6,6 +6,8 @@ export const profileViewsTable = pgTable("profile_views", {
   profileUserId: integer("profile_user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   country: text("country"),
   device: text("device"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
   viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

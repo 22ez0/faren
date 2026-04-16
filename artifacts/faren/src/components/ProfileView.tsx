@@ -14,7 +14,7 @@ import { FaPlaystation, FaLinkedin } from "react-icons/fa";
 import {
   ExternalLink, Link as LinkIcon, Music, BadgeCheck, Code, Gamepad2,
   Mic, Palette, Headphones, Star, Zap, Crown, Globe, Heart, Eye,
-  Users, ChevronRight, Mail,
+  Users, ChevronRight, Mail, Gem,
 } from "lucide-react";
 import ParticleCanvas from "./ParticleCanvas";
 import ClickEffect from "./ClickEffect";
@@ -84,7 +84,7 @@ function DiscordStatus({ status }: { status: string }) {
   );
 }
 
-function MusicPlayer({ musicUrl }: { musicUrl: string }) {
+function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string; musicTitle?: string | null; musicIconUrl?: string | null }) {
   const isSpotify = musicUrl.includes('spotify.com') || musicUrl.startsWith('spotify:');
   const isSoundCloud = musicUrl.includes('soundcloud.com');
 
@@ -126,10 +126,23 @@ function MusicPlayer({ musicUrl }: { musicUrl: string }) {
   return (
     <div className="w-full glass-card rounded-lg p-3">
       <div className="flex items-center gap-2 mb-2">
-        <Music className="w-3.5 h-3.5 text-white/50" />
-        <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">Áudio</span>
+        {musicIconUrl ? (
+          <img src={musicIconUrl} alt="" className="w-7 h-7 rounded object-cover" />
+        ) : (
+          <Music className="w-4 h-4 text-white/50" />
+        )}
+        <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">{musicTitle || "Áudio"}</span>
       </div>
-      <audio controls autoPlay loop className="w-full h-8" style={{ filter: 'invert(1) hue-rotate(180deg) brightness(0.8)' }}>
+      <audio
+        controls
+        controlsList="nodownload noplaybackrate"
+        disableRemotePlayback
+        autoPlay
+        loop
+        onContextMenu={(event) => event.preventDefault()}
+        className="w-full h-8"
+        style={{ filter: 'invert(1) hue-rotate(180deg) brightness(0.8)' }}
+      >
         <source src={musicUrl} />
       </audio>
     </div>
@@ -150,6 +163,11 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const bgOpacity = (profile.backgroundOpacity ?? 60) / 100;
   const typewriterTexts = profile.typewriterTexts || [];
   const musicUrl = profile.musicUrl || '';
+  const musicTitle = (profile as any).musicTitle || null;
+  const musicIconUrl = (profile as any).musicIconUrl || null;
+  const musicPrivate = (profile as any).musicPrivate === true;
+  const showDiscordAvatar = (profile as any).showDiscordAvatar !== false;
+  const showDiscordPresence = (profile as any).showDiscordPresence !== false;
   const backgroundType = (profile as any).backgroundType || 'image';
 
   const cursorStyle = profile.cursorStyle || 'auto';
@@ -274,7 +292,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
               )}
             </div>
 
-            {profile.discordConnected && profile.discordStatus && (
+            {profile.discordConnected && profile.discordStatus && showDiscordPresence && (
               <div
                 className="absolute bottom-1 right-1 w-5 h-5 rounded-full border-[3px] border-black"
                 style={{
@@ -393,7 +411,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         <div className="w-full flex flex-col gap-3 mb-3">
 
           {/* Discord */}
-          {profile.discordConnected && profile.discordUsername && (
+          {profile.discordConnected && profile.discordUsername && showDiscordPresence && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -402,7 +420,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             >
               <div className="relative flex-shrink-0">
                 <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 bg-indigo-900/30 flex items-center justify-center">
-                  {profile.discordAvatarUrl ? (
+                  {showDiscordAvatar && profile.discordAvatarUrl ? (
                     <img src={profile.discordAvatarUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <SiDiscord className="w-5 h-5 text-indigo-400" />
@@ -413,6 +431,8 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                 <div className="flex items-center gap-2 mb-0.5">
                   <SiDiscord className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
                   <span className="font-semibold text-sm truncate">{profile.discordUsername}</span>
+                  {(profile as any).discordNitro && <Gem className="w-3.5 h-3.5 text-pink-400" />}
+                  {(profile as any).discordBoost && <Crown className="w-3.5 h-3.5 text-fuchsia-400" />}
                 </div>
                 {profile.discordStatus && <DiscordStatus status={profile.discordStatus} />}
                 {profile.discordActivity && (
@@ -423,7 +443,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           )}
 
           {/* Now Playing */}
-          {profile.nowPlaying?.isPlaying && (
+          {!musicPrivate && profile.nowPlaying?.isPlaying && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -481,7 +501,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           {/* Music Player (for musicUrl) */}
           {musicUrl && !profile.nowPlaying?.isPlaying && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              <MusicPlayer musicUrl={musicUrl} />
+              <MusicPlayer musicUrl={musicUrl} musicTitle={musicTitle} musicIconUrl={musicIconUrl} />
             </motion.div>
           )}
         </div>

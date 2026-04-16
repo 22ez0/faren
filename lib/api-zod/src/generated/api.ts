@@ -238,6 +238,9 @@ export const UpdateProfileBody = zod.object({
   glowColor: zod.string().nullish(),
   cursorStyle: zod.string().nullish(),
   musicUrl: zod.string().nullish(),
+  musicTitle: zod.string().nullish(),
+  musicIconUrl: zod.string().nullish(),
+  musicPrivate: zod.boolean().nullish(),
   badges: zod.array(zod.string()).optional(),
   particleEffect: zod.string().nullish(),
   clickEffect: zod.string().nullish(),
@@ -246,6 +249,8 @@ export const UpdateProfileBody = zod.object({
   typewriterTexts: zod.array(zod.string()).optional(),
   profileTitle: zod.string().nullish(),
   showViews: zod.boolean().nullish(),
+  showDiscordAvatar: zod.boolean().nullish(),
+  showDiscordPresence: zod.boolean().nullish(),
 });
 
 export const UpdateProfileResponse = zod.object({
@@ -262,6 +267,9 @@ export const UpdateProfileResponse = zod.object({
   glowColor: zod.string().nullish(),
   cursorStyle: zod.string().nullish(),
   musicUrl: zod.string().nullish(),
+  musicTitle: zod.string().nullish(),
+  musicIconUrl: zod.string().nullish(),
+  musicPrivate: zod.boolean().nullish(),
   badges: zod.array(zod.string()),
   particleEffect: zod.string().nullish(),
   clickEffect: zod.string().nullish(),
@@ -287,6 +295,12 @@ export const UpdateProfileResponse = zod.object({
   discordUsername: zod.string().nullish(),
   discordAvatarUrl: zod.string().nullish(),
   discordStatus: zod.string().nullish(),
+  discordActivity: zod.string().nullish(),
+  discordStatusEmoji: zod.string().nullish(),
+  discordNitro: zod.boolean().nullish(),
+  discordBoost: zod.boolean().nullish(),
+  showDiscordAvatar: zod.boolean().nullish(),
+  showDiscordPresence: zod.boolean().nullish(),
   musicConnected: zod.boolean(),
   musicService: zod.string().nullish(),
   followersCount: zod.number(),
@@ -348,6 +362,8 @@ export const ConnectDiscordBody = zod.object({
   discordStatus: zod.string().nullish(),
   discordActivity: zod.string().nullish(),
   discordStatusEmoji: zod.string().nullish(),
+  discordNitro: zod.boolean().optional(),
+  discordBoost: zod.boolean().optional(),
 });
 
 export const ConnectDiscordResponse = zod.object({

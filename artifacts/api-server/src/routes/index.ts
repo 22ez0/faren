@@ -5,6 +5,7 @@ import profilesRouter from "./profiles";
 import socialRouter from "./social";
 import musicRouter from "./music";
 import analyticsRouter from "./analytics";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(profilesRouter);
 router.use(socialRouter);
 router.use(musicRouter);
 router.use(analyticsRouter);
+router.use(adminRouter);
 
 export default router;

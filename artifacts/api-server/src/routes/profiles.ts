@@ -27,6 +27,9 @@ function formatProfile(
     glowColor: profile.glowColor,
     cursorStyle: profile.cursorStyle,
     musicUrl: profile.musicUrl,
+    musicTitle: profile.musicTitle,
+    musicIconUrl: profile.musicIconUrl,
+    musicPrivate: profile.musicPrivate,
     badges: profile.badges ?? [],
     particleEffect: profile.particleEffect,
     clickEffect: profile.clickEffect,
@@ -50,6 +53,10 @@ function formatProfile(
     discordStatus: profile.discordStatus,
     discordActivity: profile.discordActivity,
     discordStatusEmoji: profile.discordStatusEmoji,
+    discordNitro: profile.discordNitro,
+    discordBoost: profile.discordBoost,
+    showDiscordAvatar: profile.showDiscordAvatar !== false,
+    showDiscordPresence: profile.showDiscordPresence !== false,
     musicConnected: profile.musicConnected === "true",
     musicService: profile.musicService,
     followersCount: profile.followersCount,
@@ -90,9 +97,9 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
   const {
     displayName, bio, avatarUrl, bannerUrl, backgroundUrl,
     accentColor, backgroundOpacity, backgroundBlur, backgroundType,
-    glowColor, cursorStyle, musicUrl, badges,
+    glowColor, cursorStyle, musicUrl, musicTitle, musicIconUrl, musicPrivate, badges,
     particleEffect, clickEffect, fontFamily, layoutStyle,
-    typewriterTexts, profileTitle, showViews,
+    typewriterTexts, profileTitle, showViews, showDiscordAvatar, showDiscordPresence,
   } = parsed.data;
 
   await db.update(usersTable).set({
@@ -118,6 +125,9 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     ...(glowColor !== undefined ? { glowColor } : {}),
     ...(cursorStyle !== undefined ? { cursorStyle } : {}),
     ...(musicUrl !== undefined ? { musicUrl } : {}),
+    ...(musicTitle !== undefined ? { musicTitle } : {}),
+    ...(musicIconUrl !== undefined ? { musicIconUrl } : {}),
+    ...(musicPrivate !== undefined ? { musicPrivate } : {}),
     ...(badges !== undefined ? { badges } : {}),
     ...(particleEffect !== undefined ? { particleEffect } : {}),
     ...(clickEffect !== undefined ? { clickEffect } : {}),
@@ -126,6 +136,8 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     ...(typewriterTexts !== undefined ? { typewriterTexts } : {}),
     ...(profileTitle !== undefined ? { profileTitle } : {}),
     ...(showViews !== undefined ? { showViews } : {}),
+    ...(showDiscordAvatar !== undefined ? { showDiscordAvatar } : {}),
+    ...(showDiscordPresence !== undefined ? { showDiscordPresence } : {}),
   }).where(eq(profilesTable.userId, userId)).returning();
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
@@ -248,6 +260,8 @@ router.post("/profile/discord", requireAuth, async (req, res): Promise<void> => 
     discordStatus: parsed.data.discordStatus ?? null,
     discordActivity: parsed.data.discordActivity ?? null,
     discordStatusEmoji: parsed.data.discordStatusEmoji ?? null,
+    discordNitro: parsed.data.discordNitro ?? false,
+    discordBoost: parsed.data.discordBoost ?? false,
   }).where(eq(profilesTable.userId, userId)).returning();
 
   res.json({
@@ -258,6 +272,8 @@ router.post("/profile/discord", requireAuth, async (req, res): Promise<void> => 
     discordStatus: profile.discordStatus,
     discordActivity: profile.discordActivity,
     discordStatusEmoji: profile.discordStatusEmoji,
+    discordNitro: profile.discordNitro,
+    discordBoost: profile.discordBoost,
   });
 });
 
@@ -271,6 +287,8 @@ router.delete("/profile/discord", requireAuth, async (req, res): Promise<void> =
     discordStatus: null,
     discordActivity: null,
     discordStatusEmoji: null,
+    discordNitro: false,
+    discordBoost: false,
   }).where(eq(profilesTable.userId, userId));
 
   res.json({ success: true, message: "Discord disconnected" });
@@ -293,6 +311,8 @@ router.get("/profile/discord/status", requireAuth, async (req, res): Promise<voi
     discordStatus: profile.discordStatus,
     discordActivity: profile.discordActivity,
     discordStatusEmoji: profile.discordStatusEmoji,
+    discordNitro: profile.discordNitro,
+    discordBoost: profile.discordBoost,
   });
 });
 
@@ -301,6 +321,10 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, rawUsername)).limit(1);
   if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (user.banned) {
     res.status(404).json({ error: "User not found" });
     return;
   }
@@ -324,7 +348,7 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
 
   res.json({
     ...formatProfile(user, profile, links),
-    nowPlaying: { isPlaying: false },
+    nowPlaying: profile.musicPrivate ? { isPlaying: false } : { isPlaying: false },
     isFollowing,
     hasLiked,
   });

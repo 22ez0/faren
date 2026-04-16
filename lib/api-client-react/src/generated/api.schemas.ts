@@ -80,6 +80,12 @@ export interface Profile {
   cursorStyle?: string | null;
   /** @nullable */
   musicUrl?: string | null;
+  /** @nullable */
+  musicTitle?: string | null;
+  /** @nullable */
+  musicIconUrl?: string | null;
+  /** @nullable */
+  musicPrivate?: boolean | null;
   badges: string[];
   /** @nullable */
   particleEffect?: string | null;
@@ -191,6 +197,14 @@ export interface PublicProfile {
   discordActivity?: string | null;
   /** @nullable */
   discordStatusEmoji?: string | null;
+  /** @nullable */
+  discordNitro?: boolean | null;
+  /** @nullable */
+  discordBoost?: boolean | null;
+  /** @nullable */
+  showDiscordAvatar?: boolean | null;
+  /** @nullable */
+  showDiscordPresence?: boolean | null;
   musicConnected: boolean;
   /** @nullable */
   musicService?: string | null;
@@ -247,6 +261,12 @@ export interface UpdateProfileBody {
   cursorStyle?: string | null;
   /** @nullable */
   musicUrl?: string | null;
+  /** @nullable */
+  musicTitle?: string | null;
+  /** @nullable */
+  musicIconUrl?: string | null;
+  /** @nullable */
+  musicPrivate?: boolean | null;
   badges?: string[];
   /** @nullable */
   particleEffect?: string | null;
@@ -261,6 +281,10 @@ export interface UpdateProfileBody {
   profileTitle?: string | null;
   /** @nullable */
   showViews?: boolean | null;
+  /** @nullable */
+  showDiscordAvatar?: boolean | null;
+  /** @nullable */
+  showDiscordPresence?: boolean | null;
 }
 
 export interface ConnectDiscordBody {
@@ -274,6 +298,8 @@ export interface ConnectDiscordBody {
   discordActivity?: string | null;
   /** @nullable */
   discordStatusEmoji?: string | null;
+  discordNitro?: boolean | null;
+  discordBoost?: boolean | null;
 }
 
 export interface DiscordStatus {

@@ -168,13 +168,12 @@
 @layer base {
   * {
     @apply border-border;
-    user-select: none;
-    -webkit-user-select: none;
   }
 
-  input, textarea {
+  input, textarea, [contenteditable="true"] {
     user-select: text;
     -webkit-user-select: text;
+    -webkit-touch-callout: default;
   }
 
   body {
