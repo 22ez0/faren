@@ -10,7 +10,15 @@ interface Particle {
   rotation: number;
   rotationSpeed: number;
   color: string;
-  char?: string;
+}
+
+interface LightningBolt {
+  points: { x: number; y: number }[];
+  alpha: number;
+  width: number;
+  color: string;
+  born: number;
+  lifetime: number;
 }
 
 interface ParticleCanvasProps {
@@ -18,19 +26,49 @@ interface ParticleCanvasProps {
   accentColor?: string;
 }
 
-const EFFECTS: Record<string, { colors: string[], count: number, char?: string }> = {
+const EFFECTS: Record<string, { colors: string[], count: number }> = {
   snow: { colors: ['#fff', '#ddd', '#eee'], count: 80 },
   stars: { colors: ['#fff', '#ffd700', '#aad4f5'], count: 60 },
   sakura: { colors: ['#ffb7c5', '#ff8fab', '#ffc4d0', '#ffb3c1'], count: 50 },
   fireflies: { colors: ['#aaff80', '#80ff80', '#d4ff80'], count: 40 },
-  bubbles: { colors: ['rgba(255,255,255,0.15)', 'rgba(139,92,246,0.2)', 'rgba(255,255,255,0.1)'], count: 35 },
+  bubbles: { colors: ['rgba(255,255,255,0.15)', 'rgba(200,200,255,0.2)', 'rgba(255,255,255,0.1)'], count: 35 },
   rain: { colors: ['rgba(255,255,255,0.15)', 'rgba(100,150,255,0.2)'], count: 100 },
+  raio: { colors: ['#fff', '#a78bfa', '#60a5fa', '#fbbf24', '#e0e0e0'], count: 0 },
 };
+
+function generateLightningPoints(startX: number, canvasHeight: number): { x: number; y: number }[] {
+  const points: { x: number; y: number }[] = [];
+  let x = startX;
+  let y = 0;
+  points.push({ x, y });
+  while (y < canvasHeight) {
+    const step = 20 + Math.random() * 40;
+    y += step;
+    x += (Math.random() - 0.5) * 120;
+    points.push({ x, y });
+    if (Math.random() < 0.3) {
+      const branchX = x;
+      const branchY = y;
+      const branchPoints: { x: number; y: number }[] = [{ x: branchX, y: branchY }];
+      let bx = branchX;
+      let by = branchY;
+      for (let i = 0; i < 3 + Math.floor(Math.random() * 4); i++) {
+        by += 15 + Math.random() * 25;
+        bx += (Math.random() - 0.5) * 80;
+        branchPoints.push({ x: bx, y: by });
+      }
+      points.push(...branchPoints);
+    }
+  }
+  return points;
+}
 
 export default function ParticleCanvas({ effect, accentColor }: ParticleCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
   const particlesRef = useRef<Particle[]>([]);
+  const boltsRef = useRef<LightningBolt[]>([]);
+  const lastBoltRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -66,7 +104,9 @@ export default function ParticleCanvas({ effect, accentColor }: ParticleCanvasPr
       };
     };
 
-    particlesRef.current = Array.from({ length: cfg.count }, spawn);
+    if (effect !== 'raio') {
+      particlesRef.current = Array.from({ length: cfg.count }, spawn);
+    }
 
     const drawSakura = (ctx: CanvasRenderingContext2D, p: Particle) => {
       ctx.save();
@@ -91,14 +131,62 @@ export default function ParticleCanvas({ effect, accentColor }: ParticleCanvasPr
       ctx.globalAlpha = p.alpha * 0.6;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.strokeStyle = p.color.replace('rgba(', '').startsWith('#') ? p.color : p.color;
+      ctx.strokeStyle = p.color;
       ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const drawLightning = (ctx: CanvasRenderingContext2D, bolt: LightningBolt) => {
+      if (bolt.points.length < 2) return;
+      ctx.save();
+      ctx.globalAlpha = bolt.alpha;
+      ctx.strokeStyle = bolt.color;
+      ctx.lineWidth = bolt.width;
+      ctx.shadowColor = bolt.color;
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.moveTo(bolt.points[0].x, bolt.points[0].y);
+      for (let i = 1; i < bolt.points.length; i++) {
+        ctx.lineTo(bolt.points[i].x, bolt.points[i].y);
+      }
       ctx.stroke();
       ctx.restore();
     };
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const now = Date.now();
+
+      if (effect === 'raio') {
+        const interval = 800 + Math.random() * 1500;
+        if (now - lastBoltRef.current > interval) {
+          lastBoltRef.current = now;
+          const boltCount = 1 + Math.floor(Math.random() * 2);
+          for (let b = 0; b < boltCount; b++) {
+            const colors = cfg.colors;
+            boltsRef.current.push({
+              points: generateLightningPoints(Math.random() * canvas.width, canvas.height),
+              alpha: 0.9 + Math.random() * 0.1,
+              width: 1 + Math.random() * 2,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              born: now,
+              lifetime: 80 + Math.random() * 120,
+            });
+          }
+        }
+
+        boltsRef.current = boltsRef.current.filter(bolt => {
+          const age = now - bolt.born;
+          if (age > bolt.lifetime) return false;
+          bolt.alpha = (1 - age / bolt.lifetime) * 0.9;
+          drawLightning(ctx, bolt);
+          return true;
+        });
+
+        animRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
       particlesRef.current.forEach((p, idx) => {
         p.x += p.vx;
@@ -163,6 +251,7 @@ export default function ParticleCanvas({ effect, accentColor }: ParticleCanvasPr
     return () => {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
+      boltsRef.current = [];
     };
   }, [effect, accentColor]);
 

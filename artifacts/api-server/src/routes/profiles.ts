@@ -6,7 +6,11 @@ import { requireAuth, optionalAuth } from "../lib/auth";
 
 const router: IRouter = Router();
 
-function formatProfile(user: { id: number; username: string; displayName: string | null; avatarUrl: string | null }, profile: { id: number; userId: number; bio: string | null; bannerUrl: string | null; backgroundUrl: string | null; accentColor: string | null; backgroundOpacity: number | null; glowColor: string | null; cursorStyle: string | null; musicUrl: string | null; badges: string[] | null; discordUserId: string | null; discordUsername: string | null; discordAvatarUrl: string | null; discordStatus: string | null; discordActivity: string | null; discordStatusEmoji: string | null; musicConnected: string | null; musicService: string | null; followersCount: number; followingCount: number; likesCount: number; viewsCount: number; createdAt: Date }, links: Array<{ id: number; platform: string; label: string; url: string; iconUrl: string | null; sortOrder: number }>) {
+function formatProfile(
+  user: { id: number; username: string; displayName: string | null; avatarUrl: string | null },
+  profile: any,
+  links: Array<{ id: number; platform: string; label: string; url: string; iconUrl: string | null; sortOrder: number }>
+) {
   return {
     id: profile.id,
     userId: profile.userId,
@@ -18,10 +22,19 @@ function formatProfile(user: { id: number; username: string; displayName: string
     backgroundUrl: profile.backgroundUrl,
     accentColor: profile.accentColor,
     backgroundOpacity: profile.backgroundOpacity,
+    backgroundBlur: profile.backgroundBlur,
+    backgroundType: profile.backgroundType,
     glowColor: profile.glowColor,
     cursorStyle: profile.cursorStyle,
     musicUrl: profile.musicUrl,
     badges: profile.badges ?? [],
+    particleEffect: profile.particleEffect,
+    clickEffect: profile.clickEffect,
+    fontFamily: profile.fontFamily,
+    layoutStyle: profile.layoutStyle,
+    typewriterTexts: profile.typewriterTexts ?? [],
+    profileTitle: profile.profileTitle,
+    showViews: profile.showViews,
     links: links.map(l => ({
       id: l.id,
       platform: l.platform,
@@ -35,6 +48,8 @@ function formatProfile(user: { id: number; username: string; displayName: string
     discordUsername: profile.discordUsername,
     discordAvatarUrl: profile.discordAvatarUrl,
     discordStatus: profile.discordStatus,
+    discordActivity: profile.discordActivity,
+    discordStatusEmoji: profile.discordStatusEmoji,
     musicConnected: profile.musicConnected === "true",
     musicService: profile.musicService,
     followersCount: profile.followersCount,
@@ -72,7 +87,13 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const { displayName, bio, avatarUrl, bannerUrl, backgroundUrl, accentColor, backgroundOpacity, glowColor, cursorStyle, musicUrl, badges } = parsed.data;
+  const {
+    displayName, bio, avatarUrl, bannerUrl, backgroundUrl,
+    accentColor, backgroundOpacity, backgroundBlur, backgroundType,
+    glowColor, cursorStyle, musicUrl, badges,
+    particleEffect, clickEffect, fontFamily, layoutStyle,
+    typewriterTexts, profileTitle, showViews,
+  } = parsed.data;
 
   await db.update(usersTable).set({
     ...(displayName !== undefined ? { displayName } : {}),
@@ -92,10 +113,19 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     ...(backgroundUrl !== undefined ? { backgroundUrl } : {}),
     ...(accentColor !== undefined ? { accentColor } : {}),
     ...(backgroundOpacity !== undefined ? { backgroundOpacity } : {}),
+    ...(backgroundBlur !== undefined ? { backgroundBlur } : {}),
+    ...(backgroundType !== undefined ? { backgroundType } : {}),
     ...(glowColor !== undefined ? { glowColor } : {}),
     ...(cursorStyle !== undefined ? { cursorStyle } : {}),
     ...(musicUrl !== undefined ? { musicUrl } : {}),
     ...(badges !== undefined ? { badges } : {}),
+    ...(particleEffect !== undefined ? { particleEffect } : {}),
+    ...(clickEffect !== undefined ? { clickEffect } : {}),
+    ...(fontFamily !== undefined ? { fontFamily } : {}),
+    ...(layoutStyle !== undefined ? { layoutStyle } : {}),
+    ...(typewriterTexts !== undefined ? { typewriterTexts } : {}),
+    ...(profileTitle !== undefined ? { profileTitle } : {}),
+    ...(showViews !== undefined ? { showViews } : {}),
   }).where(eq(profilesTable.userId, userId)).returning();
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
@@ -293,43 +323,10 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
   }
 
   res.json({
-    id: profile.id,
-    username: user.username,
-    displayName: user.displayName,
-    bio: profile.bio,
-    avatarUrl: user.avatarUrl,
-    bannerUrl: profile.bannerUrl,
-    backgroundUrl: profile.backgroundUrl,
-    accentColor: profile.accentColor,
-    backgroundOpacity: profile.backgroundOpacity,
-    glowColor: profile.glowColor,
-    cursorStyle: profile.cursorStyle,
-    musicUrl: profile.musicUrl,
-    badges: profile.badges ?? [],
-    links: links.map(l => ({
-      id: l.id,
-      platform: l.platform,
-      label: l.label,
-      url: l.url,
-      iconUrl: l.iconUrl,
-      sortOrder: l.sortOrder,
-    })),
-    discordConnected: !!profile.discordUserId,
-    discordUsername: profile.discordUsername,
-    discordAvatarUrl: profile.discordAvatarUrl,
-    discordStatus: profile.discordStatus,
-    discordActivity: profile.discordActivity,
-    discordStatusEmoji: profile.discordStatusEmoji,
-    musicConnected: profile.musicConnected === "true",
-    musicService: profile.musicService,
+    ...formatProfile(user, profile, links),
     nowPlaying: { isPlaying: false },
-    followersCount: profile.followersCount,
-    followingCount: profile.followingCount,
-    likesCount: profile.likesCount,
-    viewsCount: profile.viewsCount,
     isFollowing,
     hasLiked,
-    createdAt: profile.createdAt.toISOString(),
   });
 });
 

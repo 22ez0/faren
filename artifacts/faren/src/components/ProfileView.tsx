@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PublicProfile } from "@workspace/api-client-react";
 import {
-  SiDiscord, SiSpotify, SiLastdotfm, SiGithub, SiX, SiYoutube,
-  SiTwitch, SiInstagram, SiTiktok, SiSteam, SiKick,
-  SiPatreon, SiSnapchat, SiReddit, SiPinterest, SiMastodon,
-  SiThreads, SiBluesky, SiSoundcloud, SiBandcamp, SiItchdotio,
+  SiDiscord, SiSpotify, SiLastdotfm, SiGithub, SiX, SiYoutube, SiTwitch,
+  SiInstagram, SiTiktok, SiSteam, SiKick, SiPatreon, SiSnapchat, SiReddit,
+  SiPinterest, SiThreads, SiBluesky, SiSoundcloud, SiBandcamp,
+  SiTelegram, SiPaypal, SiGitlab, SiFacebook, SiLinktree,
+  SiLetterboxd, SiVk, SiKofi, SiBitcoin, SiEthereum, SiSolana, SiRoblox,
+  SiVenmo, SiCashapp,
 } from "react-icons/si";
-import { FaLinkedin } from "react-icons/fa";
+import { FaPlaystation, FaLinkedin } from "react-icons/fa";
 import {
   ExternalLink, Link as LinkIcon, Music, BadgeCheck, Code, Gamepad2,
   Mic, Palette, Headphones, Star, Zap, Crown, Globe, Heart, Eye,
-  Users, ChevronRight,
+  Users, ChevronRight, Mail,
 } from "lucide-react";
 import ParticleCanvas from "./ParticleCanvas";
 import ClickEffect from "./ClickEffect";
@@ -28,16 +30,16 @@ interface ProfileViewProps {
 }
 
 const BADGE_MAP: Record<string, { icon: React.ElementType; label: string; color: string; bg: string }> = {
-  verified:    { icon: BadgeCheck, label: "Verified",     color: "#60a5fa", bg: "rgba(59,130,246,0.12)" },
-  creator:     { icon: Palette,    label: "Creator",      color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
-  "music-head":{ icon: Headphones, label: "Music Head",   color: "#34d399", bg: "rgba(52,211,153,0.12)" },
-  gamer:       { icon: Gamepad2,   label: "Gamer",        color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
-  developer:   { icon: Code,       label: "Developer",    color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
-  streamer:    { icon: Mic,        label: "Streamer",     color: "#f87171", bg: "rgba(248,113,113,0.12)" },
-  artist:      { icon: Palette,    label: "Artist",       color: "#fb923c", bg: "rgba(251,146,60,0.12)" },
-  star:        { icon: Star,       label: "Rising Star",  color: "#fde68a", bg: "rgba(253,230,138,0.12)" },
-  og:          { icon: Crown,      label: "OG Member",    color: "#c4b5fd", bg: "rgba(196,181,253,0.12)" },
-  vip:         { icon: Zap,        label: "VIP",          color: "#f9a8d4", bg: "rgba(249,168,212,0.12)" },
+  verified:    { icon: BadgeCheck, label: "Verificado",          color: "#60a5fa", bg: "rgba(59,130,246,0.12)" },
+  creator:     { icon: Palette,    label: "Criador",             color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
+  "music-head":{ icon: Headphones, label: "Amante de Música",    color: "#34d399", bg: "rgba(52,211,153,0.12)" },
+  gamer:       { icon: Gamepad2,   label: "Gamer",               color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+  developer:   { icon: Code,       label: "Desenvolvedor",        color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
+  streamer:    { icon: Mic,        label: "Streamer",             color: "#f87171", bg: "rgba(248,113,113,0.12)" },
+  artist:      { icon: Palette,    label: "Artista",              color: "#fb923c", bg: "rgba(251,146,60,0.12)" },
+  star:        { icon: Star,       label: "Estrela em Ascensão",  color: "#fde68a", bg: "rgba(253,230,138,0.12)" },
+  og:          { icon: Crown,      label: "Membro OG",            color: "#c4b5fd", bg: "rgba(196,181,253,0.12)" },
+  vip:         { icon: Zap,        label: "VIP",                  color: "#f9a8d4", bg: "rgba(249,168,212,0.12)" },
 };
 
 const PLATFORM_ICONS: Record<string, React.ElementType> = {
@@ -46,9 +48,14 @@ const PLATFORM_ICONS: Record<string, React.ElementType> = {
   spotify: SiSpotify, tiktok: SiTiktok, linkedin: FaLinkedin,
   steam: SiSteam, kick: SiKick, patreon: SiPatreon,
   snapchat: SiSnapchat, reddit: SiReddit, pinterest: SiPinterest,
-  mastodon: SiMastodon, threads: SiThreads, bluesky: SiBluesky,
-  soundcloud: SiSoundcloud, bandcamp: SiBandcamp, itch: SiItchdotio,
-  website: Globe,
+  threads: SiThreads, bluesky: SiBluesky,
+  soundcloud: SiSoundcloud, bandcamp: SiBandcamp,
+  telegram: SiTelegram, paypal: SiPaypal, gitlab: SiGitlab,
+  facebook: SiFacebook, linktree: SiLinktree, letterboxd: SiLetterboxd,
+  vk: SiVk, kofi: SiKofi, bitcoin: SiBitcoin, ethereum: SiEthereum,
+  solana: SiSolana, roblox: SiRoblox, venmo: SiVenmo, cashapp: SiCashapp,
+  playstation: FaPlaystation, lastfm: SiLastdotfm,
+  email: Mail, website: Globe,
 };
 
 const FONT_CLASSES: Record<string, string> = {
@@ -68,14 +75,63 @@ const STATUS_COLORS: Record<string, string> = {
 
 function DiscordStatus({ status }: { status: string }) {
   const color = STATUS_COLORS[status] || STATUS_COLORS.offline;
-  const label = status === 'dnd' ? 'Do Not Disturb' : status.charAt(0).toUpperCase() + status.slice(1);
+  const label = status === 'dnd' ? 'Não Perturbe' : status === 'online' ? 'Online' : status === 'idle' ? 'Ausente' : 'Offline';
   return (
     <div className="flex items-center gap-1.5">
-      <span
-        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-        style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
-      />
+      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
       <span className="text-xs opacity-60">{label}</span>
+    </div>
+  );
+}
+
+function MusicPlayer({ musicUrl }: { musicUrl: string }) {
+  const isSpotify = musicUrl.includes('spotify.com') || musicUrl.startsWith('spotify:');
+  const isSoundCloud = musicUrl.includes('soundcloud.com');
+
+  if (isSpotify) {
+    const trackMatch = musicUrl.match(/track\/([a-zA-Z0-9]+)/);
+    const trackId = trackMatch?.[1];
+    if (!trackId) return null;
+    return (
+      <div className="w-full glass-card rounded-lg overflow-hidden">
+        <iframe
+          src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`}
+          width="100%"
+          height="80"
+          frameBorder="0"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+          className="block"
+        />
+      </div>
+    );
+  }
+
+  if (isSoundCloud) {
+    return (
+      <div className="w-full glass-card rounded-lg overflow-hidden">
+        <iframe
+          width="100%"
+          height="80"
+          scrolling="no"
+          frameBorder="no"
+          allow="autoplay"
+          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(musicUrl)}&color=%23ff5500&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false`}
+          className="block"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full glass-card rounded-lg p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Music className="w-3.5 h-3.5 text-white/50" />
+        <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">Áudio</span>
+      </div>
+      <audio controls autoPlay loop className="w-full h-8" style={{ filter: 'invert(1) hue-rotate(180deg) brightness(0.8)' }}>
+        <source src={musicUrl} />
+      </audio>
     </div>
   );
 }
@@ -83,7 +139,7 @@ function DiscordStatus({ status }: { status: string }) {
 export default function ProfileView({ profile, isOwner, onFollow, onLike, isFollowing, hasLiked }: ProfileViewProps) {
   const [likePulse, setLikePulse] = useState(false);
 
-  const accent = profile.accentColor || "#8b5cf6";
+  const accent = profile.accentColor || "#ffffff";
   const glow = profile.glowColor || accent;
   const fontClass = FONT_CLASSES[profile.fontFamily || "default"] || FONT_CLASSES.default;
   const layout = profile.layoutStyle || "centered";
@@ -93,11 +149,32 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const bgBlur = profile.backgroundBlur || 0;
   const bgOpacity = (profile.backgroundOpacity ?? 60) / 100;
   const typewriterTexts = profile.typewriterTexts || [];
+  const musicUrl = profile.musicUrl || '';
+  const backgroundType = (profile as any).backgroundType || 'image';
+
+  const cursorStyle = profile.cursorStyle || 'auto';
+  const isCustomCursor = cursorStyle?.startsWith('url:');
+  const cursorDataUrl = isCustomCursor ? cursorStyle.replace('url:', '') : null;
 
   const cursorClass =
-    profile.cursorStyle === "crosshair" ? "cursor-crosshair" :
-    profile.cursorStyle === "none" ? "cursor-none" :
+    isCustomCursor ? '' :
+    cursorStyle === "crosshair" ? "cursor-crosshair" :
+    cursorStyle === "none" ? "cursor-none" :
+    cursorStyle === "pointer" ? "cursor-pointer" :
+    cursorStyle === "cell" ? "cursor-cell" :
+    cursorStyle === "grab" ? "cursor-grab" :
+    cursorStyle === "zoom-in" ? "cursor-zoom-in" :
+    cursorStyle === "text" ? "cursor-text" :
     "cursor-auto";
+
+  useEffect(() => {
+    if (!isCustomCursor || !cursorDataUrl) return;
+    const styleEl = document.createElement('style');
+    styleEl.id = 'custom-cursor-style';
+    styleEl.textContent = `* { cursor: url("${cursorDataUrl}") 16 16, auto !important; }`;
+    document.head.appendChild(styleEl);
+    return () => { styleEl.remove(); };
+  }, [isCustomCursor, cursorDataUrl]);
 
   const isLeft = layout === "left";
   const alignClass = isLeft ? "items-start text-left" : "items-center text-center";
@@ -117,7 +194,15 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
       {clickEffect !== 'none' && <ClickEffect effect={clickEffect} />}
 
       {/* Background */}
-      {profile.backgroundUrl && (
+      {profile.backgroundUrl && backgroundType === 'video' ? (
+        <video
+          autoPlay muted loop playsInline
+          className="fixed inset-0 w-full h-full object-cover z-0"
+          style={{ opacity: bgOpacity }}
+        >
+          <source src={profile.backgroundUrl} />
+        </video>
+      ) : profile.backgroundUrl ? (
         <div
           className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
           style={{
@@ -126,14 +211,12 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             filter: bgBlur > 0 ? `blur(${bgBlur}px)` : 'none',
           }}
         />
-      )}
+      ) : null}
 
       {/* Overlay */}
       <div
         className="fixed inset-0 z-0"
-        style={{
-          background: `linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%)`,
-        }}
+        style={{ background: `linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%)` }}
       />
 
       {/* Ambient glow blobs */}
@@ -159,10 +242,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             className="w-full h-40 md:h-52 mb-12 rounded-xl overflow-hidden relative"
             style={{ border: `1px solid ${accent}22` }}
           >
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${profile.bannerUrl})` }}
-            />
+            <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${profile.bannerUrl})` }} />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           </motion.div>
         )}
@@ -194,7 +274,6 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
               )}
             </div>
 
-            {/* Discord status dot on avatar */}
             {profile.discordConnected && profile.discordStatus && (
               <div
                 className="absolute bottom-1 right-1 w-5 h-5 rounded-full border-[3px] border-black"
@@ -206,24 +285,20 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             )}
           </div>
 
-          {/* Display name */}
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-0.5">
             {profile.displayName || profile.username}
           </h1>
 
-          {/* Username */}
           <p className="text-sm mb-3 font-medium" style={{ color: accent }}>
             @{profile.username}
           </p>
 
-          {/* Typewriter bio */}
           {typewriterTexts.length > 0 && (
             <p className="text-sm opacity-60 mb-3">
               <TypewriterText texts={typewriterTexts} speed={70} />
             </p>
           )}
 
-          {/* Bio */}
           {profile.bio && (
             <p className="max-w-sm text-sm leading-relaxed opacity-70 mb-4 whitespace-pre-wrap">
               {profile.bio}
@@ -256,19 +331,19 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           <div className={`flex items-center gap-5 mb-5 ${isLeft ? '' : 'justify-center'}`}>
             <div className="flex flex-col items-center">
               <span className="text-xl font-bold">{(profile.followersCount || 0).toLocaleString()}</span>
-              <span className="label-caps">Followers</span>
+              <span className="label-caps">Seguidores</span>
             </div>
             <div className="w-px h-8" style={{ backgroundColor: `${accent}30` }} />
             <div className="flex flex-col items-center">
               <span className="text-xl font-bold">{(profile.likesCount || 0).toLocaleString()}</span>
-              <span className="label-caps">Likes</span>
+              <span className="label-caps">Curtidas</span>
             </div>
             {showViews && (
               <>
                 <div className="w-px h-8" style={{ backgroundColor: `${accent}30` }} />
                 <div className="flex flex-col items-center">
                   <span className="text-xl font-bold">{(profile.viewsCount || 0).toLocaleString()}</span>
-                  <span className="label-caps">Views</span>
+                  <span className="label-caps">Visitas</span>
                 </div>
               </>
             )}
@@ -288,11 +363,11 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                   background: 'transparent',
                 } : {
                   background: accent,
-                  color: '#fff',
+                  color: '#000',
                   boxShadow: `0 0 20px ${glow}40`,
                 }}
               >
-                {isFollowing ? 'Following' : 'Follow'}
+                {isFollowing ? 'Seguindo' : 'Seguir'}
               </motion.button>
 
               <motion.button
@@ -343,9 +418,6 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                 {profile.discordActivity && (
                   <p className="text-xs opacity-50 truncate mt-0.5">{profile.discordActivity}</p>
                 )}
-                {profile.discordStatusEmoji && (
-                  <p className="text-xs opacity-50 mt-0.5">{profile.discordStatusEmoji}</p>
-                )}
               </div>
             </motion.div>
           )}
@@ -372,11 +444,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
               <div className="relative z-10 flex-shrink-0">
                 {profile.nowPlaying.albumArt && (
                   <div className="relative">
-                    <img
-                      src={profile.nowPlaying.albumArt}
-                      alt=""
-                      className="w-12 h-12 rounded object-cover"
-                    />
+                    <img src={profile.nowPlaying.albumArt} alt="" className="w-12 h-12 rounded object-cover" />
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black flex items-center justify-center border border-white/10">
                       {profile.musicService === 'spotify' ? (
                         <SiSpotify className="w-3 h-3 text-[#1DB954]" />
@@ -394,7 +462,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                       <span key={i} className="music-bar" style={{ color: '#1DB954', animationDelay: `${(i-1)*0.15}s` }} />
                     ))}
                   </div>
-                  <span className="text-xs font-semibold text-green-400 uppercase tracking-wider">Now Playing</span>
+                  <span className="text-xs font-semibold text-green-400 uppercase tracking-wider">Tocando Agora</span>
                 </div>
                 <p className="font-bold text-sm truncate">{profile.nowPlaying.title}</p>
                 <p className="text-xs opacity-50 truncate">{profile.nowPlaying.artist}</p>
@@ -407,6 +475,13 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                   </div>
                 )}
               </div>
+            </motion.div>
+          )}
+
+          {/* Music Player (for musicUrl) */}
+          {musicUrl && !profile.nowPlaying?.isPlaying && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+              <MusicPlayer musicUrl={musicUrl} />
             </motion.div>
           )}
         </div>
@@ -456,7 +531,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             className="label-caps hover:text-white/70 transition-colors"
             style={{ color: 'rgba(255,255,255,0.25)' }}
           >
-            Powered by Faren
+            Feito com Faren
           </a>
         </div>
       </div>

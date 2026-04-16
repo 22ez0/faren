@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
-import { ArrowRight, Users, Heart, Eye } from "lucide-react";
+import { ArrowRight, Users, Heart } from "lucide-react";
 
 export default function Home() {
   const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 6 });
@@ -27,16 +27,20 @@ export default function Home() {
 
       {/* ── HERO ──────────────────────────────────────────────── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
-        {/* background image overlay */}
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-[0.12]"
-          style={{
-            backgroundImage: "url(https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=80)"
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black" />
+        {/* video background */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.18]"
+          style={{ zIndex: 0 }}
+        >
+          <source src={`${import.meta.env.BASE_URL}hero-bg.mp4`} type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black" style={{ zIndex: 1 }} />
 
-        <div className="relative z-10 flex flex-col items-center text-center max-w-5xl mx-auto">
+        <div className="relative flex flex-col items-center text-center max-w-5xl mx-auto" style={{ zIndex: 2 }}>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -88,15 +92,14 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Scroll indicator */}
+        {/* Scroll indicator (only line, no text) */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
           className="absolute bottom-10 left-1/2 -translate-x-1/2 scroll-indicator"
-        >
-          <span>Rolar</span>
-        </motion.div>
+          style={{ zIndex: 2 }}
+        />
       </section>
 
       {/* ── FEATURES ROW ──────────────────────────────────────── */}
@@ -113,12 +116,12 @@ export default function Home() {
               },
               {
                 title: "Widget de Música",
-                sub: "Spotify & Last.fm tocando agora, barra de progresso ao vivo.",
+                sub: "Spotify, SoundCloud & Last.fm tocando agora, barra de progresso ao vivo.",
                 stat: "Tocando Agora",
               },
               {
                 title: "Efeitos Completos",
-                sub: "Chuva de partículas, sakura, estrelas, rastros de cursor, efeitos de clique.",
+                sub: "Raios, chuva de partículas, sakura, estrelas, efeitos de clique.",
                 stat: "15+ Efeitos",
               },
               {
@@ -132,9 +135,9 @@ export default function Home() {
                 stat: "Painel Completo",
               },
               {
-                title: "Bio Animada",
-                sub: "Alterne entre textos com um suave efeito de máquina de escrever.",
-                stat: "Animado",
+                title: "Redes Sociais",
+                sub: "Conecte +40 plataformas: Instagram, TikTok, Spotify, GitHub e muito mais.",
+                stat: "40+ Plataformas",
               },
             ].map((feat, i) => (
               <motion.div
@@ -184,7 +187,6 @@ export default function Home() {
                   >
                     <Link href={`/${profile.username}`}>
                       <div className="group aspect-[3/4] relative overflow-hidden rounded-sm cursor-pointer hover-lift">
-                        {/* bg */}
                         <div
                           className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                           style={{
@@ -196,7 +198,6 @@ export default function Home() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
-                        {/* content */}
                         <div className="absolute bottom-0 left-0 right-0 p-4">
                           <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20 mb-2">
                             {profile.avatarUrl ? (
@@ -215,7 +216,6 @@ export default function Home() {
                             @{profile.username}
                           </p>
 
-                          {/* stats */}
                           <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
                               <Users className="w-2.5 h-2.5" />{profile.followersCount}
@@ -235,10 +235,6 @@ export default function Home() {
 
       {/* ── CTA ───────────────────────────────────────────────── */}
       <section className="py-32 px-6 relative overflow-hidden border-t border-white/5">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-[0.06]"
-          style={{ backgroundImage: "url(https://images.unsplash.com/photo-1614729939124-032d1e6c9945?w=1920&q=80)" }}
-        />
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
