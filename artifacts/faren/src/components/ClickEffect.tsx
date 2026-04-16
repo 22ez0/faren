@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 
 const EFFECTS: Record<string, string[]> = {
   hearts: ['❤️', '🧡', '💜', '💙', '💗', '💖'],
@@ -13,8 +13,9 @@ interface ClickEffectProps {
 
 export default function ClickEffect({ effect }: ClickEffectProps) {
   const chars = EFFECTS[effect];
+  const lastTouchRef = useRef(0);
 
-  const handleClick = useCallback((e: MouseEvent) => {
+  const spawnParticles = useCallback((x: number, y: number) => {
     if (!chars) return;
 
     const count = effect === 'explosions' ? 5 : 4 + Math.floor(Math.random() * 3);
@@ -28,8 +29,8 @@ export default function ClickEffect({ effect }: ClickEffectProps) {
 
       const particle = document.createElement('div');
       particle.className = 'click-particle';
-      particle.style.left = `${e.clientX}px`;
-      particle.style.top = `${e.clientY}px`;
+      particle.style.left = `${x}px`;
+      particle.style.top = `${y}px`;
       particle.textContent = chars[Math.floor(Math.random() * chars.length)];
 
       if (effect === 'sparkles') {
@@ -51,11 +52,27 @@ export default function ClickEffect({ effect }: ClickEffectProps) {
     }
   }, [chars, effect]);
 
+  const handleClick = useCallback((e: MouseEvent) => {
+    if (Date.now() - lastTouchRef.current < 450) return;
+    spawnParticles(e.clientX, e.clientY);
+  }, [spawnParticles]);
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    lastTouchRef.current = Date.now();
+    spawnParticles(touch.clientX, touch.clientY);
+  }, [spawnParticles]);
+
   useEffect(() => {
     if (!chars) return;
     window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
-  }, [chars, handleClick]);
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    return () => {
+      window.removeEventListener('click', handleClick);
+      window.removeEventListener('touchstart', handleTouchStart);
+    };
+  }, [chars, handleClick, handleTouchStart]);
 
   return null;
 }

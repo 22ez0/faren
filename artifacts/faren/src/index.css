@@ -382,6 +382,28 @@
 .music-bar:nth-child(3) { animation-delay: 0.3s; }
 .music-bar:nth-child(4) { animation-delay: 0.45s; }
 
+.profile-audio-range {
+  height: 2px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,0.7);
+  border-radius: 999px;
+  outline: none;
+}
+
+.profile-audio-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0;
+  height: 0;
+}
+
+.profile-audio-range::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: 0;
+}
+
 /* ── NAV LINK ─────────────────────────────────────────────────── */
 .nav-link {
   font-size: 0.7rem;

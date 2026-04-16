@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PublicProfile } from "@workspace/api-client-react";
 import {
@@ -13,7 +13,7 @@ import { FaPlaystation, FaLinkedin } from "react-icons/fa";
 import {
   Link as LinkIcon, Music, BadgeCheck, Code, Gamepad2,
   Mic, Palette, Headphones, Star, Zap, Crown, Globe, Heart, Eye,
-  Users, Mail, Gem,
+  Users, Mail, Gem, Play, Pause, SkipBack, SkipForward,
 } from "lucide-react";
 import ParticleCanvas from "./ParticleCanvas";
 import ClickEffect from "./ClickEffect";
@@ -125,6 +125,44 @@ function DiscordStatus({ status }: { status: string }) {
 function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string; musicTitle?: string | null; musicIconUrl?: string | null }) {
   const isSpotify = musicUrl.includes('spotify.com') || musicUrl.startsWith('spotify:');
   const isSoundCloud = musicUrl.includes('soundcloud.com');
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
+    return `${mins}:${secs}`;
+  };
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      try {
+        await audio.play();
+      } catch {
+        setIsPlaying(false);
+      }
+      return;
+    }
+    audio.pause();
+  };
+
+  const seekBy = (amount: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + amount));
+  };
+
+  const seekTo = (value: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = value;
+    setProgress(value);
+  };
 
   if (isSpotify) {
     const trackMatch = musicUrl.match(/track\/([a-zA-Z0-9]+)/);
@@ -162,26 +200,53 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
   }
 
   return (
-    <div className="w-full glass-card rounded-lg p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="w-full glass-card rounded-2xl px-3 py-2.5">
+      <div className="flex items-center gap-3">
         {musicIconUrl ? (
-          <img src={musicIconUrl} alt="" className="w-20 h-20 rounded-md object-cover border border-white/10" />
+          <img src={musicIconUrl} alt="" className="w-14 h-14 rounded-full object-cover border border-white/10 flex-shrink-0" />
         ) : (
-          <div className="w-20 h-20 rounded-md border border-white/10 flex items-center justify-center">
-            <Music className="w-7 h-7 text-white/50" />
+          <div className="w-14 h-14 rounded-full border border-white/10 flex items-center justify-center flex-shrink-0 bg-white/[0.03]">
+            <Music className="w-6 h-6 text-white/45" />
           </div>
         )}
-        <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">{musicTitle || "Áudio"}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-white font-semibold truncate mb-1">{musicTitle || "Áudio"}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-white/65 tabular-nums w-8">{formatTime(progress)}</span>
+            <input
+              type="range"
+              min="0"
+              max={duration || 0}
+              value={Math.min(progress, duration || progress)}
+              onChange={(event) => seekTo(Number(event.target.value))}
+              className="profile-audio-range flex-1"
+              aria-label="Progresso da música"
+            />
+            <span className="text-[11px] text-white/65 tabular-nums w-8 text-right">{formatTime(duration)}</span>
+            <button type="button" onClick={() => seekBy(-10)} className="text-white/55 hover:text-white transition-colors" aria-label="Voltar">
+              <SkipBack className="w-3.5 h-3.5" />
+            </button>
+            <button type="button" onClick={togglePlay} className="text-white hover:text-white/80 transition-colors" aria-label={isPlaying ? "Pausar" : "Tocar"}>
+              {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white" />}
+            </button>
+            <button type="button" onClick={() => seekBy(10)} className="text-white/55 hover:text-white transition-colors" aria-label="Avançar">
+              <SkipForward className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
       <audio
-        controls
+        ref={audioRef}
         controlsList="nodownload noplaybackrate"
         disableRemotePlayback
         autoPlay
         loop
+        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)}
+        onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime || 0)}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
         onContextMenu={(event) => event.preventDefault()}
-        className="w-full h-8"
-        style={{ filter: 'invert(1) hue-rotate(180deg) brightness(0.8)' }}
+        className="hidden"
       >
         <source src={musicUrl} />
       </audio>
@@ -482,27 +547,42 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="glass-card rounded-lg p-4 flex items-center gap-3"
+              className={`glass-card rounded-2xl px-3 py-2 flex items-center gap-2.5 w-fit max-w-[270px] ${isLeft ? '' : 'mx-auto'}`}
             >
               <div className="relative flex-shrink-0">
-                <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 bg-indigo-900/30 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-indigo-900/30 flex items-center justify-center">
                   {showDiscordAvatar && profile.discordAvatarUrl ? (
                     <img src={profile.discordAvatarUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <SiDiscord className="w-5 h-5 text-indigo-400" />
                   )}
                 </div>
+                {profile.discordStatus && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black"
+                    style={{
+                      backgroundColor: STATUS_COLORS[profile.discordStatus] || STATUS_COLORS.offline,
+                      boxShadow: `0 0 6px ${STATUS_COLORS[profile.discordStatus] || STATUS_COLORS.offline}`,
+                    }}
+                  />
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <SiDiscord className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                <div className="flex items-center gap-1.5 leading-none">
                   <span className="font-semibold text-sm truncate">{profile.discordUsername}</span>
                   {(profile as any).discordNitro && <Gem className="w-3.5 h-3.5 text-pink-400" />}
                   {(profile as any).discordBoost && <Crown className="w-3.5 h-3.5 text-fuchsia-400" />}
                 </div>
-                {profile.discordStatus && <DiscordStatus status={profile.discordStatus} />}
+                {profile.discordStatus && (
+                  <p className="text-[11px] italic text-white/55 truncate mt-0.5">
+                    {profile.discordStatus === 'online' ? 'online now' :
+                      profile.discordStatus === 'idle' ? 'idle now' :
+                      profile.discordStatus === 'dnd' ? 'do not disturb' :
+                      'last seen unknown'}
+                  </p>
+                )}
                 {profile.discordActivity && (
-                  <p className="text-xs opacity-50 truncate mt-0.5">{profile.discordActivity}</p>
+                  <p className="text-[11px] opacity-45 truncate">{profile.discordActivity}</p>
                 )}
               </div>
             </motion.div>
