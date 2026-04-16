@@ -141,6 +141,24 @@ const SOCIAL_PLATFORMS = [
 
 const TABS = ['Básico', 'Tema', 'Efeitos', 'Links', 'Avançado'];
 
+function isAttachedFile(value?: string) {
+  return !!value && value.startsWith('data:');
+}
+
+function decodeBadgePart(value?: string, fallback = '') {
+  if (!value) return fallback;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function sanitizeEmoji(value: string) {
+  const chars = Array.from(value).filter(char => char.trim() && !/[A-Za-z0-9#]/.test(char));
+  return chars.slice(0, 2).join('');
+}
+
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -173,14 +191,14 @@ function StyledSelect({ value, onChange, options }: { value: string; onChange: (
   );
 }
 
-function FileUploadButton({ onFile, accept, children }: { onFile: (dataUrl: string) => void; accept?: string; children: React.ReactNode }) {
+function FileUploadButton({ onFile, accept, children }: { onFile: (dataUrl: string, file: File) => void; accept?: string; children: React.ReactNode }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => onFile(reader.result as string);
+    reader.onload = () => onFile(reader.result as string, file);
     reader.readAsDataURL(file);
     e.target.value = '';
   };
@@ -200,6 +218,52 @@ function FileUploadButton({ onFile, accept, children }: { onFile: (dataUrl: stri
   );
 }
 
+function MediaUrlInput({
+  value,
+  onUrl,
+  onFile,
+  accept = 'image/*,video/*',
+  placeholder = 'https://...',
+  buttonLabel = 'Arquivo',
+}: {
+  value: string;
+  onUrl: (value: string) => void;
+  onFile: (dataUrl: string, file: File) => void;
+  accept?: string;
+  placeholder?: string;
+  buttonLabel?: React.ReactNode;
+}) {
+  if (isAttachedFile(value)) {
+    return (
+      <div className="flex gap-2 w-full">
+        <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/45 rounded-sm truncate">
+          Arquivo anexado ✓
+        </div>
+        <FileUploadButton onFile={onFile} accept={accept}>
+          {buttonLabel}
+        </FileUploadButton>
+        <button
+          type="button"
+          onClick={() => onUrl('')}
+          className="px-3 py-2.5 border border-white/15 hover:border-red-400/50 text-white/40 hover:text-red-300 transition-all rounded-sm"
+          aria-label="Remover arquivo"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2 w-full">
+      <StyledInput value={value} onChange={e => onUrl(e.target.value)} placeholder={placeholder} className="flex-1" />
+      <FileUploadButton onFile={onFile} accept={accept}>
+        {buttonLabel}
+      </FileUploadButton>
+    </div>
+  );
+}
+
 export default function EditProfile() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -212,7 +276,9 @@ export default function EditProfile() {
   const [musicType, setMusicType] = useState<'url' | 'file' | 'spotify' | 'soundcloud'>('url');
   const [customCursorDataUrl, setCustomCursorDataUrl] = useState('');
   const [customBadgeEmoji, setCustomBadgeEmoji] = useState('✨');
+  const [customBadgeName, setCustomBadgeName] = useState('');
   const [customBadgeColor, setCustomBadgeColor] = useState('#8b5cf6');
+  const [formHydrated, setFormHydrated] = useState(false);
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useGetMyProfile({
     query: { queryKey: [] as any, enabled: isAuthenticated },
@@ -235,7 +301,7 @@ export default function EditProfile() {
   });
 
   useEffect(() => {
-    if (profile) {
+    if (profile && !formHydrated) {
       setForm({
         displayName: profile.displayName || '',
         bio: profile.bio || '',
@@ -263,8 +329,12 @@ export default function EditProfile() {
         showDiscordPresence: (profile as any).showDiscordPresence !== false,
         badges: (profile.badges || []).filter((badge: string) => badge !== 'verified').slice(0, 6),
       });
+      if (isAttachedFile(profile.musicUrl || '')) {
+        setMusicType('file');
+      }
+      setFormHydrated(true);
     }
-  }, [profile]);
+  }, [profile, formHydrated]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) setLocation("/login");
@@ -286,9 +356,12 @@ export default function EditProfile() {
   };
 
   const addCustomBadge = () => {
-    const emoji = customBadgeEmoji.trim().slice(0, 4) || '✨';
-    const badge = `custom|${emoji}|${customBadgeColor}`;
+    const emoji = sanitizeEmoji(customBadgeEmoji).trim() || '✨';
+    const label = customBadgeName.trim().slice(0, 28) || 'Personalizado';
+    const badge = `custom|${encodeURIComponent(emoji)}|${customBadgeColor}|${encodeURIComponent(label)}`;
     setForm(prev => prev.badges.length >= 6 ? prev : { ...prev, badges: [...prev.badges, badge] });
+    setCustomBadgeEmoji('✨');
+    setCustomBadgeName('');
   };
 
   const addTypewriterText = () => {
@@ -491,21 +564,35 @@ export default function EditProfile() {
 
                 <FieldRow label="Avatar">
                   <div className="flex gap-2">
-                    <StyledInput value={form.avatarUrl} onChange={e => set('avatarUrl', e.target.value)} placeholder="https://..." className="flex-1" />
-                    <FileUploadButton onFile={url => set('avatarUrl', url)} accept="image/*,video/*">
-                      <Image className="w-3.5 h-3.5" />
-                    </FileUploadButton>
+                    <MediaUrlInput
+                      value={form.avatarUrl}
+                      onUrl={url => set('avatarUrl', url)}
+                      onFile={url => set('avatarUrl', url)}
+                      accept="image/*,video/*"
+                      buttonLabel={
+                        <>
+                          <Image className="w-3.5 h-3.5" />
+                          Mídia
+                        </>
+                      }
+                    />
                   </div>
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
 
                 <FieldRow label="Banner">
-                  <div className="flex gap-2">
-                    <StyledInput value={form.bannerUrl} onChange={e => set('bannerUrl', e.target.value)} placeholder="https://..." className="flex-1" />
-                    <FileUploadButton onFile={url => set('bannerUrl', url)} accept="image/*,video/*">
-                      <Image className="w-3.5 h-3.5" />
-                    </FileUploadButton>
-                  </div>
+                  <MediaUrlInput
+                    value={form.bannerUrl}
+                    onUrl={url => set('bannerUrl', url)}
+                    onFile={url => set('bannerUrl', url)}
+                    accept="image/*,video/*"
+                    buttonLabel={
+                      <>
+                        <Image className="w-3.5 h-3.5" />
+                        Mídia
+                      </>
+                    }
+                  />
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
 
@@ -541,15 +628,15 @@ export default function EditProfile() {
                     <div className="grid grid-cols-[64px_1fr_44px] gap-2">
                       <StyledInput
                         value={customBadgeEmoji}
-                        onChange={e => setCustomBadgeEmoji(e.target.value)}
+                        onChange={e => setCustomBadgeEmoji(sanitizeEmoji(e.target.value))}
                         placeholder="✨"
-                        maxLength={4}
+                        maxLength={8}
                         className="text-center"
                       />
                       <StyledInput
-                        value={customBadgeColor}
-                        onChange={e => setCustomBadgeColor(e.target.value)}
-                        placeholder="#8b5cf6"
+                        value={customBadgeName}
+                        onChange={e => setCustomBadgeName(e.target.value)}
+                        placeholder="Nome do emblema"
                       />
                       <input
                         type="color"
@@ -569,16 +656,19 @@ export default function EditProfile() {
                       <div className="flex flex-wrap gap-2">
                         {form.badges.map((badge, index) => {
                           if (!badge.startsWith('custom|')) return null;
-                          const [, emoji, color] = badge.split('|');
+                          const [, rawEmoji, color, rawLabel] = badge.split('|');
+                          const emoji = decodeBadgePart(rawEmoji, '✨');
+                          const label = decodeBadgePart(rawLabel, 'Personalizado');
                           return (
                             <button
                               key={`${badge}-${index}`}
                               onClick={() => setForm(prev => ({ ...prev, badges: prev.badges.filter((_, idx) => idx !== index) }))}
-                              className="w-9 h-9 rounded-full border flex items-center justify-center text-base"
+                              className="min-h-9 rounded-full border flex items-center gap-1.5 px-3 justify-center text-xs font-semibold"
                               style={{ color, borderColor: `${color}66`, backgroundColor: `${color}18` }}
                               title="Remover emblema"
                             >
-                              {emoji}
+                              <span className="text-base">{emoji}</span>
+                              <span>{label}</span>
                             </button>
                           );
                         })}
@@ -610,8 +700,8 @@ export default function EditProfile() {
                 <div className="glow-line" />
 
                 <FieldRow label="Tipo de fundo">
-                  <div className="grid grid-cols-3 gap-1">
-                    {[{ value: 'image', label: 'Imagem/GIF' }, { value: 'video', label: 'Vídeo/GIF' }, { value: 'color', label: 'Fundo sólido' }].map(type => (
+                  <div className="grid grid-cols-2 gap-1">
+                    {[{ value: 'image', label: 'Imagem/GIF/Vídeo' }, { value: 'color', label: 'Fundo sólido' }].map(type => (
                       <button
                         key={type.value}
                         onClick={() => set('backgroundType', type.value)}
@@ -644,15 +734,24 @@ export default function EditProfile() {
                       />
                     </div>
                   ) : (
-                    <div className="flex gap-2">
-                      <StyledInput value={form.backgroundUrl} onChange={e => set('backgroundUrl', e.target.value)} placeholder="https://..." className="flex-1" />
-                      <FileUploadButton onFile={url => set('backgroundUrl', url)} accept="image/*,video/*">
-                        <Upload className="w-3.5 h-3.5" />
-                      </FileUploadButton>
-                    </div>
+                    <MediaUrlInput
+                      value={form.backgroundUrl}
+                      onUrl={url => set('backgroundUrl', url)}
+                      onFile={url => {
+                        set('backgroundType', 'image');
+                        set('backgroundUrl', url);
+                      }}
+                      accept="image/*,video/*"
+                      buttonLabel={
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          Mídia
+                        </>
+                      }
+                    />
                   )}
                   <p className="text-xs text-white/25 mt-1">
-                    Imagem/GIF usa imagem animada. Vídeo/GIF também aceita GIF, MP4 e WebM. Fundo sólido é uma cor lisa.
+                    Imagem, GIF e vídeo ficam juntos. Arquivos anexados entram direto; o campo de texto aparece só para URL.
                   </p>
                 </FieldRow>
 
@@ -937,9 +1036,17 @@ export default function EditProfile() {
                   {musicType === 'file' ? (
                     <div className="flex gap-2">
                       <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/40 rounded-sm truncate">
-                        {form.musicUrl ? 'Arquivo carregado ✓' : 'Nenhum arquivo'}
+                      {form.musicUrl ? 'Arquivo anexado ✓' : 'Nenhum arquivo'}
                       </div>
-                      <FileUploadButton onFile={url => set('musicUrl', url)} accept="audio/*">
+                      <FileUploadButton
+                        onFile={(url, file) => {
+                          set('musicUrl', url);
+                          if (!form.musicTitle.trim()) {
+                            set('musicTitle', file.name.replace(/\.[^/.]+$/, ''));
+                          }
+                        }}
+                        accept="audio/*"
+                      >
                         Selecionar
                       </FileUploadButton>
                     </div>
@@ -954,23 +1061,24 @@ export default function EditProfile() {
                       }
                     />
                   )}
+                  {musicType === 'file' && isAttachedFile(form.musicUrl) && (
                   <div className="grid grid-cols-1 gap-3 mt-3">
                     <StyledInput
                       value={form.musicTitle}
                       onChange={e => set('musicTitle', e.target.value)}
                       placeholder="Nome personalizado da música"
                     />
-                    <div className="flex gap-2">
-                      <StyledInput
-                        value={form.musicIconUrl}
-                        onChange={e => set('musicIconUrl', e.target.value)}
-                        placeholder="URL do ícone/capa da música"
-                        className="flex-1"
-                      />
-                      <FileUploadButton onFile={url => set('musicIconUrl', url)} accept="image/*">
-                        Ícone
-                      </FileUploadButton>
-                    </div>
+                    <MediaUrlInput
+                      value={form.musicIconUrl}
+                      onUrl={url => set('musicIconUrl', url)}
+                      onFile={url => set('musicIconUrl', url)}
+                      accept="image/*"
+                      placeholder="URL do ícone/capa da música"
+                      buttonLabel="Ícone"
+                    />
+                  </div>
+                  )}
+                  <div className="grid grid-cols-1 gap-3 mt-3">
                     <button
                       onClick={() => set('musicPrivate', !form.musicPrivate)}
                       className="flex items-center justify-between gap-3 px-4 py-3 border rounded-sm transition-all text-sm w-full"
@@ -1037,7 +1145,7 @@ export default function EditProfile() {
           </span>
         </div>
         <div className="w-full h-full overflow-y-auto">
-          <ProfileView key={JSON.stringify(form)} profile={liveProfile as any} isOwner={true} />
+          <ProfileView profile={liveProfile as any} isOwner={true} />
         </div>
       </div>
     </div>

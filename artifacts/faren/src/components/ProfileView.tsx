@@ -69,8 +69,15 @@ function MediaFill({ src, alt, className = "" }: { src: string; alt?: string; cl
 
 function parseCustomBadge(badgeId: string) {
   if (!badgeId.startsWith("custom|")) return null;
-  const [, emoji = "✨", color = "#ffffff"] = badgeId.split("|");
-  return { emoji, color };
+  const [, rawEmoji = "✨", color = "#ffffff", rawLabel = "Personalizado"] = badgeId.split("|");
+  const decode = (value: string) => {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  };
+  return { emoji: decode(rawEmoji), color, label: decode(rawLabel) };
 }
 
 const PLATFORM_ICONS: Record<string, React.ElementType> = {
@@ -158,10 +165,10 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
     <div className="w-full glass-card rounded-lg p-3">
       <div className="flex items-center gap-2 mb-2">
         {musicIconUrl ? (
-          <img src={musicIconUrl} alt="" className="w-14 h-14 rounded-md object-cover border border-white/10" />
+          <img src={musicIconUrl} alt="" className="w-20 h-20 rounded-md object-cover border border-white/10" />
         ) : (
-          <div className="w-14 h-14 rounded-md border border-white/10 flex items-center justify-center">
-            <Music className="w-5 h-5 text-white/50" />
+          <div className="w-20 h-20 rounded-md border border-white/10 flex items-center justify-center">
+            <Music className="w-7 h-7 text-white/50" />
           </div>
         )}
         <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">{musicTitle || "Áudio"}</span>
@@ -372,16 +379,17 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                     <motion.div
                       key={badgeId}
                       whileHover={{ scale: 1.08 }}
-                      className="flex items-center justify-center w-8 h-8 rounded-full text-base font-semibold"
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                       style={{
                         backgroundColor: `${customBadge.color}18`,
                         color: customBadge.color,
                         border: `1px solid ${customBadge.color}40`,
                         boxShadow: `0 0 18px ${customBadge.color}22`,
                       }}
-                      title="Emblema personalizado"
+                      title={customBadge.label}
                     >
-                      {customBadge.emoji}
+                      <span className="text-base leading-none">{customBadge.emoji}</span>
+                      <span>{customBadge.label}</span>
                     </motion.div>
                   );
                 }
@@ -585,9 +593,9 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                   title={link.label || link.platform}
                 >
                   {link.iconUrl ? (
-                    <img src={link.iconUrl} alt="" className="w-6 h-6 object-contain" />
+                    <img src={link.iconUrl} alt="" className="w-8 h-8 object-contain" />
                   ) : (
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-6 h-6" />
                   )}
                 </motion.a>
               );
