@@ -88,7 +88,6 @@ const LAYOUT_OPTIONS = [
 ];
 
 const BADGE_OPTIONS = [
-  { value: 'verified', label: '✓ Verificado' },
   { value: 'creator', label: '🎨 Criador' },
   { value: 'music-head', label: '🎧 Amante de Música' },
   { value: 'gamer', label: '🎮 Gamer' },
@@ -212,6 +211,8 @@ export default function EditProfile() {
   const [newLinkLabel, setNewLinkLabel] = useState('');
   const [musicType, setMusicType] = useState<'url' | 'file' | 'spotify' | 'soundcloud'>('url');
   const [customCursorDataUrl, setCustomCursorDataUrl] = useState('');
+  const [customBadgeEmoji, setCustomBadgeEmoji] = useState('✨');
+  const [customBadgeColor, setCustomBadgeColor] = useState('#8b5cf6');
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useGetMyProfile({
     query: { queryKey: [] as any, enabled: isAuthenticated },
@@ -260,7 +261,7 @@ export default function EditProfile() {
         showViews: (profile as any).showViews !== false,
         showDiscordAvatar: (profile as any).showDiscordAvatar !== false,
         showDiscordPresence: (profile as any).showDiscordPresence !== false,
-        badges: profile.badges || [],
+        badges: (profile.badges || []).filter((badge: string) => badge !== 'verified').slice(0, 6),
       });
     }
   }, [profile]);
@@ -278,8 +279,16 @@ export default function EditProfile() {
       ...prev,
       badges: prev.badges.includes(badge)
         ? prev.badges.filter(b => b !== badge)
-        : [...prev.badges, badge],
+        : prev.badges.length >= 6
+          ? prev.badges
+          : [...prev.badges, badge],
     }));
+  };
+
+  const addCustomBadge = () => {
+    const emoji = customBadgeEmoji.trim().slice(0, 4) || '✨';
+    const badge = `custom|${emoji}|${customBadgeColor}`;
+    setForm(prev => prev.badges.length >= 6 ? prev : { ...prev, badges: [...prev.badges, badge] });
   };
 
   const addTypewriterText = () => {
@@ -300,8 +309,11 @@ export default function EditProfile() {
   };
 
   const save = () => {
+    const preservedBadges = (profile as any)?.badges?.includes('verified')
+      ? [...form.badges.filter(badge => badge !== 'verified').slice(0, 6), 'verified']
+      : form.badges.filter(badge => badge !== 'verified').slice(0, 6);
     updateProfile.mutate(
-      { data: form as any },
+      { data: { ...form, badges: preservedBadges } as any },
       {
         onSuccess: () => toast({ title: "Perfil salvo!" }),
         onError: (err: any) => toast({ title: "Falha ao salvar", description: err.error, variant: "destructive" }),
@@ -480,19 +492,21 @@ export default function EditProfile() {
                 <FieldRow label="Avatar">
                   <div className="flex gap-2">
                     <StyledInput value={form.avatarUrl} onChange={e => set('avatarUrl', e.target.value)} placeholder="https://..." className="flex-1" />
-                    <FileUploadButton onFile={url => set('avatarUrl', url)} accept="image/*">
+                    <FileUploadButton onFile={url => set('avatarUrl', url)} accept="image/*,video/*">
                       <Image className="w-3.5 h-3.5" />
                     </FileUploadButton>
                   </div>
+                  <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
 
                 <FieldRow label="Banner">
                   <div className="flex gap-2">
                     <StyledInput value={form.bannerUrl} onChange={e => set('bannerUrl', e.target.value)} placeholder="https://..." className="flex-1" />
-                    <FileUploadButton onFile={url => set('bannerUrl', url)} accept="image/*">
+                    <FileUploadButton onFile={url => set('bannerUrl', url)} accept="image/*,video/*">
                       <Image className="w-3.5 h-3.5" />
                     </FileUploadButton>
                   </div>
+                  <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
 
                 <FieldRow label="Título do Perfil (aba do navegador)">
@@ -502,6 +516,7 @@ export default function EditProfile() {
                 <div className="glow-line" />
 
                 <FieldRow label="Emblemas">
+                  <p className="text-xs text-white/30 mb-3">Escolha até 6 emblemas ativos. O verificado fica só para o painel de administração.</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {BADGE_OPTIONS.map(badge => {
                       const active = form.badges.includes(badge.value);
@@ -521,6 +536,55 @@ export default function EditProfile() {
                       );
                     })}
                   </div>
+                  <div className="mt-4 p-3 border border-white/10 bg-white/[0.02] rounded-sm space-y-3">
+                    <p className="label-caps">Criar emblema personalizado</p>
+                    <div className="grid grid-cols-[64px_1fr_44px] gap-2">
+                      <StyledInput
+                        value={customBadgeEmoji}
+                        onChange={e => setCustomBadgeEmoji(e.target.value)}
+                        placeholder="✨"
+                        maxLength={4}
+                        className="text-center"
+                      />
+                      <StyledInput
+                        value={customBadgeColor}
+                        onChange={e => setCustomBadgeColor(e.target.value)}
+                        placeholder="#8b5cf6"
+                      />
+                      <input
+                        type="color"
+                        value={customBadgeColor}
+                        onChange={e => setCustomBadgeColor(e.target.value)}
+                        className="w-11 h-10 rounded-sm border border-white/10 bg-transparent cursor-pointer"
+                      />
+                    </div>
+                    <button
+                      onClick={addCustomBadge}
+                      disabled={form.badges.length >= 6}
+                      className="btn-outline-white w-full py-2 text-xs disabled:opacity-40"
+                    >
+                      Adicionar emblema ({form.badges.length}/6)
+                    </button>
+                    {form.badges.some(badge => badge.startsWith('custom|')) && (
+                      <div className="flex flex-wrap gap-2">
+                        {form.badges.map((badge, index) => {
+                          if (!badge.startsWith('custom|')) return null;
+                          const [, emoji, color] = badge.split('|');
+                          return (
+                            <button
+                              key={`${badge}-${index}`}
+                              onClick={() => setForm(prev => ({ ...prev, badges: prev.badges.filter((_, idx) => idx !== index) }))}
+                              className="w-9 h-9 rounded-full border flex items-center justify-center text-base"
+                              style={{ color, borderColor: `${color}66`, backgroundColor: `${color}18` }}
+                              title="Remover emblema"
+                            >
+                              {emoji}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </FieldRow>
               </motion.div>
             )}
@@ -529,13 +593,13 @@ export default function EditProfile() {
             {activeTab === 'Tema' && (
               <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
-                  <FieldRow label="Cor de Destaque">
+                  <FieldRow label="Cor dos detalhes">
                     <div className="flex gap-2">
                       <input type="color" value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="w-10 h-9 rounded-sm border border-white/10 bg-transparent cursor-pointer" />
                       <StyledInput value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="flex-1" />
                     </div>
                   </FieldRow>
-                  <FieldRow label="Cor do Brilho">
+                  <FieldRow label="Cor do brilho">
                     <div className="flex gap-2">
                       <input type="color" value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="w-10 h-9 rounded-sm border border-white/10 bg-transparent cursor-pointer" />
                       <StyledInput value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="flex-1" />
@@ -545,9 +609,9 @@ export default function EditProfile() {
 
                 <div className="glow-line" />
 
-                <FieldRow label="Tipo de Fundo">
+                <FieldRow label="Tipo de fundo">
                   <div className="grid grid-cols-3 gap-1">
-                    {[{ value: 'image', label: 'Imagem' }, { value: 'video', label: 'Vídeo' }, { value: 'color', label: 'Cor' }].map(type => (
+                    {[{ value: 'image', label: 'Imagem/GIF' }, { value: 'video', label: 'Vídeo/GIF' }, { value: 'color', label: 'Fundo sólido' }].map(type => (
                       <button
                         key={type.value}
                         onClick={() => set('backgroundType', type.value)}
@@ -564,13 +628,32 @@ export default function EditProfile() {
                   </div>
                 </FieldRow>
 
-                <FieldRow label="Fundo (URL ou arquivo)">
-                  <div className="flex gap-2">
-                    <StyledInput value={form.backgroundUrl} onChange={e => set('backgroundUrl', e.target.value)} placeholder="https://..." className="flex-1" />
-                    <FileUploadButton onFile={url => set('backgroundUrl', url)} accept="image/*,video/*,image/gif">
-                      <Upload className="w-3.5 h-3.5" />
-                    </FileUploadButton>
-                  </div>
+                <FieldRow label={form.backgroundType === 'color' ? "Cor do fundo" : "Fundo (URL ou arquivo)"}>
+                  {form.backgroundType === 'color' ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={form.backgroundUrl?.startsWith('#') ? form.backgroundUrl : '#000000'}
+                        onChange={e => set('backgroundUrl', e.target.value)}
+                        className="w-10 h-10 rounded-sm border border-white/10 bg-transparent cursor-pointer"
+                      />
+                      <StyledInput
+                        value={form.backgroundUrl?.startsWith('#') ? form.backgroundUrl : '#000000'}
+                        onChange={e => set('backgroundUrl', e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <StyledInput value={form.backgroundUrl} onChange={e => set('backgroundUrl', e.target.value)} placeholder="https://..." className="flex-1" />
+                      <FileUploadButton onFile={url => set('backgroundUrl', url)} accept="image/*,video/*">
+                        <Upload className="w-3.5 h-3.5" />
+                      </FileUploadButton>
+                    </div>
+                  )}
+                  <p className="text-xs text-white/25 mt-1">
+                    Imagem/GIF usa imagem animada. Vídeo/GIF também aceita GIF, MP4 e WebM. Fundo sólido é uma cor lisa.
+                  </p>
                 </FieldRow>
 
                 <FieldRow label={`Opacidade do Fundo — ${form.backgroundOpacity}%`}>
@@ -777,14 +860,6 @@ export default function EditProfile() {
                             placeholder={selectedPlatformInfo.placeholder}
                           />
                         </div>
-                        <div>
-                          <label className="label-caps block mb-1.5">Rótulo (opcional)</label>
-                          <StyledInput
-                            value={newLinkLabel}
-                            onChange={e => setNewLinkLabel(e.target.value)}
-                            placeholder={selectedPlatformInfo.label}
-                          />
-                        </div>
                         <button
                           onClick={handleAddLink}
                           disabled={!newLinkUrl.trim() || addLink.isPending}
@@ -962,7 +1037,7 @@ export default function EditProfile() {
           </span>
         </div>
         <div className="w-full h-full overflow-y-auto">
-          <ProfileView profile={liveProfile as any} isOwner={true} />
+          <ProfileView key={JSON.stringify(form)} profile={liveProfile as any} isOwner={true} />
         </div>
       </div>
     </div>

@@ -16,15 +16,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Custom fonts** — default (Inter), mono, cursive, serif, pixel (8-bit)
 - **Typewriter text** — cycles through custom texts with animated typing
 - **Layout styles** — centered or left-aligned profile layout
-- **Background types** — image, video, or solid color with opacity + blur controls
+- **Background types** — image/GIF, video/GIF, or solid color with opacity + blur controls
+- **Avatar/banner media** — image, GIF, or video; videos autoplay muted in loop
 - **Discord rich integration** — status badge, activity, avatar sync, Nitro/boost flags, visibility toggles
-- **Music tracking** — Now Playing widget with Spotify/Last.fm integration plus custom title/icon/private mode for live music
+- **Music tracking** — Now Playing widget with Spotify/Last.fm integration plus custom title/icon/GIF/private mode for live music
+- **Social links** — public profile displays links as transparent logo-only icons
 - Followers, likes, views social system (show/hide view count toggle)
-- Badge system — Verified, Creator, Gamer, Developer, Streamer, Artist, etc.
+- Badge system — predefined badges plus custom emoji/color badges, max 6 user-selected badges active
 - Analytics dashboard (views by day/week/month, top countries)
 - Trending profiles discovery page
 - Dark mode, pure black theme (keefnow.com.br aesthetic)
 - Admin moderation panel at `/devkeefnow`
+- Footer credits Faren and links Keefnow to `https://keefnow.com.br`
 
 ### Routes
 - `/` — Landing page with hero and trending profiles
@@ -44,7 +47,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Admin panel can search users, ban/unban, grant/revoke verified badge, and view registration/last-login IPs.
 
 ### Security Notes
-- Express JSON/body limit is 25mb to allow large profile media saves.
+- Express JSON/body limit is 75mb to allow larger profile media saves.
 - Registration is IP-rate-limited to 5 accounts/hour per IP.
 - User registration and last login IPs are stored.
 - Banned users cannot log in and public banned profiles return not found.

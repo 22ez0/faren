@@ -256,7 +256,17 @@ export default function Home() {
 
       {/* ── FOOTER ────────────────────────────────────────────── */}
       <footer className="border-t border-white/5 px-6 md:px-12 py-8 flex items-center justify-between">
-        <span className="text-xs font-bold tracking-[0.25em] uppercase text-white/30">FAREN</span>
+        <div className="flex items-center gap-3 text-xs font-bold tracking-[0.25em] uppercase">
+          <span className="text-white/30">FAREN</span>
+          <a
+            href="https://keefnow.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white/30 hover:text-white transition-colors"
+          >
+            KEEFNOW
+          </a>
+        </div>
         <div className="flex gap-8">
           <Link href="/discover" className="nav-link">Descobrir</Link>
           <Link href="/login" className="nav-link">Entrar</Link>

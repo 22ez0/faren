@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PublicProfile } from "@workspace/api-client-react";
 import {
   SiDiscord, SiSpotify, SiLastdotfm, SiGithub, SiX, SiYoutube, SiTwitch,
@@ -12,9 +11,9 @@ import {
 } from "react-icons/si";
 import { FaPlaystation, FaLinkedin } from "react-icons/fa";
 import {
-  ExternalLink, Link as LinkIcon, Music, BadgeCheck, Code, Gamepad2,
+  Link as LinkIcon, Music, BadgeCheck, Code, Gamepad2,
   Mic, Palette, Headphones, Star, Zap, Crown, Globe, Heart, Eye,
-  Users, ChevronRight, Mail, Gem,
+  Users, Mail, Gem,
 } from "lucide-react";
 import ParticleCanvas from "./ParticleCanvas";
 import ClickEffect from "./ClickEffect";
@@ -41,6 +40,38 @@ const BADGE_MAP: Record<string, { icon: React.ElementType; label: string; color:
   og:          { icon: Crown,      label: "Membro OG",            color: "#c4b5fd", bg: "rgba(196,181,253,0.12)" },
   vip:         { icon: Zap,        label: "VIP",                  color: "#f9a8d4", bg: "rgba(249,168,212,0.12)" },
 };
+
+function isVideoMedia(url?: string | null) {
+  if (!url) return false;
+  return url.startsWith("data:video/") || /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(url);
+}
+
+function isGifMedia(url?: string | null) {
+  if (!url) return false;
+  return url.startsWith("data:image/gif") || /\.gif(\?|#|$)/i.test(url);
+}
+
+function MediaFill({ src, alt, className = "" }: { src: string; alt?: string; className?: string }) {
+  if (isVideoMedia(src)) {
+    return (
+      <video
+        src={src}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className={`w-full h-full object-cover ${className}`}
+      />
+    );
+  }
+  return <img src={src} alt={alt || ""} className={`w-full h-full object-cover ${className}`} />;
+}
+
+function parseCustomBadge(badgeId: string) {
+  if (!badgeId.startsWith("custom|")) return null;
+  const [, emoji = "✨", color = "#ffffff"] = badgeId.split("|");
+  return { emoji, color };
+}
 
 const PLATFORM_ICONS: Record<string, React.ElementType> = {
   github: SiGithub, twitter: SiX, x: SiX, youtube: SiYoutube,
@@ -127,9 +158,11 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
     <div className="w-full glass-card rounded-lg p-3">
       <div className="flex items-center gap-2 mb-2">
         {musicIconUrl ? (
-          <img src={musicIconUrl} alt="" className="w-7 h-7 rounded object-cover" />
+          <img src={musicIconUrl} alt="" className="w-14 h-14 rounded-md object-cover border border-white/10" />
         ) : (
-          <Music className="w-4 h-4 text-white/50" />
+          <div className="w-14 h-14 rounded-md border border-white/10 flex items-center justify-center">
+            <Music className="w-5 h-5 text-white/50" />
+          </div>
         )}
         <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">{musicTitle || "Áudio"}</span>
       </div>
@@ -212,23 +245,29 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
       {clickEffect !== 'none' && <ClickEffect effect={clickEffect} />}
 
       {/* Background */}
-      {profile.backgroundUrl && backgroundType === 'video' ? (
+      {profile.backgroundUrl && backgroundType === 'color' ? (
+        <div
+          className="fixed inset-0 z-0"
+          style={{ backgroundColor: profile.backgroundUrl, opacity: bgOpacity }}
+        />
+      ) : profile.backgroundUrl && backgroundType === 'video' && !isGifMedia(profile.backgroundUrl) ? (
         <video
           autoPlay muted loop playsInline
           className="fixed inset-0 w-full h-full object-cover z-0"
-          style={{ opacity: bgOpacity }}
+          style={{ opacity: bgOpacity, filter: bgBlur > 0 ? `blur(${bgBlur}px)` : 'none' }}
         >
           <source src={profile.backgroundUrl} />
         </video>
       ) : profile.backgroundUrl ? (
         <div
-          className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+          className="fixed inset-0 z-0 overflow-hidden"
           style={{
-            backgroundImage: `url(${profile.backgroundUrl})`,
             opacity: bgOpacity,
             filter: bgBlur > 0 ? `blur(${bgBlur}px)` : 'none',
           }}
-        />
+        >
+          <MediaFill src={profile.backgroundUrl} alt="" />
+        </div>
       ) : null}
 
       {/* Overlay */}
@@ -260,7 +299,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             className="w-full h-40 md:h-52 mb-12 rounded-xl overflow-hidden relative"
             style={{ border: `1px solid ${accent}22` }}
           >
-            <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${profile.bannerUrl})` }} />
+            <MediaFill src={profile.bannerUrl} alt="" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           </motion.div>
         )}
@@ -281,7 +320,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
               }}
             >
               {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.username} className="w-full h-full object-cover" />
+                <MediaFill src={profile.avatarUrl} alt={profile.username} />
               ) : (
                 <div
                   className="w-full h-full flex items-center justify-center text-3xl font-bold"
@@ -326,7 +365,26 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           {/* Badges */}
           {profile.badges && profile.badges.length > 0 && (
             <div className={`flex flex-wrap gap-2 mb-5 ${isLeft ? '' : 'justify-center'}`}>
-              {profile.badges.map((badgeId) => {
+              {profile.badges.slice(0, 6).map((badgeId) => {
+                const customBadge = parseCustomBadge(badgeId);
+                if (customBadge) {
+                  return (
+                    <motion.div
+                      key={badgeId}
+                      whileHover={{ scale: 1.08 }}
+                      className="flex items-center justify-center w-8 h-8 rounded-full text-base font-semibold"
+                      style={{
+                        backgroundColor: `${customBadge.color}18`,
+                        color: customBadge.color,
+                        border: `1px solid ${customBadge.color}40`,
+                        boxShadow: `0 0 18px ${customBadge.color}22`,
+                      }}
+                      title="Emblema personalizado"
+                    >
+                      {customBadge.emoji}
+                    </motion.div>
+                  );
+                }
                 const badge = BADGE_MAP[badgeId];
                 if (!badge) return null;
                 const Icon = badge.icon;
@@ -508,7 +566,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
 
         {/* Links */}
         {profile.links && profile.links.length > 0 && (
-          <div className="w-full flex flex-col gap-2.5 mt-1">
+          <div className={`w-full flex flex-wrap gap-3 mt-1 ${isLeft ? '' : 'justify-center'}`}>
             {[...profile.links].sort((a, b) => a.sortOrder - b.sortOrder).map((link, i) => {
               const Icon = PLATFORM_ICONS[link.platform.toLowerCase()] || LinkIcon;
               return (
@@ -520,24 +578,17 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 + i * 0.05 }}
-                  whileHover={{ y: -2, boxShadow: `0 8px 30px ${glow}20` }}
-                  className="group flex items-center p-4 glass-card rounded-lg relative overflow-hidden transition-all duration-300"
-                  style={{ borderColor: `${accent}10` }}
+                  whileHover={{ y: -2, scale: 1.08 }}
+                  className="group w-12 h-12 flex items-center justify-center rounded-full relative overflow-hidden transition-all duration-300"
+                  style={{ color: accent, background: "transparent", border: `1px solid ${accent}22` }}
+                  aria-label={link.label || link.platform}
+                  title={link.label || link.platform}
                 >
-                  <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{ background: `linear-gradient(90deg, ${accent}08, transparent)` }}
-                  />
-                  <div
-                    className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 mr-4 transition-transform duration-300 group-hover:scale-110"
-                    style={{ backgroundColor: `${accent}18`, color: accent }}
-                  >
+                  {link.iconUrl ? (
+                    <img src={link.iconUrl} alt="" className="w-6 h-6 object-contain" />
+                  ) : (
                     <Icon className="w-5 h-5" />
-                  </div>
-                  <span className="flex-1 font-semibold text-sm relative z-10">{link.label}</span>
-                  <ChevronRight
-                    className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-all duration-300 -translate-x-2 group-hover:translate-x-0 relative z-10"
-                  />
+                  )}
                 </motion.a>
               );
             })}
@@ -547,11 +598,13 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         {/* Footer */}
         <div className="mt-12 flex flex-col items-center gap-2">
           <a
-            href="/"
+            href="https://keefnow.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
             className="label-caps hover:text-white/70 transition-colors"
             style={{ color: 'rgba(255,255,255,0.25)' }}
           >
-            Feito com Faren
+            Feito com Faren · Keefnow
           </a>
         </div>
       </div>
