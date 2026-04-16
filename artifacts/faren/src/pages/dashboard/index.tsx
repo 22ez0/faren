@@ -29,14 +29,14 @@ export default function Dashboard() {
   const copyProfileLink = () => {
     const url = `${window.location.origin}/${user?.username}`;
     navigator.clipboard.writeText(url);
-    toast({ title: "Link copied!", description: "Your profile link is in your clipboard." });
+    toast({ title: "Link copiado!", description: "Seu link de perfil está na área de transferência." });
   };
 
   const stats = [
-    { label: "Total Views", value: analytics?.totalViews, icon: Eye, delta: analytics?.viewsThisWeek },
-    { label: "Followers", value: analytics?.followers, icon: Users, delta: null },
-    { label: "Likes", value: analytics?.likes, icon: Heart, delta: null },
-    { label: "Link Clicks", value: analytics?.linkClicks, icon: MousePointerClick, delta: null },
+    { label: "Total de Visitas", value: analytics?.totalViews, icon: Eye, delta: analytics?.viewsThisWeek },
+    { label: "Seguidores", value: analytics?.followers, icon: Users, delta: null },
+    { label: "Curtidas", value: analytics?.likes, icon: Heart, delta: null },
+    { label: "Cliques em Links", value: analytics?.linkClicks, icon: MousePointerClick, delta: null },
   ];
 
   return (
@@ -48,22 +48,22 @@ export default function Dashboard() {
         </Link>
         <div className="flex items-center gap-6">
           <Link href={`/${user?.username}`} className="nav-link flex items-center gap-1.5">
-            <ExternalLink className="w-3 h-3" /> Profile
+            <ExternalLink className="w-3 h-3" /> Perfil
           </Link>
           <Link href="/dashboard/edit" className="nav-link flex items-center gap-1.5">
-            <Settings className="w-3 h-3" /> Edit
+            <Settings className="w-3 h-3" /> Editar
           </Link>
           <button
             onClick={copyProfileLink}
             className="nav-link flex items-center gap-1.5"
           >
-            <Copy className="w-3 h-3" /> Copy Link
+            <Copy className="w-3 h-3" /> Copiar Link
           </button>
           <button
             onClick={() => logout()}
             className="nav-link flex items-center gap-1.5 text-red-400/60 hover:text-red-400"
           >
-            <LogOut className="w-3 h-3" /> Out
+            <LogOut className="w-3 h-3" /> Sair
           </button>
         </div>
       </nav>
@@ -77,7 +77,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-16"
           >
-            <p className="label-caps mb-4">Your Space</p>
+            <p className="label-caps mb-4">Seu Espaço</p>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight uppercase leading-none mb-2">
               {user?.displayName || user?.username}
             </h1>
@@ -114,7 +114,7 @@ export default function Dashboard() {
                   {stat.delta != null && !analyticsLoading && (
                     <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                       <TrendingUp className="w-3 h-3 inline mr-1" />
-                      {stat.delta} this week
+                      {stat.delta} esta semana
                     </p>
                   )}
                 </motion.div>
@@ -127,11 +127,11 @@ export default function Dashboard() {
 
             {/* Quick actions */}
             <div className="lg:col-span-1">
-              <p className="label-caps mb-6">Quick Actions</p>
+              <p className="label-caps mb-6">Ações Rápidas</p>
               <div className="flex flex-col gap-2">
                 {[
-                  { label: "Edit Profile", icon: Settings, href: "/dashboard/edit", desc: "Customize your page" },
-                  { label: "View Profile", icon: ExternalLink, href: `/${user?.username}`, desc: "See how others see you" },
+                  { label: "Editar Perfil", icon: Settings, href: "/dashboard/edit", desc: "Personalize sua página" },
+                  { label: "Ver Perfil", icon: ExternalLink, href: `/${user?.username}`, desc: "Veja como os outros te veem" },
                 ].map((action) => {
                   const Icon = action.icon;
                   return (
@@ -152,7 +152,7 @@ export default function Dashboard() {
 
             {/* Top countries */}
             <div className="lg:col-span-2">
-              <p className="label-caps mb-6">Top Countries</p>
+              <p className="label-caps mb-6">Principais Países</p>
               {analyticsLoading ? (
                 <div className="space-y-3">
                   {[1,2,3].map(i => <Skeleton key={i} className="h-12 bg-white/5 rounded-sm" />)}
@@ -165,8 +165,8 @@ export default function Dashboard() {
                     return (
                       <div key={idx} className="p-3 bg-white/[0.03] border border-white/5 rounded-sm">
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm font-semibold">{country.country || 'Unknown'}</span>
-                          <span className="label-caps">{country.count} views</span>
+                          <span className="text-sm font-semibold">{country.country || 'Desconhecido'}</span>
+                          <span className="label-caps">{country.count} visitas</span>
                         </div>
                         <div className="h-px bg-white/5 rounded-full overflow-hidden">
                           <div
@@ -180,8 +180,8 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="py-12 text-center border border-white/5 rounded-sm">
-                  <p className="label-caps">No location data yet</p>
-                  <p className="text-xs text-white/25 mt-2">Share your profile to start collecting analytics</p>
+                  <p className="label-caps">Sem dados de localização ainda</p>
+                  <p className="text-xs text-white/25 mt-2">Compartilhe seu perfil para começar a coletar análises</p>
                 </div>
               )}
             </div>

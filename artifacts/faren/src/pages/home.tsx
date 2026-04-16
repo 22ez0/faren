@@ -17,10 +17,10 @@ export default function Home() {
           </span>
         </Link>
         <div className="flex items-center gap-8">
-          <Link href="/discover" className="nav-link">Discover</Link>
-          <Link href="/login" className="nav-link">Sign In</Link>
+          <Link href="/discover" className="nav-link">Descobrir</Link>
+          <Link href="/login" className="nav-link">Entrar</Link>
           <Link href="/register">
-            <span className="btn-outline-white text-xs">Claim Your Link</span>
+            <span className="btn-outline-white text-xs">Criar Seu Link</span>
           </Link>
         </div>
       </nav>
@@ -43,7 +43,7 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="label-caps mb-8"
           >
-            Personalized Profile Platform
+            Plataforma de Perfil Personalizado
           </motion.p>
 
           <div className="overflow-hidden">
@@ -52,9 +52,9 @@ export default function Home() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
             >
-              <h1 className="display-heading text-white leading-none">YOUR</h1>
-              <h1 className="display-heading-outline leading-none">PROFILE</h1>
-              <h1 className="display-heading text-white leading-none">EVERYWHERE</h1>
+              <h1 className="display-heading text-white leading-none">SEU</h1>
+              <h1 className="display-heading-outline leading-none">PERFIL</h1>
+              <h1 className="display-heading text-white leading-none">EM TODO LUGAR</h1>
             </motion.div>
           </div>
 
@@ -65,7 +65,7 @@ export default function Home() {
             className="mt-10 max-w-md text-sm leading-relaxed"
             style={{ color: 'rgba(255,255,255,0.45)' }}
           >
-            The most powerful personalized link-in-bio platform. Discord status, music tracking, particle effects, custom fonts — fully yours.
+            A plataforma de link na bio mais poderosa e personalizada. Status do Discord, música ao vivo, efeitos de partículas, fontes customizadas — totalmente seu.
           </motion.p>
 
           <motion.div
@@ -76,13 +76,13 @@ export default function Home() {
           >
             <Link href="/register">
               <button className="btn-solid-white">
-                Build your shrine
+                Criar seu perfil
                 <ArrowRight className="ml-2 w-4 h-4 inline" />
               </button>
             </Link>
             <Link href="/discover">
               <button className="btn-outline-white">
-                Explore profiles
+                Explorar perfis
               </button>
             </Link>
           </motion.div>
@@ -95,7 +95,7 @@ export default function Home() {
           transition={{ delay: 1.2 }}
           className="absolute bottom-10 left-1/2 -translate-x-1/2 scroll-indicator"
         >
-          <span>Scroll</span>
+          <span>Rolar</span>
         </motion.div>
       </section>
 
@@ -107,34 +107,34 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5">
             {[
               {
-                title: "Discord Live",
-                sub: "Status, activity, avatar — all synced in real time.",
+                title: "Discord ao Vivo",
+                sub: "Status, atividade e avatar — tudo sincronizado em tempo real.",
                 stat: "Rich Presence",
               },
               {
-                title: "Music Widget",
-                sub: "Spotify & Last.fm now playing, live progress bar.",
-                stat: "Now Playing",
+                title: "Widget de Música",
+                sub: "Spotify & Last.fm tocando agora, barra de progresso ao vivo.",
+                stat: "Tocando Agora",
               },
               {
-                title: "Full Effects",
-                sub: "Particle rain, sakura, stars, cursor trails, click effects.",
-                stat: "15+ Effects",
+                title: "Efeitos Completos",
+                sub: "Chuva de partículas, sakura, estrelas, rastros de cursor, efeitos de clique.",
+                stat: "15+ Efeitos",
               },
               {
-                title: "Custom Fonts",
-                sub: "Mono, pixel, cursive, serif — your vibe, your font.",
-                stat: "5 Fonts",
+                title: "Fontes Personalizadas",
+                sub: "Mono, pixel, cursiva, serifada — seu estilo, sua fonte.",
+                stat: "5 Fontes",
               },
               {
-                title: "Analytics",
-                sub: "Views, followers, likes, top countries — all yours.",
-                stat: "Full Dashboard",
+                title: "Análises",
+                sub: "Visualizações, seguidores, curtidas, países — tudo para você.",
+                stat: "Painel Completo",
               },
               {
-                title: "Typewriter Bio",
-                sub: "Cycle through texts with a smooth typewriter effect.",
-                stat: "Animated",
+                title: "Bio Animada",
+                sub: "Alterne entre textos com um suave efeito de máquina de escrever.",
+                stat: "Animado",
               },
             ].map((feat, i) => (
               <motion.div
@@ -161,11 +161,11 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-12">
             <div>
-              <p className="label-caps mb-3">Community</p>
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight uppercase">Trending</h2>
+              <p className="label-caps mb-3">Comunidade</p>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight uppercase">Em Alta</h2>
             </div>
             <Link href="/discover" className="nav-link flex items-center gap-2">
-              See all <ArrowRight className="w-3.5 h-3.5" />
+              Ver todos <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -245,12 +245,12 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <p className="label-caps mb-6">Ready?</p>
-            <h2 className="display-heading text-white mb-4 leading-none">MAKE</h2>
-            <h2 className="display-heading-outline mb-12 leading-none">YOUR MARK</h2>
+            <p className="label-caps mb-6">Pronto?</p>
+            <h2 className="display-heading text-white mb-4 leading-none">DEIXE</h2>
+            <h2 className="display-heading-outline mb-12 leading-none">SUA MARCA</h2>
             <Link href="/register">
               <button className="btn-solid-white">
-                Get started — it's free
+                Comece agora — é grátis
                 <ArrowRight className="ml-2 w-4 h-4 inline" />
               </button>
             </Link>
@@ -262,9 +262,9 @@ export default function Home() {
       <footer className="border-t border-white/5 px-6 md:px-12 py-8 flex items-center justify-between">
         <span className="text-xs font-bold tracking-[0.25em] uppercase text-white/30">FAREN</span>
         <div className="flex gap-8">
-          <Link href="/discover" className="nav-link">Discover</Link>
-          <Link href="/login" className="nav-link">Sign In</Link>
-          <Link href="/register" className="nav-link">Register</Link>
+          <Link href="/discover" className="nav-link">Descobrir</Link>
+          <Link href="/login" className="nav-link">Entrar</Link>
+          <Link href="/register" className="nav-link">Registrar</Link>
         </div>
       </footer>
     </div>

@@ -23,7 +23,7 @@ export default function Discover() {
         <Link href="/">
           <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">FAREN</span>
         </Link>
-        <Link href="/login" className="nav-link">Sign In</Link>
+        <Link href="/login" className="nav-link">Entrar</Link>
       </nav>
 
       {/* Hero */}
@@ -34,17 +34,17 @@ export default function Discover() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <p className="label-caps mb-4">Browse</p>
+            <p className="label-caps mb-4">Explorar</p>
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
               <div>
                 <h1 className="text-5xl md:text-7xl font-bold tracking-tight uppercase leading-none">
-                  Discover
+                  Descobrir
                 </h1>
                 <h1
                   className="text-5xl md:text-7xl font-bold tracking-tight uppercase leading-none"
                   style={{ WebkitTextStroke: '1px rgba(255,255,255,0.25)', color: 'transparent' }}
                 >
-                  Profiles
+                  Perfis
                 </h1>
               </div>
 
@@ -54,7 +54,7 @@ export default function Discover() {
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search profiles..."
+                  placeholder="Buscar perfis..."
                   className="w-full bg-white/[0.04] border border-white/10 pl-11 pr-10 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
                 />
                 {searchQuery && (
@@ -151,8 +151,8 @@ export default function Discover() {
                   animate={{ opacity: 1 }}
                   className="py-32 text-center"
                 >
-                  <p className="label-caps mb-4">No Results</p>
-                  <p className="text-2xl font-bold uppercase">"{searchQuery}" Not Found</p>
+                  <p className="label-caps mb-4">Sem Resultados</p>
+                  <p className="text-2xl font-bold uppercase">"{searchQuery}" Não Encontrado</p>
                 </motion.div>
               )}
             </AnimatePresence>

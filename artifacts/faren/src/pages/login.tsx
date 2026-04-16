@@ -9,8 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowRight } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(6, "Minimum 6 characters"),
+  email: z.string().email("E-mail inválido"),
+  password: z.string().min(6, "Mínimo de 6 caracteres"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -30,7 +30,7 @@ export default function Login() {
     loginMutation.mutate({ data }, {
       onSuccess: (res) => { login(res.token); setLocation("/dashboard"); },
       onError: (err: any) => {
-        toast({ title: "Login failed", description: err.error || "Invalid credentials", variant: "destructive" });
+        toast({ title: "Falha no login", description: err.error || "Credenciais inválidas", variant: "destructive" });
       },
     });
   };
@@ -42,7 +42,7 @@ export default function Login() {
         <Link href="/">
           <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">FAREN</span>
         </Link>
-        <Link href="/register" className="nav-link">Create account</Link>
+        <Link href="/register" className="nav-link">Criar conta</Link>
       </nav>
 
       {/* Background */}
@@ -60,19 +60,19 @@ export default function Login() {
           className="w-full max-w-sm"
         >
           <div className="mb-10">
-            <p className="label-caps mb-4">Sign In</p>
-            <h1 className="text-4xl font-bold tracking-tight uppercase">Welcome<br />Back</h1>
+            <p className="label-caps mb-4">Entrar</p>
+            <h1 className="text-4xl font-bold tracking-tight uppercase">Bem-vindo<br />de Volta</h1>
           </div>
 
           <div className="glow-line mb-10" />
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <label className="label-caps block mb-2">Email</label>
+              <label className="label-caps block mb-2">E-mail</label>
               <input
                 {...form.register("email")}
                 type="email"
-                placeholder="you@example.com"
+                placeholder="voce@exemplo.com"
                 className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
               />
               {form.formState.errors.email && (
@@ -81,7 +81,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="label-caps block mb-2">Password</label>
+              <label className="label-caps block mb-2">Senha</label>
               <input
                 {...form.register("password")}
                 type="password"
@@ -100,8 +100,8 @@ export default function Login() {
               whileTap={{ scale: 0.99 }}
               className="btn-solid-white w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loginMutation.isPending ? "Signing in..." : (
-                <>Sign in <ArrowRight className="ml-2 w-4 h-4 inline" /></>
+              {loginMutation.isPending ? "Entrando..." : (
+                <>Entrar <ArrowRight className="ml-2 w-4 h-4 inline" /></>
               )}
             </motion.button>
           </form>
@@ -109,9 +109,9 @@ export default function Login() {
           <div className="glow-line mt-10 mb-6" />
 
           <p className="label-caps text-center">
-            No account?{" "}
+            Sem conta?{" "}
             <Link href="/register" className="text-white/60 hover:text-white transition-colors">
-              Create one →
+              Criar uma →
             </Link>
           </p>
         </motion.div>

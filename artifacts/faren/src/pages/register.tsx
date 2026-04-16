@@ -10,9 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 
 const registerSchema = z.object({
-  email: z.string().email("Invalid email"),
-  username: z.string().min(3, "Min 3 characters").regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers, underscores only"),
-  password: z.string().min(6, "Min 6 characters"),
+  email: z.string().email("E-mail inválido"),
+  username: z.string().min(3, "Mínimo 3 caracteres").regex(/^[a-zA-Z0-9_]+$/, "Apenas letras, números e underscores"),
+  password: z.string().min(6, "Mínimo 6 caracteres"),
   displayName: z.string().optional(),
 });
 
@@ -40,7 +40,7 @@ export default function Register() {
     registerMutation.mutate({ data }, {
       onSuccess: (res) => { login(res.token); setLocation("/dashboard"); },
       onError: (err: any) => {
-        toast({ title: "Registration failed", description: err.error || "An error occurred", variant: "destructive" });
+        toast({ title: "Falha no cadastro", description: err.error || "Ocorreu um erro", variant: "destructive" });
       },
     });
   };
@@ -51,7 +51,7 @@ export default function Register() {
         <Link href="/">
           <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">FAREN</span>
         </Link>
-        <Link href="/login" className="nav-link">Sign in</Link>
+        <Link href="/login" className="nav-link">Entrar</Link>
       </nav>
 
       <div
@@ -68,9 +68,9 @@ export default function Register() {
           className="w-full max-w-sm"
         >
           <div className="mb-8">
-            <p className="label-caps mb-4">Create Account — Step {step} of 2</p>
+            <p className="label-caps mb-4">Criar Conta — Etapa {step} de 2</p>
             <h1 className="text-4xl font-bold tracking-tight uppercase">
-              {step === 1 ? "Who Are\nYou?" : "Claim Your\nLink"}
+              {step === 1 ? "Quem\nÉ Você?" : "Crie Seu\nLink"}
             </h1>
             <div className="flex gap-2 mt-5">
               <div className="h-px flex-1 transition-colors duration-300" style={{ backgroundColor: 'rgba(255,255,255,0.6)' }} />
@@ -91,11 +91,11 @@ export default function Register() {
                   className="space-y-4"
                 >
                   <div>
-                    <label className="label-caps block mb-2">Email</label>
+                    <label className="label-caps block mb-2">E-mail</label>
                     <input
                       {...form.register("email")}
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="voce@exemplo.com"
                       className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
                     />
                     {form.formState.errors.email && (
@@ -103,7 +103,7 @@ export default function Register() {
                     )}
                   </div>
                   <div>
-                    <label className="label-caps block mb-2">Password</label>
+                    <label className="label-caps block mb-2">Senha</label>
                     <input
                       {...form.register("password")}
                       type="password"
@@ -121,7 +121,7 @@ export default function Register() {
                     whileTap={{ scale: 0.99 }}
                     className="btn-solid-white w-full mt-4"
                   >
-                    Continue <ArrowRight className="ml-2 w-4 h-4 inline" />
+                    Continuar <ArrowRight className="ml-2 w-4 h-4 inline" />
                   </motion.button>
                 </motion.div>
               )}
@@ -135,14 +135,14 @@ export default function Register() {
                   className="space-y-4"
                 >
                   <div>
-                    <label className="label-caps block mb-2">Username</label>
+                    <label className="label-caps block mb-2">Nome de usuário</label>
                     <div className="flex">
                       <span className="inline-flex items-center px-3 border border-r-0 border-white/10 bg-white/5 text-xs text-white/40 tracking-wider rounded-l-sm">
                         faren/
                       </span>
                       <input
                         {...form.register("username")}
-                        placeholder="username"
+                        placeholder="usuario"
                         className="flex-1 bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-r-sm"
                         onChange={(e) => form.setValue("username", e.target.value.toLowerCase())}
                       />
@@ -152,10 +152,10 @@ export default function Register() {
                     )}
                   </div>
                   <div>
-                    <label className="label-caps block mb-2">Display Name (optional)</label>
+                    <label className="label-caps block mb-2">Nome de exibição (opcional)</label>
                     <input
                       {...form.register("displayName")}
-                      placeholder="How people see you"
+                      placeholder="Como as pessoas te veem"
                       className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
                     />
                   </div>
@@ -165,7 +165,7 @@ export default function Register() {
                       onClick={() => setStep(1)}
                       className="btn-outline-white flex-1"
                     >
-                      <ArrowLeft className="mr-1 w-3 h-3 inline" /> Back
+                      <ArrowLeft className="mr-1 w-3 h-3 inline" /> Voltar
                     </button>
                     <motion.button
                       type="submit"
@@ -174,7 +174,7 @@ export default function Register() {
                       whileTap={{ scale: 0.99 }}
                       className="btn-solid-white flex-[2] disabled:opacity-50"
                     >
-                      {registerMutation.isPending ? "Creating..." : "Create Profile"}
+                      {registerMutation.isPending ? "Criando..." : "Criar Perfil"}
                     </motion.button>
                   </div>
                 </motion.div>
@@ -184,9 +184,9 @@ export default function Register() {
 
           <div className="glow-line mt-8 mb-5" />
           <p className="label-caps text-center">
-            Have an account?{" "}
+            Já tem conta?{" "}
             <Link href="/login" className="text-white/60 hover:text-white transition-colors">
-              Sign in →
+              Entrar →
             </Link>
           </p>
         </motion.div>
