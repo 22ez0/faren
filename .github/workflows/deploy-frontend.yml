@@ -34,7 +34,7 @@ jobs:
         env:
           BASE_PATH: /
           PORT: 5173
-          VITE_API_URL: https://faren-api.onrender.com
+          VITE_API_URL: https://faren-api-wn1z.onrender.com
           NODE_ENV: production
 
       - name: Deploy to GitHub Pages
