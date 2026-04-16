@@ -11,10 +11,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render Deploy
+      - name: Render auto-deploy triggered
         run: |
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
-            -H "Accept: application/json" | jq .
+          echo "Render is connected to this repo and auto-deploys on push to main."
+          echo "Service: https://faren-api-wn1z.onrender.com"
+          echo "No additional step required."
