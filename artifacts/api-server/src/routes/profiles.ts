@@ -3,6 +3,7 @@ import { db, usersTable, profilesTable, profileLinksTable, profileViewsTable, pr
 import { eq, and, sql } from "drizzle-orm";
 import { UpdateProfileBody, ConnectDiscordBody, ConnectMusicBody, AddProfileLinkBody, UpdateProfileLinkBody, UpdateProfileLinkParams, DeleteProfileLinkParams } from "@workspace/api-zod";
 import { requireAuth, optionalAuth } from "../lib/auth";
+import { fetchLastfmNowPlaying } from "./music";
 
 const router: IRouter = Router();
 
@@ -59,6 +60,7 @@ function formatProfile(
     showDiscordPresence: profile.showDiscordPresence !== false,
     musicConnected: profile.musicConnected === "true",
     musicService: profile.musicService,
+    musicUsername: profile.musicUsername,
     followersCount: profile.followersCount,
     followingCount: profile.followingCount,
     likesCount: profile.likesCount,
@@ -350,12 +352,86 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
     hasLiked = !!likeRecord;
   }
 
+  let nowPlaying: any = { isPlaying: false };
+  if (!profile.musicPrivate && profile.musicConnected === "true" && profile.musicService === "lastfm" && profile.musicUsername) {
+    nowPlaying = await fetchLastfmNowPlaying(profile.musicUsername);
+  }
+
   res.json({
     ...formatProfile(user, profile, links),
-    nowPlaying: profile.musicPrivate ? { isPlaying: false } : { isPlaying: false },
+    nowPlaying,
     isFollowing,
     hasLiked,
   });
+});
+
+router.post("/profile/discord/lanyard", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const { discordUserId } = req.body as { discordUserId?: string };
+
+  if (!discordUserId || typeof discordUserId !== "string" || !/^\d{17,20}$/.test(discordUserId.trim())) {
+    res.status(400).json({ error: "Discord User ID inválido. Deve ser um número com 17–20 dígitos." });
+    return;
+  }
+
+  const uid = discordUserId.trim();
+
+  try {
+    const lanyardRes = await fetch(`https://api.lanyard.rest/v1/users/${uid}`, {
+      headers: { "User-Agent": "faren.com.br/1.0" },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!lanyardRes.ok) {
+      if (lanyardRes.status === 404) {
+        res.status(404).json({ error: "Usuário não encontrado no Lanyard. Entre no servidor discord.gg/lanyard primeiro." });
+      } else {
+        res.status(502).json({ error: "Lanyard indisponível. Tente novamente." });
+      }
+      return;
+    }
+
+    const lanyardData = await lanyardRes.json() as any;
+    if (!lanyardData.success) {
+      res.status(404).json({ error: "Usuário não encontrado no Lanyard." });
+      return;
+    }
+
+    const data = lanyardData.data;
+    const discordUser = data.discord_user;
+    const avatarHash = discordUser?.avatar;
+    const discordAvatarUrl = avatarHash
+      ? `https://cdn.discordapp.com/avatars/${uid}/${avatarHash}.${avatarHash.startsWith("a_") ? "gif" : "png"}?size=128`
+      : null;
+
+    const activityName = data.activities?.[0]?.name || null;
+    const statusEmoji = data.activities?.find((a: any) => a.type === 4)?.emoji?.name || null;
+
+    await db.update(profilesTable).set({
+      discordUserId: uid,
+      discordUsername: discordUser?.global_name || discordUser?.username || null,
+      discordAvatarUrl,
+      discordStatus: data.discord_status || "offline",
+      discordActivity: activityName,
+      discordStatusEmoji: statusEmoji,
+      discordNitro: !!discordUser?.premium_type,
+      discordBoost: false,
+    }).where(eq(profilesTable.userId, userId));
+
+    res.json({
+      connected: true,
+      discordUsername: discordUser?.global_name || discordUser?.username,
+      discordAvatarUrl,
+      discordStatus: data.discord_status || "offline",
+      discordUserId: uid,
+    });
+  } catch (err: any) {
+    if (err.name === "TimeoutError") {
+      res.status(504).json({ error: "Lanyard demorou demais para responder." });
+    } else {
+      res.status(500).json({ error: "Erro ao conectar com Lanyard." });
+    }
+  }
 });
 
 export default router;

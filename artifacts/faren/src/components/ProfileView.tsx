@@ -256,6 +256,33 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
 
 export default function ProfileView({ profile, isOwner, onFollow, onLike, isFollowing, hasLiked }: ProfileViewProps) {
   const [likePulse, setLikePulse] = useState(false);
+  const [lanyardData, setLanyardData] = useState<any>(null);
+
+  const discordUserId = (profile as any).discordUserId as string | undefined;
+
+  useEffect(() => {
+    if (!discordUserId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`https://api.lanyard.rest/v1/users/${discordUserId}`);
+        if (!res.ok || cancelled) return;
+        const body = await res.json() as any;
+        if (body.success && !cancelled) setLanyardData(body.data);
+      } catch { }
+    };
+    poll();
+    const interval = setInterval(poll, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [discordUserId]);
+
+  const liveDiscordStatus: string = lanyardData?.discord_status || (profile as any).discordStatus || "offline";
+  const liveDiscordActivity: string | null = lanyardData?.activities?.[0]?.name || (profile as any).discordActivity || null;
+  const liveDiscordUsername: string | null = lanyardData?.discord_user?.global_name || lanyardData?.discord_user?.username || (profile as any).discordUsername || null;
+  const liveAvatarHash = lanyardData?.discord_user?.avatar;
+  const liveDiscordAvatarUrl: string | null = liveAvatarHash && discordUserId
+    ? `https://cdn.discordapp.com/avatars/${discordUserId}/${liveAvatarHash}.${liveAvatarHash.startsWith("a_") ? "gif" : "png"}?size=128`
+    : (profile as any).discordAvatarUrl || null;
 
   const accent = profile.accentColor || "#ffffff";
   const glow = profile.glowColor || accent;
@@ -403,12 +430,12 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
               )}
             </div>
 
-            {profile.discordConnected && profile.discordStatus && showDiscordPresence && (
+            {profile.discordConnected && showDiscordPresence && (
               <div
                 className="absolute bottom-1 right-1 w-5 h-5 rounded-full border-[3px] border-black"
                 style={{
-                  backgroundColor: STATUS_COLORS[profile.discordStatus] || STATUS_COLORS.offline,
-                  boxShadow: `0 0 8px ${STATUS_COLORS[profile.discordStatus] || STATUS_COLORS.offline}`,
+                  backgroundColor: STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline,
+                  boxShadow: `0 0 8px ${STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline}`,
                 }}
               />
             )}
@@ -542,7 +569,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         <div className="w-full flex flex-col gap-3 mb-3">
 
           {/* Discord */}
-          {profile.discordConnected && profile.discordUsername && showDiscordPresence && (
+          {profile.discordConnected && liveDiscordUsername && showDiscordPresence && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -551,38 +578,34 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             >
               <div className="relative flex-shrink-0">
                 <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-indigo-900/30 flex items-center justify-center">
-                  {showDiscordAvatar && profile.discordAvatarUrl ? (
-                    <img src={profile.discordAvatarUrl} alt="" className="w-full h-full object-cover" />
+                  {showDiscordAvatar && liveDiscordAvatarUrl ? (
+                    <img src={liveDiscordAvatarUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <SiDiscord className="w-5 h-5 text-indigo-400" />
                   )}
                 </div>
-                {profile.discordStatus && (
-                  <span
-                    className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black"
-                    style={{
-                      backgroundColor: STATUS_COLORS[profile.discordStatus] || STATUS_COLORS.offline,
-                      boxShadow: `0 0 6px ${STATUS_COLORS[profile.discordStatus] || STATUS_COLORS.offline}`,
-                    }}
-                  />
-                )}
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black"
+                  style={{
+                    backgroundColor: STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline,
+                    boxShadow: `0 0 6px ${STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline}`,
+                  }}
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-semibold text-sm truncate">{profile.discordUsername}</span>
+                  <span className="font-semibold text-sm truncate">{liveDiscordUsername}</span>
                   {(profile as any).discordNitro && <Gem className="w-3.5 h-3.5 text-pink-400" />}
                   {(profile as any).discordBoost && <Crown className="w-3.5 h-3.5 text-fuchsia-400" />}
                 </div>
-                {profile.discordStatus && (
-                  <p className="text-[11px] italic text-white/55 truncate mt-0.5">
-                    {profile.discordStatus === 'online' ? 'online now' :
-                      profile.discordStatus === 'idle' ? 'idle now' :
-                      profile.discordStatus === 'dnd' ? 'do not disturb' :
-                      'last seen unknown'}
-                  </p>
-                )}
-                {profile.discordActivity && (
-                  <p className="text-[11px] opacity-45 truncate">{profile.discordActivity}</p>
+                <p className="text-[11px] italic text-white/55 truncate mt-0.5">
+                  {liveDiscordStatus === 'online' ? 'online now' :
+                    liveDiscordStatus === 'idle' ? 'ausente' :
+                    liveDiscordStatus === 'dnd' ? 'não perturbe' :
+                    'offline'}
+                </p>
+                {liveDiscordActivity && (
+                  <p className="text-[11px] opacity-45 truncate">{liveDiscordActivity}</p>
                 )}
               </div>
             </motion.div>

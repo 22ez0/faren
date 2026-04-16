@@ -286,6 +286,10 @@ export default function EditProfile() {
   const [customBadgeName, setCustomBadgeName] = useState('');
   const [customBadgeColor, setCustomBadgeColor] = useState('#8b5cf6');
   const [formHydrated, setFormHydrated] = useState(false);
+  const [discordUserIdInput, setDiscordUserIdInput] = useState('');
+  const [discordConnecting, setDiscordConnecting] = useState(false);
+  const [lastfmInput, setLastfmInput] = useState('');
+  const [lastfmConnecting, setLastfmConnecting] = useState(false);
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useGetMyProfile({
     query: { queryKey: [] as any, enabled: isAuthenticated },
@@ -403,6 +407,63 @@ export default function EditProfile() {
       ...prev,
       typewriterTexts: prev.typewriterTexts.filter((_, idx) => idx !== i),
     }));
+  };
+
+  const apiBase = () => (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+  const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token') || ''}` });
+
+  const connectDiscord = async () => {
+    const uid = discordUserIdInput.trim();
+    if (!uid) return;
+    setDiscordConnecting(true);
+    try {
+      const res = await fetch(`${apiBase()}/api/profile/discord/lanyard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ discordUserId: uid }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao conectar Discord');
+      toast({ title: 'Discord conectado!', description: `@${data.discordUsername || uid}` });
+      setDiscordUserIdInput('');
+      refetchProfile();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setDiscordConnecting(false);
+    }
+  };
+
+  const disconnectDiscord = async () => {
+    await fetch(`${apiBase()}/api/profile/discord`, { method: 'DELETE', headers: authHeader() });
+    refetchProfile();
+  };
+
+  const connectLastfm = async () => {
+    const username = lastfmInput.trim();
+    if (!username) return;
+    setLastfmConnecting(true);
+    try {
+      const res = await fetch(`${apiBase()}/api/music/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ service: 'lastfm', token: '', username }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro');
+      toast({ title: 'Last.fm conectado!', description: `Usuário: ${username}` });
+      setLastfmInput('');
+      refetchProfile();
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setLastfmConnecting(false);
+    }
+  };
+
+  const disconnectLastfm = async () => {
+    await fetch(`${apiBase()}/api/music/disconnect`, { method: 'DELETE', headers: authHeader() });
+    refetchProfile();
   };
 
   const save = () => {
@@ -1124,36 +1185,107 @@ export default function EditProfile() {
                 <div className="p-4 border border-white/8 rounded-sm bg-white/[0.02]">
                   <p className="label-caps mb-2">Integração com Discord</p>
                   <p className="text-xs text-white/30 mb-3">
-                    Conecte seu Discord para exibir status ao vivo, atividade e avatar no seu perfil.
+                    Conecte via Lanyard para exibir status ao vivo, atividade e avatar no seu perfil.
                   </p>
-                  <button className="btn-outline-white text-xs w-full py-2.5">
-                    Conectar Discord (OAuth)
-                  </button>
-                  <div className="grid grid-cols-2 gap-2 mt-3">
-                    <button
-                      onClick={() => set('showDiscordAvatar', !form.showDiscordAvatar)}
-                      className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
-                    >
-                      Avatar Discord: {form.showDiscordAvatar ? 'sim' : 'não'}
-                    </button>
-                    <button
-                      onClick={() => set('showDiscordPresence', !form.showDiscordPresence)}
-                      className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
-                    >
-                      Status: {form.showDiscordPresence ? 'sim' : 'não'}
-                    </button>
-                  </div>
+                  {(profile as any)?.discordConnected ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 p-2 border border-white/10 rounded-sm">
+                        {(profile as any)?.discordAvatarUrl && (
+                          <img src={(profile as any).discordAvatarUrl} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{(profile as any)?.discordUsername || 'Conectado'}</p>
+                          <p className="text-[10px] text-white/40">Discord · via Lanyard</p>
+                        </div>
+                        <button
+                          onClick={disconnectDiscord}
+                          className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-sm uppercase tracking-wider flex-shrink-0"
+                        >
+                          Desconectar
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => set('showDiscordAvatar', !form.showDiscordAvatar)}
+                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
+                        >
+                          Avatar: {form.showDiscordAvatar ? 'sim' : 'não'}
+                        </button>
+                        <button
+                          onClick={() => set('showDiscordPresence', !form.showDiscordPresence)}
+                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
+                        >
+                          Status: {form.showDiscordPresence ? 'sim' : 'não'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          value={discordUserIdInput}
+                          onChange={e => setDiscordUserIdInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && connectDiscord()}
+                          placeholder="Seu Discord User ID (ex: 123456789...)"
+                          className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-sm font-mono"
+                        />
+                        <button
+                          onClick={connectDiscord}
+                          disabled={discordConnecting || !discordUserIdInput.trim()}
+                          className="btn-outline-white text-xs px-4 py-2 disabled:opacity-40"
+                        >
+                          {discordConnecting ? '...' : 'Conectar'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-white/20 leading-relaxed">
+                        Como obter seu User ID: Discord → Configurações → Avançado → ativar Modo Desenvolvedor → clique direito no seu nome → Copiar User ID.<br />
+                        Você precisa entrar no servidor do Lanyard: <span className="text-white/40">discord.gg/lanyard</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 border border-white/8 rounded-sm bg-white/[0.02]">
                   <p className="label-caps mb-2">Integração de Música</p>
-                  <p className="text-xs text-white/30 mb-3">
-                    A integração com Spotify & Last.fm exibe a música que você está ouvindo com arte do álbum.
+                  <p className="text-xs text-white/30 mb-2">
+                    Last.fm exibe a música que você está ouvindo ao vivo com arte do álbum.
                   </p>
-                  <div className="flex flex-col gap-2">
-                    <button className="btn-outline-white text-xs w-full py-2.5">Conectar Spotify</button>
-                    <button className="btn-outline-white text-xs w-full py-2.5">Conectar Last.fm</button>
-                  </div>
+                  {(profile as any)?.musicConnected && (profile as any)?.musicService === 'lastfm' ? (
+                    <div className="flex items-center gap-2 p-2 border border-white/10 rounded-sm mb-2">
+                      <SiLastdotfm className="w-4 h-4 text-red-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold truncate">{(profile as any)?.musicUsername || 'Conectado'}</p>
+                        <p className="text-[10px] text-white/40">Last.fm · ao vivo</p>
+                      </div>
+                      <button
+                        onClick={disconnectLastfm}
+                        className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-sm uppercase tracking-wider flex-shrink-0"
+                      >
+                        Desconectar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        value={lastfmInput}
+                        onChange={e => setLastfmInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && connectLastfm()}
+                        placeholder="Seu usuário no Last.fm"
+                        className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-sm"
+                      />
+                      <button
+                        onClick={connectLastfm}
+                        disabled={lastfmConnecting || !lastfmInput.trim()}
+                        className="btn-outline-white text-xs px-4 py-2 disabled:opacity-40"
+                      >
+                        {lastfmConnecting ? '...' : 'Last.fm'}
+                      </button>
+                    </div>
+                  )}
+                  <button disabled className="btn-outline-white text-xs w-full py-2.5 opacity-30 cursor-not-allowed">
+                    <SiSpotify className="inline w-3.5 h-3.5 mr-1.5 text-green-400" />
+                    Spotify — Em breve
+                  </button>
                 </div>
               </motion.div>
             )}
