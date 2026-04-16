@@ -1,0 +1,159 @@
+Crie uma aplicação web completa chamada **Faren**, inspirada nas funcionalidades de guns.lol e last.fm, porém mais moderna, performática e com melhor experiência do usuário.
+
+## 🎯 Objetivo
+
+Construir uma plataforma de perfis personalizados + tracking social/musical, onde usuários podem:
+
+* Criar páginas personalizadas (tipo guns.lol)
+* Exibir presença, links e mídia
+* Integrar com música (tipo last.fm)
+* Ter recursos sociais/comunidade
+
+## 🌐 Domínio e Rotas
+
+* Domínio principal: faren.com.br
+* Perfis de usuários:
+
+  * faren.com/username (preferencial)
+  * fallback: faren.com.br/username
+* Sistema de usernames únicos
+
+## 🎨 Design (IMPORTANTE)
+
+* Seguir o estilo visual do site: https://keefnow.com.br
+* Dark mode padrão
+* UI moderna (glassmorphism, blur, neon/purple accents)
+* Animações suaves (hover, loading, transitions)
+* Layout responsivo (mobile-first)
+
+## 🧩 Funcionalidades principais
+
+### 👤 Sistema de usuários
+
+* Registro/login (email + senha)
+* Login social (Google, Discord)
+* Sistema de username único
+* Avatar e banner personalizados
+* Perfil público acessível via URL
+
+### 🎭 Perfil estilo guns.lol
+
+Cada usuário pode:
+
+* Adicionar descrição
+* Escolher cores do perfil
+* Upload de background (imagem/vídeo)
+* Música de fundo (player embutido)
+* Cursor personalizado
+* Efeitos visuais (blur, opacity, glow)
+* Badges
+* Links sociais (Instagram, Discord, GitHub, etc)
+* URLs customizadas com ícone
+
+### 🎵 Integração estilo last.fm
+
+* Mostrar música atual sendo ouvida
+* Histórico de músicas
+* Top artistas
+* Integração com API (Spotify ou Last.fm)
+* Widget de música no perfil
+
+### 👥 Comunidade (diferencial)
+
+* Sistema de seguidores
+* Curtidas em perfis
+* Visualizações de perfil
+* Comentários (opcional)
+* Ranking de perfis populares
+
+### 📊 Dashboard do usuário
+
+* Estatísticas:
+
+  * visualizações
+  * cliques em links
+  * dispositivos dos visitantes
+* Edição de perfil completa
+* Upload de mídia
+
+### 💎 Sistema premium (opcional)
+
+* Recursos exclusivos:
+
+  * layouts avançados
+  * fontes customizadas
+  * efeitos extras
+  * analytics avançado
+
+## ⚙️ Tecnologias
+
+Escolha stack moderna:
+
+Frontend:
+
+* Next.js (React)
+* TailwindCSS
+* Framer Motion (animações)
+
+Backend:
+
+* Node.js com API routes (ou NestJS)
+* Prisma ORM
+
+Banco de dados:
+
+* PostgreSQL
+
+Auth:
+
+* NextAuth ou JWT
+
+Upload:
+
+* Cloudinary ou similar
+
+Deploy:
+
+* Vercel (frontend)
+* Railway / Supabase (backend + db)
+
+## 🧠 Estrutura do projeto
+
+* /app (frontend)
+* /components (UI reutilizável)
+* /lib (utils, helpers)
+* /api (rotas backend)
+* /prisma (schema)
+
+## 🔐 Segurança
+
+* Proteção contra spam
+* Rate limit
+* Sanitização de inputs
+
+## 🚀 Extras importantes
+
+* SEO otimizado para perfis públicos
+* Performance rápida (lazy loading)
+* Sistema de tema por usuário
+* Pré-visualização em tempo real ao editar perfil
+
+## 📦 Entrega esperada
+
+* Projeto completo rodando
+* Estrutura limpa e escalável
+* README com instruções
+* Dados mockados para teste
+
+## ⚠️ Regras
+
+* NÃO copiar código de guns.lol ou last.fm
+* Criar tudo do zero inspirado nas ideias
+* Priorizar UX moderna e fluida
+
+Comece criando:
+
+1. Estrutura base do projeto
+2. Sistema de autenticação
+3. Página de perfil dinâmica (/[username])
+4. Dashboard inicial

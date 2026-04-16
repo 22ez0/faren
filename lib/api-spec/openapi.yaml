@@ -1,15 +1,26 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Faren API - personalized profile platform
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: profiles
+    description: Profile management
+  - name: social
+    description: Social features
+  - name: music
+    description: Music tracking
+  - name: analytics
+    description: Profile analytics
 paths:
   /healthz:
     get:
@@ -24,6 +35,429 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{username}:
+    get:
+      operationId: getUserByUsername
+      tags: [users]
+      summary: Get user by username
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfile"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{username}/follow:
+    post:
+      operationId: followUser
+      tags: [social]
+      summary: Follow a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Followed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: unfollowUser
+      tags: [social]
+      summary: Unfollow a user
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Unfollowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /users/{username}/like:
+    post:
+      operationId: likeProfile
+      tags: [social]
+      summary: Like a profile
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Liked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /profile:
+    get:
+      operationId: getMyProfile
+      tags: [profiles]
+      summary: Get current user's profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProfile
+      tags: [profiles]
+      summary: Update current user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /profile/links:
+    post:
+      operationId: addProfileLink
+      tags: [profiles]
+      summary: Add a social link to profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkBody"
+      responses:
+        "201":
+          description: Link added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileLink"
+
+  /profile/links/{linkId}:
+    patch:
+      operationId: updateProfileLink
+      tags: [profiles]
+      summary: Update a social link
+      parameters:
+        - name: linkId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLinkBody"
+      responses:
+        "200":
+          description: Updated link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileLink"
+    delete:
+      operationId: deleteProfileLink
+      tags: [profiles]
+      summary: Delete a social link
+      parameters:
+        - name: linkId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /profile/discord:
+    post:
+      operationId: connectDiscord
+      tags: [profiles]
+      summary: Connect Discord account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectDiscordBody"
+      responses:
+        "200":
+          description: Discord connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscordStatus"
+    delete:
+      operationId: disconnectDiscord
+      tags: [profiles]
+      summary: Disconnect Discord account
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /profile/discord/status:
+    get:
+      operationId: getDiscordStatus
+      tags: [profiles]
+      summary: Get Discord connection status
+      responses:
+        "200":
+          description: Discord status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscordStatus"
+
+  /music/now-playing:
+    get:
+      operationId: getNowPlaying
+      tags: [music]
+      summary: Get currently playing track
+      responses:
+        "200":
+          description: Now playing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NowPlaying"
+
+  /music/history:
+    get:
+      operationId: getMusicHistory
+      tags: [music]
+      summary: Get listening history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Music history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrackHistory"
+
+  /music/connect:
+    post:
+      operationId: connectMusic
+      tags: [music]
+      summary: Connect music service (Spotify/Last.fm)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectMusicBody"
+      responses:
+        "200":
+          description: Music connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /analytics/profile:
+    get:
+      operationId: getProfileAnalytics
+      tags: [analytics]
+      summary: Get profile analytics
+      responses:
+        "200":
+          description: Analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileAnalytics"
+
+  /analytics/record-view:
+    post:
+      operationId: recordProfileView
+      tags: [analytics]
+      summary: Record a profile view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordViewBody"
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /discover/trending:
+    get:
+      operationId: getTrendingProfiles
+      tags: [social]
+      summary: Get trending profiles
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Trending profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicProfile"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +468,486 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        displayName:
+          type: string
+      required:
+        - email
+        - username
+        - password
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - email
+        - username
+        - createdAt
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        bannerUrl:
+          type: ["string", "null"]
+        backgroundUrl:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+        backgroundOpacity:
+          type: ["number", "null"]
+        glowColor:
+          type: ["string", "null"]
+        cursorStyle:
+          type: ["string", "null"]
+        musicUrl:
+          type: ["string", "null"]
+        badges:
+          type: array
+          items:
+            type: string
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileLink"
+        discordConnected:
+          type: boolean
+        discordUserId:
+          type: ["string", "null"]
+        discordUsername:
+          type: ["string", "null"]
+        discordAvatarUrl:
+          type: ["string", "null"]
+        discordStatus:
+          type: ["string", "null"]
+        musicConnected:
+          type: boolean
+        musicService:
+          type: ["string", "null"]
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        likesCount:
+          type: integer
+        viewsCount:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - username
+        - badges
+        - links
+        - discordConnected
+        - musicConnected
+        - followersCount
+        - followingCount
+        - likesCount
+        - viewsCount
+        - createdAt
+
+    PublicProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        bannerUrl:
+          type: ["string", "null"]
+        backgroundUrl:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+        backgroundOpacity:
+          type: ["number", "null"]
+        glowColor:
+          type: ["string", "null"]
+        cursorStyle:
+          type: ["string", "null"]
+        musicUrl:
+          type: ["string", "null"]
+        badges:
+          type: array
+          items:
+            type: string
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfileLink"
+        discordConnected:
+          type: boolean
+        discordUsername:
+          type: ["string", "null"]
+        discordAvatarUrl:
+          type: ["string", "null"]
+        discordStatus:
+          type: ["string", "null"]
+        discordActivity:
+          type: ["string", "null"]
+        discordStatusEmoji:
+          type: ["string", "null"]
+        musicConnected:
+          type: boolean
+        musicService:
+          type: ["string", "null"]
+        nowPlaying:
+          $ref: "#/components/schemas/NowPlaying"
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        likesCount:
+          type: integer
+        viewsCount:
+          type: integer
+        isFollowing:
+          type: boolean
+        hasLiked:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - username
+        - badges
+        - links
+        - discordConnected
+        - musicConnected
+        - followersCount
+        - followingCount
+        - likesCount
+        - viewsCount
+        - isFollowing
+        - hasLiked
+        - createdAt
+
+    ProfileLink:
+      type: object
+      properties:
+        id:
+          type: integer
+        platform:
+          type: string
+        label:
+          type: string
+        url:
+          type: string
+        iconUrl:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+      required:
+        - id
+        - platform
+        - label
+        - url
+        - sortOrder
+
+    CreateLinkBody:
+      type: object
+      properties:
+        platform:
+          type: string
+        label:
+          type: string
+        url:
+          type: string
+        iconUrl:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+      required:
+        - platform
+        - label
+        - url
+
+    UpdateLinkBody:
+      type: object
+      properties:
+        platform:
+          type: string
+        label:
+          type: string
+        url:
+          type: string
+        iconUrl:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        displayName:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        bannerUrl:
+          type: ["string", "null"]
+        backgroundUrl:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+        backgroundOpacity:
+          type: ["number", "null"]
+        glowColor:
+          type: ["string", "null"]
+        cursorStyle:
+          type: ["string", "null"]
+        musicUrl:
+          type: ["string", "null"]
+        badges:
+          type: array
+          items:
+            type: string
+
+    ConnectDiscordBody:
+      type: object
+      properties:
+        discordUserId:
+          type: string
+        discordUsername:
+          type: string
+        discordAvatarUrl:
+          type: ["string", "null"]
+        discordStatus:
+          type: ["string", "null"]
+        discordActivity:
+          type: ["string", "null"]
+        discordStatusEmoji:
+          type: ["string", "null"]
+      required:
+        - discordUserId
+        - discordUsername
+
+    DiscordStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        discordUserId:
+          type: ["string", "null"]
+        discordUsername:
+          type: ["string", "null"]
+        discordAvatarUrl:
+          type: ["string", "null"]
+        discordStatus:
+          type: ["string", "null"]
+        discordActivity:
+          type: ["string", "null"]
+        discordStatusEmoji:
+          type: ["string", "null"]
+      required:
+        - connected
+
+    ConnectMusicBody:
+      type: object
+      properties:
+        service:
+          type: string
+          enum: [spotify, lastfm]
+        token:
+          type: string
+        username:
+          type: ["string", "null"]
+      required:
+        - service
+        - token
+
+    NowPlaying:
+      type: object
+      properties:
+        isPlaying:
+          type: boolean
+        title:
+          type: ["string", "null"]
+        artist:
+          type: ["string", "null"]
+        album:
+          type: ["string", "null"]
+        albumArt:
+          type: ["string", "null"]
+        previewUrl:
+          type: ["string", "null"]
+        externalUrl:
+          type: ["string", "null"]
+        progress:
+          type: ["integer", "null"]
+        duration:
+          type: ["integer", "null"]
+      required:
+        - isPlaying
+
+    TrackHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: ["string", "null"]
+        albumArt:
+          type: ["string", "null"]
+        playedAt:
+          type: string
+      required:
+        - id
+        - title
+        - artist
+        - playedAt
+
+    ProfileAnalytics:
+      type: object
+      properties:
+        totalViews:
+          type: integer
+        viewsToday:
+          type: integer
+        viewsThisWeek:
+          type: integer
+        viewsThisMonth:
+          type: integer
+        linkClicks:
+          type: integer
+        followers:
+          type: integer
+        likes:
+          type: integer
+        topCountries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountryStat"
+        viewsByDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayStat"
+      required:
+        - totalViews
+        - viewsToday
+        - viewsThisWeek
+        - viewsThisMonth
+        - linkClicks
+        - followers
+        - likes
+        - topCountries
+        - viewsByDay
+
+    CountryStat:
+      type: object
+      properties:
+        country:
+          type: string
+        count:
+          type: integer
+      required:
+        - country
+        - count
+
+    DayStat:
+      type: object
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
+      required:
+        - date
+        - count
+
+    RecordViewBody:
+      type: object
+      properties:
+        username:
+          type: string
+        country:
+          type: ["string", "null"]
+        device:
+          type: ["string", "null"]
+      required:
+        - username

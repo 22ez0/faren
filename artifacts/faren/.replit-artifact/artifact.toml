@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Faren"
+version = "1.0.0"
+id = "artifacts/faren"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21395
+
+[services.development]
+run = "pnpm --filter @workspace/faren run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/faren", "run", "build" ]
+publicDir = "artifacts/faren/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21395"
+BASE_PATH = "/"
