@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, real, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -25,6 +25,15 @@ export const profilesTable = pgTable("profiles", {
   musicService: text("music_service"),
   musicToken: text("music_token"),
   musicUsername: text("music_username"),
+  particleEffect: text("particle_effect").default("none"),
+  clickEffect: text("click_effect").default("none"),
+  fontFamily: text("font_family").default("default"),
+  layoutStyle: text("layout_style").default("centered"),
+  typewriterTexts: text("typewriter_texts").array().default([]),
+  profileTitle: text("profile_title"),
+  showViews: boolean("show_views").default(true),
+  backgroundBlur: real("background_blur").default(0),
+  backgroundType: text("background_type").default("image"),
   followersCount: integer("followers_count").default(0).notNull(),
   followingCount: integer("following_count").default(0).notNull(),
   likesCount: integer("likes_count").default(0).notNull(),

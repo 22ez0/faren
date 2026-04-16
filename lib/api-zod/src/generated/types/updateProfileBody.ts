@@ -22,10 +22,27 @@ export interface UpdateProfileBody {
   /** @nullable */
   backgroundOpacity?: number | null;
   /** @nullable */
+  backgroundBlur?: number | null;
+  /** @nullable */
+  backgroundType?: string | null;
+  /** @nullable */
   glowColor?: string | null;
   /** @nullable */
   cursorStyle?: string | null;
   /** @nullable */
   musicUrl?: string | null;
   badges?: string[];
+  /** @nullable */
+  particleEffect?: string | null;
+  /** @nullable */
+  clickEffect?: string | null;
+  /** @nullable */
+  fontFamily?: string | null;
+  /** @nullable */
+  layoutStyle?: string | null;
+  typewriterTexts?: string[];
+  /** @nullable */
+  profileTitle?: string | null;
+  /** @nullable */
+  showViews?: boolean | null;
 }

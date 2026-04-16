@@ -86,6 +86,15 @@ export const GetUserByUsernameResponse = zod.object({
   cursorStyle: zod.string().nullish(),
   musicUrl: zod.string().nullish(),
   badges: zod.array(zod.string()),
+  particleEffect: zod.string().nullish(),
+  clickEffect: zod.string().nullish(),
+  fontFamily: zod.string().nullish(),
+  layoutStyle: zod.string().nullish(),
+  typewriterTexts: zod.array(zod.string()).optional(),
+  profileTitle: zod.string().nullish(),
+  showViews: zod.boolean().nullish(),
+  backgroundBlur: zod.number().nullish(),
+  backgroundType: zod.string().nullish(),
   links: zod.array(
     zod.object({
       id: zod.number(),
@@ -180,6 +189,15 @@ export const GetMyProfileResponse = zod.object({
   cursorStyle: zod.string().nullish(),
   musicUrl: zod.string().nullish(),
   badges: zod.array(zod.string()),
+  particleEffect: zod.string().nullish(),
+  clickEffect: zod.string().nullish(),
+  fontFamily: zod.string().nullish(),
+  layoutStyle: zod.string().nullish(),
+  typewriterTexts: zod.array(zod.string()).optional(),
+  profileTitle: zod.string().nullish(),
+  showViews: zod.boolean().nullish(),
+  backgroundBlur: zod.number().nullish(),
+  backgroundType: zod.string().nullish(),
   links: zod.array(
     zod.object({
       id: zod.number(),
@@ -215,10 +233,19 @@ export const UpdateProfileBody = zod.object({
   backgroundUrl: zod.string().nullish(),
   accentColor: zod.string().nullish(),
   backgroundOpacity: zod.number().nullish(),
+  backgroundBlur: zod.number().nullish(),
+  backgroundType: zod.string().nullish(),
   glowColor: zod.string().nullish(),
   cursorStyle: zod.string().nullish(),
   musicUrl: zod.string().nullish(),
   badges: zod.array(zod.string()).optional(),
+  particleEffect: zod.string().nullish(),
+  clickEffect: zod.string().nullish(),
+  fontFamily: zod.string().nullish(),
+  layoutStyle: zod.string().nullish(),
+  typewriterTexts: zod.array(zod.string()).optional(),
+  profileTitle: zod.string().nullish(),
+  showViews: zod.boolean().nullish(),
 });
 
 export const UpdateProfileResponse = zod.object({
@@ -236,6 +263,15 @@ export const UpdateProfileResponse = zod.object({
   cursorStyle: zod.string().nullish(),
   musicUrl: zod.string().nullish(),
   badges: zod.array(zod.string()),
+  particleEffect: zod.string().nullish(),
+  clickEffect: zod.string().nullish(),
+  fontFamily: zod.string().nullish(),
+  layoutStyle: zod.string().nullish(),
+  typewriterTexts: zod.array(zod.string()).optional(),
+  profileTitle: zod.string().nullish(),
+  showViews: zod.boolean().nullish(),
+  backgroundBlur: zod.number().nullish(),
+  backgroundType: zod.string().nullish(),
   links: zod.array(
     zod.object({
       id: zod.number(),
@@ -455,6 +491,15 @@ export const GetTrendingProfilesResponseItem = zod.object({
   cursorStyle: zod.string().nullish(),
   musicUrl: zod.string().nullish(),
   badges: zod.array(zod.string()),
+  particleEffect: zod.string().nullish(),
+  clickEffect: zod.string().nullish(),
+  fontFamily: zod.string().nullish(),
+  layoutStyle: zod.string().nullish(),
+  typewriterTexts: zod.array(zod.string()).optional(),
+  profileTitle: zod.string().nullish(),
+  showViews: zod.boolean().nullish(),
+  backgroundBlur: zod.number().nullish(),
+  backgroundType: zod.string().nullish(),
   links: zod.array(
     zod.object({
       id: zod.number(),

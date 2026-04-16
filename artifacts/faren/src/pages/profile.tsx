@@ -13,6 +13,7 @@ export default function ProfilePage() {
   
   const { data: profile, isLoading, error } = useGetUserByUsername(username || "", {
     query: {
+      queryKey: [] as any,
       enabled: !!username,
       retry: false,
     }

@@ -578,6 +578,26 @@ components:
           type: array
           items:
             type: string
+        particleEffect:
+          type: ["string", "null"]
+        clickEffect:
+          type: ["string", "null"]
+        fontFamily:
+          type: ["string", "null"]
+        layoutStyle:
+          type: ["string", "null"]
+        typewriterTexts:
+          type: array
+          items:
+            type: string
+        profileTitle:
+          type: ["string", "null"]
+        showViews:
+          type: ["boolean", "null"]
+        backgroundBlur:
+          type: ["number", "null"]
+        backgroundType:
+          type: ["string", "null"]
         links:
           type: array
           items:
@@ -651,6 +671,26 @@ components:
           type: array
           items:
             type: string
+        particleEffect:
+          type: ["string", "null"]
+        clickEffect:
+          type: ["string", "null"]
+        fontFamily:
+          type: ["string", "null"]
+        layoutStyle:
+          type: ["string", "null"]
+        typewriterTexts:
+          type: array
+          items:
+            type: string
+        profileTitle:
+          type: ["string", "null"]
+        showViews:
+          type: ["boolean", "null"]
+        backgroundBlur:
+          type: ["number", "null"]
+        backgroundType:
+          type: ["string", "null"]
         links:
           type: array
           items:
@@ -773,6 +813,10 @@ components:
           type: ["string", "null"]
         backgroundOpacity:
           type: ["number", "null"]
+        backgroundBlur:
+          type: ["number", "null"]
+        backgroundType:
+          type: ["string", "null"]
         glowColor:
           type: ["string", "null"]
         cursorStyle:
@@ -783,6 +827,22 @@ components:
           type: array
           items:
             type: string
+        particleEffect:
+          type: ["string", "null"]
+        clickEffect:
+          type: ["string", "null"]
+        fontFamily:
+          type: ["string", "null"]
+        layoutStyle:
+          type: ["string", "null"]
+        typewriterTexts:
+          type: array
+          items:
+            type: string
+        profileTitle:
+          type: ["string", "null"]
+        showViews:
+          type: ["boolean", "null"]
 
     ConnectDiscordBody:
       type: object

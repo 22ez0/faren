@@ -1,110 +1,164 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
-import { Link } from "wouter";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Search, Users, Heart, X } from "lucide-react";
 
 export default function Discover() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 20 });
+  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 24 });
   const [, setLocation] = useLocation();
 
-  const filteredProfiles = trendingProfiles?.filter(profile => 
-    profile.username.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredProfiles = trendingProfiles?.filter(profile =>
+    profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (profile.displayName && profile.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col relative overflow-hidden pb-20">
-      <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
-      
-      <header className="container mx-auto px-4 py-8 z-10">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
-          <div>
-            <Link href="/" className="text-xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent inline-block mb-2">
-              FAREN
-            </Link>
-            <h1 className="text-4xl font-extrabold tracking-tight">Discover</h1>
-            <p className="text-muted-foreground mt-2">Find your next favorite creator.</p>
-          </div>
-          
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input 
-              placeholder="Search profiles..." 
-              className="pl-10 h-12 bg-card/50 border-white/10 backdrop-blur-sm focus-visible:ring-primary rounded-xl"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {Array(12).fill(0).map((_, i) => (
-              <Skeleton key={i} className="h-72 rounded-2xl bg-card border border-white/5" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <AnimatePresence>
-              {filteredProfiles?.map((profile, i) => (
-                <motion.div
-                  key={profile.id}
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: i * 0.05, duration: 0.4 }}
-                  onClick={() => setLocation(`/${profile.username}`)}
-                  className="cursor-pointer"
+      {/* Nav */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5">
+        <Link href="/">
+          <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">FAREN</span>
+        </Link>
+        <Link href="/login" className="nav-link">Sign In</Link>
+      </nav>
+
+      {/* Hero */}
+      <div className="pt-32 pb-16 px-6 md:px-12">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <p className="label-caps mb-4">Browse</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+              <div>
+                <h1 className="text-5xl md:text-7xl font-bold tracking-tight uppercase leading-none">
+                  Discover
+                </h1>
+                <h1
+                  className="text-5xl md:text-7xl font-bold tracking-tight uppercase leading-none"
+                  style={{ WebkitTextStroke: '1px rgba(255,255,255,0.25)', color: 'transparent' }}
                 >
-                  <div className="group relative block h-72 rounded-2xl overflow-hidden bg-card border border-white/10 transition-all hover:border-primary/50 hover:shadow-[0_0_30px_rgba(139,92,246,0.15)]">
-                    <div 
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                      style={{ 
-                        backgroundImage: profile.backgroundUrl ? `url(${profile.backgroundUrl})` : 'none',
-                        opacity: (profile.backgroundOpacity || 50) / 100 
+                  Profiles
+                </h1>
+              </div>
+
+              {/* Search */}
+              <div className="relative max-w-sm w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search profiles..."
+                  className="w-full bg-white/[0.04] border border-white/10 pl-11 pr-10 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="glow-line" />
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="px-6 md:px-12 pb-24">
+        <div className="max-w-6xl mx-auto">
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {Array(12).fill(0).map((_, i) => (
+                <Skeleton key={i} className="aspect-[3/4] rounded-sm bg-white/5" />
+              ))}
+            </div>
+          ) : (
+            <AnimatePresence>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {filteredProfiles?.map((profile, i) => (
+                  <motion.div
+                    key={profile.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: i * 0.03, duration: 0.35 }}
+                    onClick={() => setLocation(`/${profile.username}`)}
+                    className="group aspect-[3/4] relative overflow-hidden rounded-sm cursor-pointer hover-lift"
+                  >
+                    {/* Background */}
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                      style={{
+                        backgroundImage: profile.backgroundUrl
+                          ? `url(${profile.backgroundUrl})`
+                          : `linear-gradient(135deg, #111 0%, #1a1a2e 100%)`,
+                        opacity: profile.backgroundUrl ? (profile.backgroundOpacity || 60) / 100 : 1,
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-                    
-                    <div className="absolute bottom-0 left-0 w-full p-6 flex flex-col items-center text-center">
-                      <div className="relative mb-4">
-                        <Avatar className="w-20 h-20 border-2 border-background shadow-xl">
-                          <AvatarImage src={profile.avatarUrl || undefined} />
-                          <AvatarFallback className="bg-primary/20 text-primary text-xl">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+
+                    {/* Hover shine */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-b from-white/5 to-transparent" />
+
+                    {/* Content */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <div className="relative w-9 h-9 rounded-full overflow-hidden border border-white/20 mb-2 flex-shrink-0">
+                        {profile.avatarUrl ? (
+                          <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-white/10 flex items-center justify-center text-xs font-bold">
                             {profile.username.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                          </div>
+                        )}
                         {profile.discordConnected && profile.discordStatus === 'online' && (
-                          <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-2 border-background rounded-full" />
+                          <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border border-black rounded-full" />
                         )}
                       </div>
-                      <div className="font-bold text-xl truncate w-full">{profile.displayName || profile.username}</div>
-                      <div className="text-sm text-primary/80 mb-3 truncate w-full">@{profile.username}</div>
-                      
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span><strong className="text-foreground">{profile.followersCount}</strong> followers</span>
-                        <span><strong className="text-foreground">{profile.likesCount}</strong> likes</span>
+
+                      <p className="text-sm font-bold truncate leading-tight">
+                        {profile.displayName || profile.username}
+                      </p>
+                      <p className="label-caps truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        @{profile.username}
+                      </p>
+
+                      <div className="flex items-center gap-3 mt-2 translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                        <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                          <Users className="w-2.5 h-2.5" />{profile.followersCount}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                          <Heart className="w-2.5 h-2.5" />{profile.likesCount}
+                        </span>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            
-            {filteredProfiles?.length === 0 && (
-              <div className="col-span-full py-20 text-center text-muted-foreground">
-                No profiles found matching "{searchQuery}"
+                  </motion.div>
+                ))}
               </div>
-            )}
-          </div>
-        )}
-      </header>
+
+              {filteredProfiles?.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-32 text-center"
+                >
+                  <p className="label-caps mb-4">No Results</p>
+                  <p className="text-2xl font-bold uppercase">"{searchQuery}" Not Found</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

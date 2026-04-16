@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,21 +6,11 @@ import { motion } from "framer-motion";
 import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { ArrowRight } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(6, "Minimum 6 characters"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -30,115 +19,103 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
-  
   const loginMutation = useLogin();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = (data: LoginFormValues) => {
-    loginMutation.mutate(
-      { data },
-      {
-        onSuccess: (res) => {
-          login(res.token);
-          setLocation("/dashboard");
-        },
-        onError: (err: any) => {
-          toast({
-            title: "Login failed",
-            description: err.error || "An unexpected error occurred",
-            variant: "destructive",
-          });
-        },
-      }
-    );
+    loginMutation.mutate({ data }, {
+      onSuccess: (res) => { login(res.token); setLocation("/dashboard"); },
+      onError: (err: any) => {
+        toast({ title: "Login failed", description: err.error || "Invalid credentials", variant: "destructive" });
+      },
+    });
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden p-4">
-      {/* Ambient background */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 blur-[120px] rounded-full mix-blend-screen" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/20 blur-[120px] rounded-full mix-blend-screen" />
-      </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Nav */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5">
+        <Link href="/">
+          <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">FAREN</span>
+        </Link>
+        <Link href="/register" className="nav-link">Create account</Link>
+      </nav>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, type: "spring" }}
-        className="w-full max-w-md z-10"
-      >
-        <div className="bg-card/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-              Welcome back
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Enter your credentials to access your Faren profile
-            </p>
+      {/* Background */}
+      <div
+        className="fixed inset-0 bg-cover bg-center opacity-[0.08]"
+        style={{ backgroundImage: "url(https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=80)" }}
+      />
+      <div className="fixed inset-0 bg-gradient-to-br from-black via-black to-black/90" />
+
+      <div className="flex-1 flex items-center justify-center px-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-sm"
+        >
+          <div className="mb-10">
+            <p className="label-caps mb-4">Sign In</p>
+            <h1 className="text-4xl font-bold tracking-tight uppercase">Welcome<br />Back</h1>
           </div>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="you@example.com"
-                        className="bg-background/50 border-white/10 focus-visible:ring-primary"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        className="bg-background/50 border-white/10 focus-visible:ring-primary"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11"
-                disabled={loginMutation.isPending}
-              >
-                {loginMutation.isPending ? "Signing in..." : "Sign in"}
-              </Button>
-            </form>
-          </Form>
+          <div className="glow-line mb-10" />
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link href="/register" className="text-primary hover:underline font-medium">
-              Create one
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <div>
+              <label className="label-caps block mb-2">Email</label>
+              <input
+                {...form.register("email")}
+                type="email"
+                placeholder="you@example.com"
+                className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
+              />
+              {form.formState.errors.email && (
+                <p className="text-red-400 text-xs mt-1">{form.formState.errors.email.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="label-caps block mb-2">Password</label>
+              <input
+                {...form.register("password")}
+                type="password"
+                placeholder="••••••••"
+                className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
+              />
+              {form.formState.errors.password && (
+                <p className="text-red-400 text-xs mt-1">{form.formState.errors.password.message}</p>
+              )}
+            </div>
+
+            <motion.button
+              type="submit"
+              disabled={loginMutation.isPending}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className="btn-solid-white w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loginMutation.isPending ? "Signing in..." : (
+                <>Sign in <ArrowRight className="ml-2 w-4 h-4 inline" /></>
+              )}
+            </motion.button>
+          </form>
+
+          <div className="glow-line mt-10 mb-6" />
+
+          <p className="label-caps text-center">
+            No account?{" "}
+            <Link href="/register" className="text-white/60 hover:text-white transition-colors">
+              Create one →
             </Link>
-          </div>
-        </div>
-      </motion.div>
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }

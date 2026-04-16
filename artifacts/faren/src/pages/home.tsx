@@ -1,111 +1,272 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ArrowRight, Users, Heart, Eye } from "lucide-react";
 
 export default function Home() {
-  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 4 });
+  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 6 });
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-accent/20 blur-[120px] rounded-full" />
-      </div>
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
 
-      <header className="container mx-auto px-4 py-6 flex items-center justify-between z-10">
-        <div className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-          FAREN
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/login">
-            <Button variant="ghost" className="hover:bg-white/5">Sign In</Button>
-          </Link>
+      {/* ── NAV ───────────────────────────────────────────────── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5">
+        <Link href="/">
+          <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">
+            FAREN
+          </span>
+        </Link>
+        <div className="flex items-center gap-8">
+          <Link href="/discover" className="nav-link">Discover</Link>
+          <Link href="/login" className="nav-link">Sign In</Link>
           <Link href="/register">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(139,92,246,0.4)]">
-              Claim your link
-            </Button>
+            <span className="btn-outline-white text-xs">Claim Your Link</span>
           </Link>
         </div>
-      </header>
+      </nav>
 
-      <main className="flex-1 container mx-auto px-4 py-20 z-10 flex flex-col items-center justify-center text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-4xl mx-auto"
-        >
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
-            Your digital identity,<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-              amplified.
-            </span>
-          </h1>
-          <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            The ultimate personalized profile platform for creators, gamers, and music heads. Dripping in glassmorphism, powered by your data.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+      {/* ── HERO ──────────────────────────────────────────────── */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
+        {/* background image overlay */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-[0.12]"
+          style={{
+            backgroundImage: "url(https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=80)"
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black" />
+
+        <div className="relative z-10 flex flex-col items-center text-center max-w-5xl mx-auto">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="label-caps mb-8"
+          >
+            Personalized Profile Platform
+          </motion.p>
+
+          <div className="overflow-hidden">
+            <motion.div
+              initial={{ y: 120, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <h1 className="display-heading text-white leading-none">YOUR</h1>
+              <h1 className="display-heading-outline leading-none">PROFILE</h1>
+              <h1 className="display-heading text-white leading-none">EVERYWHERE</h1>
+            </motion.div>
+          </div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="mt-10 max-w-md text-sm leading-relaxed"
+            style={{ color: 'rgba(255,255,255,0.45)' }}
+          >
+            The most powerful personalized link-in-bio platform. Discord status, music tracking, particle effects, custom fonts — fully yours.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="mt-10 flex flex-col sm:flex-row items-center gap-4"
+          >
             <Link href="/register">
-              <Button size="lg" className="h-14 px-8 text-lg bg-primary hover:bg-primary/90 shadow-[0_0_30px_rgba(139,92,246,0.5)]">
+              <button className="btn-solid-white">
                 Build your shrine
-              </Button>
+                <ArrowRight className="ml-2 w-4 h-4 inline" />
+              </button>
             </Link>
             <Link href="/discover">
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/10 hover:bg-white/5">
-                Explore trending
-              </Button>
+              <button className="btn-outline-white">
+                Explore profiles
+              </button>
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 scroll-indicator"
+        >
+          <span>Scroll</span>
+        </motion.div>
+      </section>
+
+      {/* ── FEATURES ROW ──────────────────────────────────────── */}
+      <section className="py-24 px-6 md:px-12">
+        <div className="max-w-6xl mx-auto">
+          <div className="glow-line mb-16" />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5">
+            {[
+              {
+                title: "Discord Live",
+                sub: "Status, activity, avatar — all synced in real time.",
+                stat: "Rich Presence",
+              },
+              {
+                title: "Music Widget",
+                sub: "Spotify & Last.fm now playing, live progress bar.",
+                stat: "Now Playing",
+              },
+              {
+                title: "Full Effects",
+                sub: "Particle rain, sakura, stars, cursor trails, click effects.",
+                stat: "15+ Effects",
+              },
+              {
+                title: "Custom Fonts",
+                sub: "Mono, pixel, cursive, serif — your vibe, your font.",
+                stat: "5 Fonts",
+              },
+              {
+                title: "Analytics",
+                sub: "Views, followers, likes, top countries — all yours.",
+                stat: "Full Dashboard",
+              },
+              {
+                title: "Typewriter Bio",
+                sub: "Cycle through texts with a smooth typewriter effect.",
+                stat: "Animated",
+              },
+            ].map((feat, i) => (
+              <motion.div
+                key={feat.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.07 }}
+                className="p-8 bg-background hover:bg-white/[0.03] transition-colors duration-300 group"
+              >
+                <p className="label-caps mb-3">{feat.stat}</p>
+                <h3 className="text-lg font-bold tracking-tight mb-2">{feat.title}</h3>
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{feat.sub}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="glow-line mt-16" />
+        </div>
+      </section>
+
+      {/* ── TRENDING PROFILES ──────────────────────────────────── */}
+      <section className="py-16 px-6 md:px-12 pb-32">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-end justify-between mb-12">
+            <div>
+              <p className="label-caps mb-3">Community</p>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight uppercase">Trending</h2>
+            </div>
+            <Link href="/discover" className="nav-link flex items-center gap-2">
+              See all <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-        </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-          className="mt-24 w-full"
-        >
-          <h2 className="text-2xl font-bold mb-8 text-center">Featured Profiles</h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {isLoading ? (
-              Array(4).fill(0).map((_, i) => (
-                <div key={i} className="h-64 rounded-xl bg-white/5 animate-pulse" />
-              ))
-            ) : (
-              trendingProfiles?.map((profile, i) => (
-                <motion.div
-                  key={profile.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 + (i * 0.1) }}
-                >
-                  <Link href={`/${profile.username}`}>
-                    <div className="group relative block h-64 rounded-xl overflow-hidden bg-card border border-white/10 transition-all hover:border-primary/50 hover:shadow-[0_0_30px_rgba(139,92,246,0.2)]">
-                      <div 
-                        className="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-60 transition-opacity"
-                        style={{ backgroundImage: profile.backgroundUrl ? `url(${profile.backgroundUrl})` : 'none' }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
-                      
-                      <div className="absolute bottom-0 left-0 w-full p-6 flex flex-col items-center text-center">
-                        <Avatar className="w-16 h-16 border-2 border-background mb-3">
-                          <AvatarImage src={profile.avatarUrl || undefined} />
-                          <AvatarFallback>{profile.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-bold text-lg">{profile.displayName || profile.username}</div>
-                        <div className="text-sm text-primary">@{profile.username}</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {isLoading
+              ? Array(6).fill(0).map((_, i) => (
+                  <div key={i} className="aspect-[3/4] rounded-sm bg-white/5 animate-pulse" />
+                ))
+              : trendingProfiles?.map((profile, i) => (
+                  <motion.div
+                    key={profile.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.06 }}
+                  >
+                    <Link href={`/${profile.username}`}>
+                      <div className="group aspect-[3/4] relative overflow-hidden rounded-sm cursor-pointer hover-lift">
+                        {/* bg */}
+                        <div
+                          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                          style={{
+                            backgroundImage: profile.backgroundUrl
+                              ? `url(${profile.backgroundUrl})`
+                              : `linear-gradient(135deg, #1a1a2e, #16213e)`,
+                            opacity: profile.backgroundUrl ? (profile.backgroundOpacity || 60) / 100 : 1,
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+
+                        {/* content */}
+                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20 mb-2">
+                            {profile.avatarUrl ? (
+                              <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-white/10 text-xs font-bold">
+                                {profile.username.substring(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            {profile.discordConnected && profile.discordStatus === 'online' && (
+                              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-black rounded-full" />
+                            )}
+                          </div>
+                          <p className="text-sm font-bold truncate">{profile.displayName || profile.username}</p>
+                          <p className="label-caps mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                            @{profile.username}
+                          </p>
+
+                          {/* stats */}
+                          <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                              <Users className="w-2.5 h-2.5" />{profile.followersCount}
+                            </span>
+                            <span className="flex items-center gap-1 text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                              <Heart className="w-2.5 h-2.5" />{profile.likesCount}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))
-            )}
+                    </Link>
+                  </motion.div>
+                ))}
           </div>
-        </motion.div>
-      </main>
+        </div>
+      </section>
+
+      {/* ── CTA ───────────────────────────────────────────────── */}
+      <section className="py-32 px-6 relative overflow-hidden border-t border-white/5">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-[0.06]"
+          style={{ backgroundImage: "url(https://images.unsplash.com/photo-1614729939124-032d1e6c9945?w=1920&q=80)" }}
+        />
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <p className="label-caps mb-6">Ready?</p>
+            <h2 className="display-heading text-white mb-4 leading-none">MAKE</h2>
+            <h2 className="display-heading-outline mb-12 leading-none">YOUR MARK</h2>
+            <Link href="/register">
+              <button className="btn-solid-white">
+                Get started — it's free
+                <ArrowRight className="ml-2 w-4 h-4 inline" />
+              </button>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ────────────────────────────────────────────── */}
+      <footer className="border-t border-white/5 px-6 md:px-12 py-8 flex items-center justify-between">
+        <span className="text-xs font-bold tracking-[0.25em] uppercase text-white/30">FAREN</span>
+        <div className="flex gap-8">
+          <Link href="/discover" className="nav-link">Discover</Link>
+          <Link href="/login" className="nav-link">Sign In</Link>
+          <Link href="/register" className="nav-link">Register</Link>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -6,17 +6,24 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Project: Faren
 
-**Faren** is a personalized profile platform — dark, ultra-modern, glassmorphism aesthetic with neon purple accents. Think guns.lol meets last.fm but premium.
+**Faren** is a personalized profile platform inspired by guns.lol with the visual design of keefnow.com.br. Pure black backgrounds, massive bold uppercase typography, solid + outline text, minimal tracked-letter buttons.
 
 ### Key Features
 - Personalized user profiles with custom colors, backgrounds, badges, social links
-- **Live preview** while editing profile (split-screen editor)
+- **Live preview** while editing profile (split-screen editor with 4 tabs)
+- **Particle effects** — snow, stars, sakura, fireflies, bubbles, rain
+- **Click effects** — hearts, stars, sparkles, explosions on cursor click
+- **Custom fonts** — default (Inter), mono, cursive, serif, pixel (8-bit)
+- **Typewriter text** — cycles through custom texts with animated typing
+- **Layout styles** — centered or left-aligned profile layout
+- **Background types** — image, video, or solid color with opacity + blur controls
 - **Discord rich integration** — status badge (online/idle/dnd/offline), activity, avatar sync
 - **Music tracking** — Now Playing widget with Spotify/Last.fm integration
-- Followers, likes, views social system
+- Followers, likes, views social system (show/hide view count toggle)
+- Badge system — Verified, Creator, Gamer, Developer, Streamer, Artist, etc.
 - Analytics dashboard (views by day/week/month, top countries)
 - Trending profiles discovery page
-- Dark mode by default with electric violet/purple neons
+- Dark mode, pure black theme (keefnow.com.br aesthetic)
 
 ### Routes
 - `/` — Landing page with hero and trending profiles
