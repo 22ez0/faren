@@ -108,10 +108,16 @@ export default function Login() {
 
           <div className="glow-line mt-10 mb-6" />
 
-          <p className="label-caps text-center">
+          <p className="label-caps text-center mb-4">
             Sem conta?{" "}
             <Link href="/register" className="text-white/60 hover:text-white transition-colors">
               Criar uma →
+            </Link>
+          </p>
+          <p className="label-caps text-center">
+            Esqueceu a senha?{" "}
+            <Link href="/suporte" className="text-white/60 hover:text-white transition-colors">
+              Pedir ajuda →
             </Link>
           </p>
         </motion.div>

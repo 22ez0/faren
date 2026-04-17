@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import jwt from "jsonwebtoken";
-import { db, usersTable, profilesTable, profileReportsTable } from "@workspace/db";
-import { eq, ilike, or, desc, asc } from "drizzle-orm";
+import { db, usersTable, profilesTable, profileReportsTable, supportTicketsTable, postReportsTable, postsTable } from "@workspace/db";
+import { eq, ilike, or, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 const ADMIN_LOGIN = process.env.ADMIN_LOGIN ?? "keefaren";
@@ -119,6 +119,61 @@ router.post("/admin/reports/:reportId/resolve", requireAdmin, async (req, res): 
       await db.update(usersTable).set({ banned: true }).where(eq(usersTable.id, report.reportedUserId));
     }
   }
+
+  res.json({ success: true });
+});
+
+router.get("/admin/support", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(supportTicketsTable)
+    .orderBy(desc(supportTicketsTable.createdAt))
+    .limit(200);
+  res.json(rows);
+});
+
+router.post("/admin/support/:ticketId/resolve", requireAdmin, async (req, res): Promise<void> => {
+  const ticketId = Number(req.params.ticketId);
+  const status = req.body?.status || "resolved";
+  await db.update(supportTicketsTable).set({ status }).where(eq(supportTicketsTable.id, ticketId));
+  res.json({ success: true });
+});
+
+router.get("/admin/post-reports", requireAdmin, async (req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      id: postReportsTable.id,
+      postId: postReportsTable.postId,
+      reason: postReportsTable.reason,
+      status: postReportsTable.status,
+      reporterIp: postReportsTable.reporterIp,
+      createdAt: postReportsTable.createdAt,
+      postContent: postsTable.content,
+      postUserId: postsTable.userId,
+      reporterUserId: postReportsTable.reporterUserId,
+    })
+    .from(postReportsTable)
+    .leftJoin(postsTable, eq(postReportsTable.postId, postsTable.id))
+    .where(eq(postReportsTable.status, "pending"))
+    .orderBy(desc(postReportsTable.createdAt))
+    .limit(100);
+  res.json(rows);
+});
+
+router.post("/admin/post-reports/:reportId/resolve", requireAdmin, async (req, res): Promise<void> => {
+  const reportId = Number(req.params.reportId);
+  const action = req.body?.action as "dismiss" | "remove" | undefined;
+
+  if (action === "remove") {
+    const [report] = await db.select().from(postReportsTable).where(eq(postReportsTable.id, reportId)).limit(1);
+    if (report) {
+      await db.update(postsTable).set({ status: "removed" }).where(eq(postsTable.id, report.postId));
+    }
+  }
+
+  await db.update(postReportsTable)
+    .set({ status: action === "remove" ? "actioned" : "dismissed" })
+    .where(eq(postReportsTable.id, reportId));
 
   res.json({ success: true });
 });

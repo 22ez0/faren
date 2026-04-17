@@ -41,6 +41,7 @@ export const profilesTable = pgTable("profiles", {
   showViews: boolean("show_views").default(true),
   backgroundBlur: real("background_blur").default(0),
   backgroundType: text("background_type").default("image"),
+  dashboardBgColor: text("dashboard_bg_color").default("#000000"),
   followersCount: integer("followers_count").default(0).notNull(),
   followingCount: integer("following_count").default(0).notNull(),
   likesCount: integer("likes_count").default(0).notNull(),

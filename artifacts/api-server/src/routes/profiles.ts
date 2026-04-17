@@ -71,6 +71,7 @@ function formatProfile(
     followingCount: profile.followingCount,
     likesCount: profile.likesCount,
     viewsCount: profile.viewsCount,
+    dashboardBgColor: profile.dashboardBgColor ?? "#000000",
     createdAt: profile.createdAt.toISOString(),
   };
 }
@@ -150,6 +151,7 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     ...(showViews !== undefined ? { showViews } : {}),
     ...(showDiscordAvatar !== undefined ? { showDiscordAvatar } : {}),
     ...(showDiscordPresence !== undefined ? { showDiscordPresence } : {}),
+    ...((req.body as any).dashboardBgColor !== undefined ? { dashboardBgColor: (req.body as any).dashboardBgColor } : {}),
   }).where(eq(profilesTable.userId, userId)).returning();
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);

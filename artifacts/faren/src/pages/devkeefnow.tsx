@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, ShieldBan, BadgeCheck, LogOut, AlertTriangle, CheckCircle, XCircle, Users, Flag } from "lucide-react";
+import { Search, ShieldBan, BadgeCheck, LogOut, AlertTriangle, CheckCircle, XCircle, Users, Flag, HeadphonesIcon, FileText } from "lucide-react";
 
 interface AdminUser {
   id: number;
@@ -29,6 +29,28 @@ interface AdminReport {
   reportedDisplayName: string | null;
 }
 
+interface SupportTicket {
+  id: number;
+  email: string;
+  username: string | null;
+  subject: string;
+  message: string;
+  socialNetwork: string | null;
+  status: string;
+  createdAt: string | null;
+}
+
+interface PostReport {
+  id: number;
+  postId: number;
+  reason: string;
+  status: string;
+  reporterIp: string | null;
+  createdAt: string | null;
+  postContent: string | null;
+  reporterUserId: number | null;
+}
+
 const apiBase = `${(import.meta.env.VITE_API_URL || import.meta.env.BASE_URL).replace(/\/+$/, "")}/api`;
 
 export default function DevKeefnow() {
@@ -38,7 +60,9 @@ export default function DevKeefnow() {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [reports, setReports] = useState<AdminReport[]>([]);
-  const [activeTab, setActiveTab] = useState<"users" | "reports">("users");
+  const [support, setSupport] = useState<SupportTicket[]>([]);
+  const [postReports, setPostReports] = useState<PostReport[]>([]);
+  const [activeTab, setActiveTab] = useState<"users" | "reports" | "support" | "postReports">("users");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -99,10 +123,38 @@ export default function DevKeefnow() {
     }
   };
 
+  const fetchSupport = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await request(`/admin/support`);
+      setSupport(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPostReports = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await request(`/admin/post-reports`);
+      setPostReports(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
     fetchUsers();
     fetchReports();
+    fetchSupport();
+    fetchPostReports();
   }, [token]);
 
   useEffect(() => {
@@ -126,6 +178,22 @@ export default function DevKeefnow() {
     });
     fetchReports();
     fetchUsers(query);
+  };
+
+  const resolveTicket = async (ticketId: number, status: string) => {
+    await request(`/admin/support/${ticketId}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    });
+    fetchSupport();
+  };
+
+  const resolvePostReport = async (reportId: number, action: "dismiss" | "remove") => {
+    await request(`/admin/post-reports/${reportId}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+    fetchPostReports();
   };
 
   if (!token) {
@@ -157,6 +225,9 @@ export default function DevKeefnow() {
     );
   }
 
+  const pendingSupport = support.filter(t => t.status === 'pending').length;
+  const pendingPostReports = postReports.length;
+
   return (
     <div className="min-h-screen bg-black text-white p-6 md:p-10">
       <div className="max-w-5xl mx-auto">
@@ -174,23 +245,43 @@ export default function DevKeefnow() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0 mb-6 border-b border-white/10">
+        <div className="flex gap-0 mb-6 border-b border-white/10 flex-wrap">
           <button
             onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold tracking-wider uppercase transition-colors border-b-2 ${activeTab === "users" ? "border-white text-white" : "border-transparent text-white/40 hover:text-white/70"}`}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold tracking-wider uppercase transition-colors border-b-2 ${activeTab === "users" ? "border-white text-white" : "border-transparent text-white/40 hover:text-white/70"}`}
           >
             <Users className="w-4 h-4" />
             Usuários
             <span className="ml-1 text-xs text-white/30">{users.length}</span>
           </button>
           <button
-            onClick={() => setActiveTab("reports")}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold tracking-wider uppercase transition-colors border-b-2 ${activeTab === "reports" ? "border-red-400 text-red-400" : "border-transparent text-white/40 hover:text-white/70"}`}
+            onClick={() => { setActiveTab("reports"); fetchReports(); }}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold tracking-wider uppercase transition-colors border-b-2 ${activeTab === "reports" ? "border-red-400 text-red-400" : "border-transparent text-white/40 hover:text-white/70"}`}
           >
             <Flag className="w-4 h-4" />
-            Denúncias
+            Denúncias Perfil
             {reports.length > 0 && (
               <span className="ml-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{reports.length}</span>
+            )}
+          </button>
+          <button
+            onClick={() => { setActiveTab("postReports"); fetchPostReports(); }}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold tracking-wider uppercase transition-colors border-b-2 ${activeTab === "postReports" ? "border-orange-400 text-orange-400" : "border-transparent text-white/40 hover:text-white/70"}`}
+          >
+            <FileText className="w-4 h-4" />
+            Denúncias Posts
+            {pendingPostReports > 0 && (
+              <span className="ml-1 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pendingPostReports}</span>
+            )}
+          </button>
+          <button
+            onClick={() => { setActiveTab("support"); fetchSupport(); }}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold tracking-wider uppercase transition-colors border-b-2 ${activeTab === "support" ? "border-blue-400 text-blue-400" : "border-transparent text-white/40 hover:text-white/70"}`}
+          >
+            <HeadphonesIcon className="w-4 h-4" />
+            Suporte
+            {pendingSupport > 0 && (
+              <span className="ml-1 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pendingSupport}</span>
             )}
           </button>
         </div>
@@ -258,7 +349,7 @@ export default function DevKeefnow() {
           </>
         )}
 
-        {/* Reports Tab */}
+        {/* Profile Reports Tab */}
         {activeTab === "reports" && (
           <>
             <div className="flex items-center justify-between mb-4">
@@ -305,6 +396,113 @@ export default function DevKeefnow() {
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
                   <CheckCircle className="w-10 h-10 text-green-500/50" />
                   <p className="text-white/30 text-sm">Nenhuma denúncia pendente.</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Post Reports Tab */}
+        {activeTab === "postReports" && (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-white/30 text-xs">{postReports.length} denúncia{postReports.length !== 1 ? 's' : ''} de post pendente{postReports.length !== 1 ? 's' : ''}</p>
+              <button onClick={fetchPostReports} className="text-xs text-white/40 hover:text-white transition-colors">Atualizar</button>
+            </div>
+            {loading && <p className="text-white/40 text-sm">Carregando...</p>}
+            <div className="space-y-3">
+              {postReports.map(report => (
+                <div key={report.id} className="border border-orange-500/20 bg-white/[0.03] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4 text-orange-400 flex-shrink-0" />
+                        <span className="font-bold text-sm">Post #{report.postId}</span>
+                        <span className="text-xs text-white/30">Motivo: {report.reason}</span>
+                      </div>
+                      {report.postContent && (
+                        <p className="text-xs text-white/50 bg-white/[0.03] p-2 rounded-sm mb-2 line-clamp-3 whitespace-pre-wrap">{report.postContent}</p>
+                      )}
+                      <div className="flex gap-4 text-xs text-white/25 flex-wrap">
+                        {report.reporterIp && <span>IP: {report.reporterIp}</span>}
+                        {report.createdAt && <span>{new Date(report.createdAt).toLocaleString('pt-BR')}</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => resolvePostReport(report.id, "dismiss")}
+                        className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider flex items-center gap-1.5 hover:bg-white/5 transition-colors"
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Ignorar
+                      </button>
+                      <button
+                        onClick={() => resolvePostReport(report.id, "remove")}
+                        className="px-3 py-2 border border-red-500/30 text-xs uppercase tracking-wider text-red-300 flex items-center gap-1.5 hover:bg-red-500/10 transition-colors"
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Remover post
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {!loading && postReports.length === 0 && (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <CheckCircle className="w-10 h-10 text-green-500/50" />
+                  <p className="text-white/30 text-sm">Nenhuma denúncia de post pendente.</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Support Tab */}
+        {activeTab === "support" && (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-white/30 text-xs">{support.length} ticket{support.length !== 1 ? 's' : ''} de suporte</p>
+              <button onClick={fetchSupport} className="text-xs text-white/40 hover:text-white transition-colors">Atualizar</button>
+            </div>
+            {loading && <p className="text-white/40 text-sm">Carregando...</p>}
+            <div className="space-y-3">
+              {support.map(ticket => (
+                <div key={ticket.id} className={`border p-4 ${ticket.status === 'pending' ? 'border-blue-500/20 bg-blue-500/[0.03]' : 'border-white/10 bg-white/[0.02]'}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <HeadphonesIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        <span className="font-bold text-sm">{ticket.subject}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${ticket.status === 'pending' ? 'bg-blue-500/20 text-blue-400' : ticket.status === 'resolved' ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/40'}`}>
+                          {ticket.status === 'pending' ? 'Pendente' : ticket.status === 'resolved' ? 'Resolvido' : ticket.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/50 mb-1">📧 {ticket.email}{ticket.username ? ` • @${ticket.username}` : ''}</p>
+                      {ticket.socialNetwork && <p className="text-xs text-white/40 mb-1">Rede social: {ticket.socialNetwork}</p>}
+                      <p className="text-sm text-white/70 whitespace-pre-wrap bg-white/[0.03] p-2 rounded-sm mt-2 mb-2">{ticket.message}</p>
+                      {ticket.createdAt && <p className="text-xs text-white/25">{new Date(ticket.createdAt).toLocaleString('pt-BR')}</p>}
+                    </div>
+                    {ticket.status === 'pending' && (
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => resolveTicket(ticket.id, 'resolved')}
+                          className="px-3 py-2 border border-green-500/30 text-xs uppercase tracking-wider text-green-400 flex items-center gap-1.5 hover:bg-green-500/10 transition-colors"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" /> Resolver
+                        </button>
+                        <button
+                          onClick={() => resolveTicket(ticket.id, 'dismissed')}
+                          className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider flex items-center gap-1.5 hover:bg-white/5 transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Fechar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!loading && support.length === 0 && (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <CheckCircle className="w-10 h-10 text-green-500/50" />
+                  <p className="text-white/30 text-sm">Nenhum ticket de suporte.</p>
                 </div>
               )}
             </div>
