@@ -1,0 +1,53 @@
+meu dev pediu pro agent dele fazer isso abaixo = 
+
+"um amigo meu conseguiu criar mais de uma conta, entao alguem poderia criar varias de uma vez usando selfbot ou não? se sim arrume, pegue alguma api da cloudfare, pra verificar se é humano.
+
+crição de perfil ta bugada, cada alteração precisa salvar se não sai tudo, quero que em cada sesão de edição de perfil fique salvo de forma prática sem erros, por exemplo agora, criei meu perfil salvei e ficou padrão quando entrei pra editar novamente, ou quando eu to arrumando ai saio do basico, para tema e volta do 0, assim em diante.
+
+quando eu entro no perfil de alguem e dou f5 aumenta a quantidade de visualização, não era pra ser assim, era pra ser por ip a quantidade de visualização, e que identificasse vps, vpn padrão ou até o navegador onde esta rodando, pois ai não aumenta artificialmente a quantidade de visualização.
+
+o verificado, quando eu dou verificado para uma pessoa e ela edita o perfil, o verificado some. e eu quero aquele verificado no estilo do instagram e twiter, que fica do lado do nome, não do jeito que ta agora.
+
+ative a função de seguir perfil, curtir e quando um usuario tiver editando seu perfil se ele colocar @algum user esse user fica clicavel e leva pra quem ele marcou, exemplo = eu edito meu perfil e coloco na bio "meu melhor amigo @gustavo" esse @gustavo pode ser clicavel, e quando clicado leva para https://faren.com.br/gustavo entendeu?
+
+tambem coloque um limite de nome de usuario criado para 15 letras no maximo, e nao permita criar nick com caractere invisivel ou especial, somente letras e numeros.
+
+nao permita criar o user keefaren, pois leva para o painel admin.
+
+np painel admin é pra aparecer todas as contas, e que de pra pesquisar entre elas. pois eu não consigo ver contas novs criadas entendeu. entao no painel admin é pra aparecer a lista completa.
+
+quero a opçao de denunciar perfil, quando denunciar vai aparecer no painel admin uma aba de perfis pra analise.
+
+quero uma aba no painel admin onde conseguimos ver contas que subiram suporte pra alguma duvida ou recuperação de conta, quando na pagina inicil se esquecer senha, clic na opção esqueci a senha. ai pede email caso tiver ou lembrar ou algum rede social.
+
+no mobile a musica do spotify vai como previa, consegue arrumar? e quando entrar no perfil mesmo se for spotify ou soundcloud a musica ja deve tocar automaticamente.
+
+coloque mais funçoes de arrumar perfil, novos efeitos, novos temas padroes e opção de criar template.
+
+ajuste o layote pra ser respondivo de acordo com as definicioes de tela atual do tablet pc e celular, pra se ajustar da melhor forma, coloque opção pra mudar a lingua da pagina em inlges no inicio e dentro dela tambem. opção de alterar cor de fundo da paginahttps://faren.com.br/dashboard para cada usuario, por exemplo pra mim ta preto que é o pdarao, mas eu posso alterar a cor pra rosa pra mim por exemplo, coloque cores claras e escuras que nao mude deixando feio, cores claras vao ser fraco ao inves de choque, e xores escuras vao ser gradiente.
+
+na pagina de dashboard, coloque tipo um "instgaram" da comunidade, onde pode fazer postagem e quando clicar no perfil abre aquele perfil, seria mais ou menos assim https://faren.com.br/dashboard https://faren.com.br/dashboard/comunidade ai pode fazer postagem como foto, video, post etc. que tenha duas areas, uma do perfil visual e outra no estilo intsgaram twitter que mostra as postagens, midia etc. coloque regras padrao do instagram, e cooque opão de denunciar post, vai pra nósna aba de post denunciado no nosso painel.
+
+opçao de curtir post, e comentar, se seguir vai seguir normalmnete ai aparece no perfil visual e social, cooque uma opão no perfil visual e social para mostrar quantas constas esta seguindo, na pagina social, o verificado aparece no nome tambem."
+
+
+e o agent terminou e disse que fez isso = "Backend (API Server)
+
+Username validation — max 15 chars, only a-z 0-9 _, no leading/trailing/double underscores, ~30 reserved names blacklisted (keefaren, admin, dashboard, etc.)
+Anti-bot + IP view dedup — bots filtered by User-Agent pattern; same IP can only count as a view once per 24h per profile
+Report endpoint — POST /api/users/:username/report with rate limiting (1 per IP per day per profile), stores reason + details
+Admin routes rebuilt — auto-loads all 200 users on open, real-time search, toggle verified, ban/unban; full reports tab with dismiss/ban actions
+Frontend
+
+Register page — validates username inline with the same rules (lowercase only, max 15, no reserved names)
+Verified badge inline — blue checkmark appears directly next to the display name, no longer duplicated in the badge list
+@mentions in bio — any @username in a bio becomes a clickable link to that profile
+Music autoplay — audio tracks play automatically when the profile loads; SoundCloud and Spotify embeds also set to autoplay
+Report modal — "Denunciar perfil" button in footer (hidden from profile owner), opens a modal with 5 reason options + optional details field
+Follow/Like wired up — profile.tsx now properly calls the backend follow/unfollow and like endpoints
+Form persistence fixed — replaced useState(formHydrated) with useRef (no stale re-render dependency), and most importantly save() now resets the ref and refetches fresh profile data after saving — your edits will persist correctly after saving
+The Render backend will auto-deploy as soon as these changes sync to GitHub."
+
+
+mas nao mudou nada no meu site, consegue verificr o motivo? github token acess = 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 
+render token api acess = rnd_GMy59O1abn5j1HjynBe3yRna6xIf
