@@ -24,11 +24,29 @@ function newToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+const RESERVED_USERNAMES = new Set([
+  'keefaren', 'admin', 'administrator', 'api', 'static', 'dashboard',
+  'login', 'register', 'signup', 'profile', 'settings', 'help', 'support',
+  'root', 'system', 'moderator', 'mod', 'staff', 'team', 'official',
+  'faren', 'keef', 'null', 'undefined', 'test', 'demo', 'example',
+  'comunidade', 'community', 'notifications', 'feed', 'explore', 'search',
+]);
+
+function validateUsername(username: string): string | null {
+  if (username.length < 3) return "Nome de usuário deve ter pelo menos 3 caracteres.";
+  if (username.length > 15) return "Nome de usuário deve ter no máximo 15 caracteres.";
+  if (!/^[a-z0-9_]+$/.test(username)) return "Nome de usuário só pode ter letras minúsculas, números e _";
+  if (username.startsWith('_') || username.endsWith('_')) return "Nome de usuário não pode começar ou terminar com _";
+  if (/__/.test(username)) return "Nome de usuário não pode ter _ consecutivos.";
+  if (RESERVED_USERNAMES.has(username.toLowerCase())) return "Este nome de usuário não está disponível.";
+  return null;
+}
+
 router.post("/auth/register", async (req, res): Promise<void> => {
   const ip = getClientIp(req);
   const now = Date.now();
   const attempt = registerAttempts.get(ip);
-  if (attempt && attempt.resetAt > now && attempt.count >= 5) {
+  if (attempt && attempt.resetAt > now && attempt.count >= 3) {
     res.status(429).json({ error: "Muitas contas criadas nesse IP. Tente novamente mais tarde." });
     return;
   }
@@ -45,6 +63,12 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
 
   const { email, username, password, displayName } = parsed.data;
+
+  const usernameError = validateUsername(username.toLowerCase());
+  if (usernameError) {
+    res.status(400).json({ error: usernameError });
+    return;
+  }
 
   const [existing] = await db
     .select()

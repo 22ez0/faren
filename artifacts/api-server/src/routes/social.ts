@@ -1,8 +1,21 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { db, usersTable, profilesTable, followersTable, profileLikesTable, profileViewsTable } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gt } from "drizzle-orm";
 import { RecordProfileViewBody } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return (raw?.split(",")[0] || req.socket.remoteAddress || "unknown").trim();
+}
+
+const BOT_PATTERNS = /bot|crawler|spider|scraper|headless|puppeteer|playwright|selenium|curl|wget|python|java|go-http|axios|httpclient|okhttp/i;
+
+function isBot(userAgent: string | undefined): boolean {
+  if (!userAgent || userAgent.length < 10) return true;
+  return BOT_PATTERNS.test(userAgent);
+}
 
 const router: IRouter = Router();
 
@@ -95,9 +108,35 @@ router.post("/analytics/record-view", async (req, res): Promise<void> => {
     return;
   }
 
+  const userAgent = req.headers["user-agent"] ?? undefined;
+  if (isBot(userAgent)) {
+    res.json({ success: true, message: "Bot detected, skipped" });
+    return;
+  }
+
+  const ip = getClientIp(req);
+
   const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.username, parsed.data.username)).limit(1);
   if (!targetUser) {
     res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [recentView] = await db
+    .select({ id: profileViewsTable.id })
+    .from(profileViewsTable)
+    .where(
+      and(
+        eq(profileViewsTable.profileUserId, targetUser.id),
+        eq(profileViewsTable.ipAddress, ip),
+        gt(profileViewsTable.viewedAt, windowStart)
+      )
+    )
+    .limit(1);
+
+  if (recentView) {
+    res.json({ success: true, message: "Already viewed recently" });
     return;
   }
 
@@ -105,8 +144,8 @@ router.post("/analytics/record-view", async (req, res): Promise<void> => {
     profileUserId: targetUser.id,
     country: parsed.data.country ?? null,
     device: parsed.data.device ?? null,
-    ipAddress: ((req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0] || req.socket.remoteAddress || "unknown").trim(),
-    userAgent: req.headers["user-agent"] ?? null,
+    ipAddress: ip,
+    userAgent: userAgent ?? null,
   });
 
   await db.update(profilesTable)

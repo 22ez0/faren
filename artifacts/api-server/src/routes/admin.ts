@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import jwt from "jsonwebtoken";
-import { db, usersTable, profilesTable } from "@workspace/db";
-import { eq, ilike, or } from "drizzle-orm";
+import { db, usersTable, profilesTable, profileReportsTable } from "@workspace/db";
+import { eq, ilike, or, desc, asc } from "drizzle-orm";
 
 const router: IRouter = Router();
 const ADMIN_LOGIN = process.env.ADMIN_LOGIN ?? "keefaren";
@@ -47,12 +47,16 @@ router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
       emailVerified: usersTable.emailVerified,
       registrationIp: usersTable.registrationIp,
       lastLoginIp: usersTable.lastLoginIp,
+      createdAt: usersTable.createdAt,
       badges: profilesTable.badges,
+      followersCount: profilesTable.followersCount,
+      viewsCount: profilesTable.viewsCount,
     })
     .from(usersTable)
     .leftJoin(profilesTable, eq(profilesTable.userId, usersTable.id))
     .where(q ? or(ilike(usersTable.username, `%${q}%`), ilike(usersTable.email, `%${q}%`), ilike(usersTable.displayName, `%${q}%`)) : undefined)
-    .limit(30);
+    .orderBy(desc(usersTable.createdAt))
+    .limit(200);
   res.json(rows);
 });
 
@@ -76,6 +80,47 @@ router.post("/admin/users/:userId/verified", requireAdmin, async (req, res): Pro
   else badges.delete("verified");
   await db.update(profilesTable).set({ badges: [...badges] }).where(eq(profilesTable.userId, userId));
   res.json({ success: true, verified: enabled });
+});
+
+router.get("/admin/reports", requireAdmin, async (req, res): Promise<void> => {
+  const status = typeof req.query.status === "string" ? req.query.status : "pending";
+  const rows = await db
+    .select({
+      id: profileReportsTable.id,
+      reportedUserId: profileReportsTable.reportedUserId,
+      reporterUserId: profileReportsTable.reporterUserId,
+      reason: profileReportsTable.reason,
+      details: profileReportsTable.details,
+      reporterIp: profileReportsTable.reporterIp,
+      status: profileReportsTable.status,
+      createdAt: profileReportsTable.createdAt,
+      reportedUsername: usersTable.username,
+      reportedDisplayName: usersTable.displayName,
+    })
+    .from(profileReportsTable)
+    .leftJoin(usersTable, eq(profileReportsTable.reportedUserId, usersTable.id))
+    .where(status !== "all" ? eq(profileReportsTable.status, status) : undefined)
+    .orderBy(desc(profileReportsTable.createdAt))
+    .limit(100);
+  res.json(rows);
+});
+
+router.post("/admin/reports/:reportId/resolve", requireAdmin, async (req, res): Promise<void> => {
+  const reportId = Number(req.params.reportId);
+  const action = req.body?.action as "dismiss" | "ban" | undefined;
+
+  await db.update(profileReportsTable)
+    .set({ status: action === "ban" ? "actioned" : "dismissed" })
+    .where(eq(profileReportsTable.id, reportId));
+
+  if (action === "ban") {
+    const [report] = await db.select().from(profileReportsTable).where(eq(profileReportsTable.id, reportId)).limit(1);
+    if (report) {
+      await db.update(usersTable).set({ banned: true }).where(eq(usersTable.id, report.reportedUserId));
+    }
+  }
+
+  res.json({ success: true });
 });
 
 export default router;

@@ -285,7 +285,7 @@ export default function EditProfile() {
   const [customBadgeEmoji, setCustomBadgeEmoji] = useState('✨');
   const [customBadgeName, setCustomBadgeName] = useState('');
   const [customBadgeColor, setCustomBadgeColor] = useState('#8b5cf6');
-  const [formHydrated, setFormHydrated] = useState(false);
+  const formHydratedRef = useRef(false);
   const [discordUserIdInput, setDiscordUserIdInput] = useState('');
   const [discordConnecting, setDiscordConnecting] = useState(false);
   const [lastfmInput, setLastfmInput] = useState('');
@@ -312,7 +312,8 @@ export default function EditProfile() {
   });
 
   useEffect(() => {
-    if (profile && !formHydrated) {
+    if (profile && !formHydratedRef.current) {
+      formHydratedRef.current = true;
       setForm({
         displayName: profile.displayName || '',
         bio: profile.bio || '',
@@ -343,9 +344,8 @@ export default function EditProfile() {
       if (isAttachedFile(profile.musicUrl || '')) {
         setMusicType('file');
       }
-      setFormHydrated(true);
     }
-  }, [profile, formHydrated]);
+  }, [profile]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) setLocation("/login");
@@ -473,7 +473,7 @@ export default function EditProfile() {
     updateProfile.mutate(
       { data: { ...form, badges: preservedBadges } as any },
       {
-        onSuccess: () => toast({ title: "Perfil salvo!" }),
+        onSuccess: () => { toast({ title: "Perfil salvo!" }); formHydratedRef.current = false; refetchProfile(); },
         onError: (err: any) => toast({ title: "Falha ao salvar", description: err.error, variant: "destructive" }),
       }
     );

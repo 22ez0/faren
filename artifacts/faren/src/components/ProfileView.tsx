@@ -26,6 +26,28 @@ interface ProfileViewProps {
   onLike?: () => void;
   isFollowing?: boolean;
   hasLiked?: boolean;
+  username?: string;
+}
+
+const apiBase = () => (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+
+function renderBio(bio: string, accent: string) {
+  const parts = bio.split(/(@[a-z0-9_]{1,15})/gi);
+  return parts.map((part, i) => {
+    if (/^@[a-z0-9_]{1,15}$/i.test(part)) {
+      return (
+        <a
+          key={i}
+          href={`/${part.slice(1).toLowerCase()}`}
+          className="font-semibold hover:underline transition-colors"
+          style={{ color: accent }}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 }
 
 const BADGE_MAP: Record<string, { icon: React.ElementType; label: string; color: string; bg: string }> = {
@@ -130,6 +152,18 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  useEffect(() => {
+    if (isSpotify || isSoundCloud) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    const handleCanPlay = () => {
+      audio.muted = false;
+      audio.play().catch(() => {});
+    };
+    audio.addEventListener('canplay', handleCanPlay);
+    return () => audio.removeEventListener('canplay', handleCanPlay);
+  }, [isSpotify, isSoundCloud]);
+
   const formatTime = (seconds: number) => {
     if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -171,7 +205,7 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
     return (
       <div className="w-full glass-card rounded-lg overflow-hidden">
         <iframe
-          src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`}
+          src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0&autoplay=1`}
           width="100%"
           height="80"
           frameBorder="0"
@@ -254,9 +288,28 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
   );
 }
 
-export default function ProfileView({ profile, isOwner, onFollow, onLike, isFollowing, hasLiked }: ProfileViewProps) {
+export default function ProfileView({ profile, isOwner, onFollow, onLike, isFollowing, hasLiked, username }: ProfileViewProps) {
   const [likePulse, setLikePulse] = useState(false);
   const [lanyardData, setLanyardData] = useState<any>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSent, setReportSent] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+
+  const handleReport = async () => {
+    if (!reportReason || reportLoading) return;
+    setReportLoading(true);
+    try {
+      const target = username || profile.username;
+      const res = await fetch(`${apiBase()}/api/users/${target}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reportReason, details: reportDetails }),
+      });
+      if (res.ok) { setReportSent(true); setTimeout(() => { setReportOpen(false); setReportSent(false); setReportReason(''); setReportDetails(''); }, 2500); }
+    } catch { } finally { setReportLoading(false); }
+  };
 
   const discordUserId = (profile as any).discordUserId as string | undefined;
 
@@ -441,8 +494,11 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             )}
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-0.5">
-            {profile.displayName || profile.username}
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-0.5 flex items-center gap-1.5">
+            <span>{profile.displayName || profile.username}</span>
+            {profile.badges?.includes('verified') && (
+              <BadgeCheck className="w-6 h-6 flex-shrink-0" style={{ color: '#60a5fa' }} title="Verificado" />
+            )}
           </h1>
 
           <p className="text-sm mb-3 font-medium" style={{ color: accent }}>
@@ -456,15 +512,15 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           )}
 
           {profile.bio && (
-            <p className="max-w-sm text-sm leading-relaxed opacity-70 mb-4 whitespace-pre-wrap">
-              {profile.bio}
+            <p className="max-w-sm text-sm leading-relaxed opacity-70 mb-4 whitespace-pre-wrap break-words">
+              {renderBio(profile.bio, accent)}
             </p>
           )}
 
-          {/* Badges */}
-          {profile.badges && profile.badges.length > 0 && (
+          {/* Badges (exclude 'verified' — shown inline next to name) */}
+          {profile.badges && profile.badges.filter(b => b !== 'verified').length > 0 && (
             <div className={`flex flex-wrap gap-2 mb-5 ${isLeft ? '' : 'justify-center'}`}>
-              {profile.badges.slice(0, 6).map((badgeId) => {
+              {profile.badges.filter(b => b !== 'verified').slice(0, 6).map((badgeId) => {
                 const customBadge = parseCustomBadge(badgeId);
                 if (customBadge) {
                   return (
@@ -707,7 +763,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         )}
 
         {/* Footer */}
-        <div className="mt-12 flex flex-col items-center gap-2">
+        <div className="mt-12 flex flex-col items-center gap-3">
           <a
             href="https://keefnow.com.br"
             target="_blank"
@@ -717,7 +773,82 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           >
             Feito com Faren · Keefnow
           </a>
+          {!isOwner && (
+            <button
+              onClick={() => setReportOpen(true)}
+              className="text-xs hover:text-red-400 transition-colors"
+              style={{ color: 'rgba(255,255,255,0.18)' }}
+            >
+              Denunciar perfil
+            </button>
+          )}
         </div>
+
+        {/* Report Modal */}
+        {reportOpen && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setReportOpen(false); }}
+          >
+            <div className="w-full max-w-sm rounded-xl p-5" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)' }}>
+              {reportSent ? (
+                <div className="flex flex-col items-center gap-3 py-6 text-center">
+                  <span className="text-3xl">✅</span>
+                  <p className="font-semibold text-white">Denúncia enviada!</p>
+                  <p className="text-sm text-white/50">Nossa equipe irá analisar em breve.</p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="font-bold text-white text-lg mb-1">Denunciar perfil</h2>
+                  <p className="text-xs text-white/40 mb-4">@{username || profile.username}</p>
+                  <div className="flex flex-col gap-2 mb-4">
+                    {['Spam', 'Conteúdo inapropriado', 'Assédio ou ameaças', 'Informações falsas', 'Outro'].map(r => (
+                      <button
+                        key={r}
+                        onClick={() => setReportReason(r)}
+                        className="text-left px-3 py-2 rounded-lg text-sm transition-colors"
+                        style={{
+                          background: reportReason === r ? `${accent}22` : 'rgba(255,255,255,0.05)',
+                          color: reportReason === r ? accent : 'rgba(255,255,255,0.7)',
+                          border: `1px solid ${reportReason === r ? accent + '50' : 'transparent'}`,
+                        }}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    placeholder="Detalhes adicionais (opcional)"
+                    value={reportDetails}
+                    onChange={e => setReportDetails(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    className="w-full text-sm rounded-lg px-3 py-2 mb-4 resize-none outline-none"
+                    style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setReportOpen(false)}
+                      className="flex-1 py-2 rounded-lg text-sm text-white/50 hover:text-white transition-colors"
+                      style={{ background: 'rgba(255,255,255,0.05)' }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleReport}
+                      disabled={!reportReason || reportLoading}
+                      className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40"
+                      style={{ background: '#ef4444', color: 'white' }}
+                    >
+                      {reportLoading ? '...' : 'Enviar'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

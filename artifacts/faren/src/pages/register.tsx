@@ -9,9 +9,17 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 
+const RESERVED = new Set(['keefaren','admin','administrator','api','dashboard','login','register','profile','settings','support','root','faren','keef','null','comunidade','community','explore','feed']);
+
 const registerSchema = z.object({
   email: z.string().email("E-mail inválido"),
-  username: z.string().min(3, "Mínimo 3 caracteres").regex(/^[a-zA-Z0-9_]+$/, "Apenas letras, números e underscores"),
+  username: z.string()
+    .min(3, "Mínimo 3 caracteres")
+    .max(15, "Máximo 15 caracteres")
+    .regex(/^[a-z0-9_]+$/, "Apenas letras minúsculas, números e _")
+    .refine(v => !v.startsWith('_') && !v.endsWith('_'), "Não pode começar ou terminar com _")
+    .refine(v => !/__/.test(v), "Não pode ter __ consecutivos")
+    .refine(v => !RESERVED.has(v), "Este nome de usuário não está disponível"),
   password: z.string().min(6, "Mínimo 6 caracteres"),
   displayName: z.string().optional(),
 });

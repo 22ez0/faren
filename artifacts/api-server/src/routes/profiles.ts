@@ -1,9 +1,15 @@
-import { Router, type IRouter } from "express";
-import { db, usersTable, profilesTable, profileLinksTable, profileViewsTable, profileLikesTable, followersTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { Router, type IRouter, type Request } from "express";
+import { db, usersTable, profilesTable, profileLinksTable, profileViewsTable, profileLikesTable, followersTable, profileReportsTable } from "@workspace/db";
+import { eq, and, sql, gt } from "drizzle-orm";
 import { UpdateProfileBody, ConnectDiscordBody, ConnectMusicBody, AddProfileLinkBody, UpdateProfileLinkBody, UpdateProfileLinkParams, DeleteProfileLinkParams } from "@workspace/api-zod";
 import { requireAuth, optionalAuth } from "../lib/auth";
 import { fetchLastfmNowPlaying } from "./music";
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  return (raw?.split(",")[0] || req.socket.remoteAddress || "unknown").trim();
+}
 
 const router: IRouter = Router();
 
@@ -363,6 +369,52 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
     isFollowing,
     hasLiked,
   });
+});
+
+router.post("/users/:username/report", optionalAuth, async (req, res): Promise<void> => {
+  const rawUsername = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
+  const { reason, details } = req.body as { reason?: string; details?: string };
+
+  if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+    res.status(400).json({ error: "Motivo da denúncia é obrigatório." });
+    return;
+  }
+
+  const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.username, rawUsername)).limit(1);
+  if (!targetUser) {
+    res.status(404).json({ error: "Usuário não encontrado." });
+    return;
+  }
+
+  const ip = getClientIp(req);
+  const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [recentReport] = await db
+    .select({ id: profileReportsTable.id })
+    .from(profileReportsTable)
+    .where(
+      and(
+        eq(profileReportsTable.reportedUserId, targetUser.id),
+        eq(profileReportsTable.reporterIp, ip),
+        gt(profileReportsTable.createdAt, windowStart)
+      )
+    )
+    .limit(1);
+
+  if (recentReport) {
+    res.status(429).json({ error: "Você já denunciou este perfil recentemente." });
+    return;
+  }
+
+  await db.insert(profileReportsTable).values({
+    reporterUserId: req.user?.userId ?? null,
+    reportedUserId: targetUser.id,
+    reason: reason.trim().slice(0, 200),
+    details: details?.trim().slice(0, 1000) ?? null,
+    reporterIp: ip,
+    status: "pending",
+  });
+
+  res.json({ success: true, message: "Denúncia recebida. Nossa equipe irá analisar." });
 });
 
 router.post("/profile/discord/lanyard", requireAuth, async (req, res): Promise<void> => {
