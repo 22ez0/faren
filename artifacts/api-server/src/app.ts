@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import ogRouter from "./routes/og";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -12,7 +13,8 @@ const allowedOrigins = new Set(
     .map(origin => origin.trim())
     .filter(Boolean),
 );
-const blockedUserAgents = /(bot|crawler|spider|scrapy|curl|wget|python-requests|httpclient|headless|phantom|selenium|playwright|puppeteer)/i;
+const socialBots = /(facebookexternalhit|twitterbot|whatsapp|linkedinbot|slackbot|telegrambot|discordbot|pinterestbot|applebot|googlebot|bingbot|duckduckbot|ia_archiver|embedly|quora|outbrain|showyoubot|snippetexpandbot|vkshare|w3c_validator|line-poker|viber)/i;
+const blockedUserAgents = /(scrapy|curl|wget|python-requests|httpclient|headless|phantom|selenium|playwright|puppeteer)/i;
 const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
 
 function getClientIp(req: express.Request) {
@@ -46,6 +48,10 @@ function botBlock(req: express.Request, res: express.Response, next: express.Nex
     return;
   }
   const userAgent = req.get("user-agent") || "";
+  if (socialBots.test(userAgent)) {
+    next();
+    return;
+  }
   if (blockedUserAgents.test(userAgent)) {
     res.status(403).json({ error: "Acesso bloqueado." });
     return;
@@ -98,5 +104,6 @@ app.use(express.json({ limit: "75mb" }));
 app.use(express.urlencoded({ extended: true, limit: "75mb" }));
 
 app.use("/api", router);
+app.use("/", ogRouter);
 
 export default app;

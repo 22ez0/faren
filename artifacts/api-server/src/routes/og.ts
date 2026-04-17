@@ -1,11 +1,17 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable, profilesTable } from "@workspace/db";
 import { eq, ilike } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 const SITE_URL = "https://faren.com.br";
-const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
+const API_URL = "https://faren-api-wn1z.onrender.com";
+const DEFAULT_IMAGE = `${SITE_URL}/opengraph.jpg`;
+
+const RESERVED = new Set([
+  "api", "health", "og", "favicon.ico", "favicon.png", "robots.txt",
+  "sitemap.xml", "opengraph.jpg", "CNAME", "404.html",
+]);
 
 function esc(str: string) {
   return str
@@ -15,9 +21,10 @@ function esc(str: string) {
     .replace(/>/g, "&gt;");
 }
 
-router.get("/og/:username", async (req, res): Promise<void> => {
-  const rawUsername = (req.params.username || "").toLowerCase().trim();
-  if (!rawUsername) {
+async function serveOgPage(username: string, res: Response): Promise<void> {
+  const rawUsername = username.toLowerCase().trim();
+
+  if (!rawUsername || RESERVED.has(rawUsername)) {
     res.redirect(302, SITE_URL);
     return;
   }
@@ -46,7 +53,6 @@ router.get("/og/:username", async (req, res): Promise<void> => {
     const backgroundUrl = profile?.backgroundUrl && !profile.backgroundUrl.startsWith("data:") ? profile.backgroundUrl : null;
     const profileUrl = `${SITE_URL}/${user.username}`;
     const accentColor = profile?.accentColor || "#ffffff";
-
     const ogImageUrl = backgroundUrl || avatarUrl || DEFAULT_IMAGE;
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -100,9 +106,24 @@ router.get("/og/:username", async (req, res): Promise<void> => {
   </div>
 </body>
 </html>`);
-  } catch (err) {
+  } catch {
     res.redirect(302, SITE_URL);
   }
+}
+
+router.get("/og/:username", async (req, res): Promise<void> => {
+  await serveOgPage(req.params.username || "", res);
 });
 
+router.get("/:username([a-zA-Z0-9_.]{2,30})", async (req, res): Promise<void> => {
+  const ua = req.get("user-agent") || "";
+  const isSocialBot = /facebookexternalhit|twitterbot|whatsapp|linkedinbot|slackbot|telegrambot|discordbot|pinterestbot|applebot|googlebot|bingbot|duckduckbot|ia_archiver|embedly|quora|outbrain|vkshare|viber|line\//i.test(ua);
+  if (!isSocialBot) {
+    res.redirect(302, `${SITE_URL}/${req.params.username}`);
+    return;
+  }
+  await serveOgPage(req.params.username || "", res);
+});
+
+export { serveOgPage };
 export default router;
