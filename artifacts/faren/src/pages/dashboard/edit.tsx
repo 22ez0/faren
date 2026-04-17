@@ -5,7 +5,7 @@ import { useGetMyProfile, useUpdateProfile, useAddProfileLink, useDeleteProfileL
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import ProfileView from "@/components/ProfileView";
-import { ArrowLeft, Save, Plus, Trash2, GripVertical, Upload, X, Link as LinkIcon, Music, Image } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, GripVertical, Upload, X, Link as LinkIcon, Music, Image, ExternalLink } from "lucide-react";
 import {
   SiDiscord, SiSpotify, SiLastdotfm, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram,
   SiTiktok, SiSteam, SiKick, SiPatreon, SiSnapchat, SiReddit, SiPinterest, SiThreads,
@@ -339,7 +339,7 @@ export default function EditProfile() {
         showViews: (profile as any).showViews !== false,
         showDiscordAvatar: (profile as any).showDiscordAvatar !== false,
         showDiscordPresence: (profile as any).showDiscordPresence !== false,
-        badges: (profile.badges || []).filter((badge: string) => badge !== 'verified').slice(0, 6),
+        badges: (profile.badges || []).filter((badge: string) => badge !== 'verified' && badge !== 'verified_gold' && badge !== 'verified_white').slice(0, 6),
       });
       if (isAttachedFile(profile.musicUrl || '')) {
         setMusicType('file');
@@ -561,17 +561,29 @@ export default function EditProfile() {
             <ArrowLeft className="w-3.5 h-3.5" /> Voltar
           </button>
           <span className="label-caps">Editor de Perfil</span>
-          <motion.button
-            onClick={save}
-            disabled={updateProfile.isPending}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="btn-solid-white py-2 px-4 text-xs disabled:opacity-50"
-          >
-            {updateProfile.isPending ? 'Salvando...' : (
-              <><Save className="w-3 h-3 inline mr-1.5" /> Salvar</>
+          <div className="flex items-center gap-2">
+            {(profile as any)?.username && (
+              <a
+                href={`/${(profile as any).username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 nav-link text-xs py-2 px-3 border border-white/10 rounded-sm hover:border-white/25 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" /> Ver Perfil
+              </a>
             )}
-          </motion.button>
+            <motion.button
+              onClick={save}
+              disabled={updateProfile.isPending}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="btn-solid-white py-2 px-4 text-xs disabled:opacity-50"
+            >
+              {updateProfile.isPending ? 'Salvando...' : (
+                <><Save className="w-3 h-3 inline mr-1.5" /> Salvar</>
+              )}
+            </motion.button>
+          </div>
         </div>
 
         {/* Tab bar */}
@@ -1294,13 +1306,16 @@ export default function EditProfile() {
       </div>
 
       {/* Live Preview panel */}
-      <div className="hidden lg:block flex-1 bg-black relative overflow-hidden">
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+      <div className="hidden lg:block flex-1 bg-black relative overflow-hidden" style={{ isolation: 'isolate' }}>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3" style={{ pointerEvents: 'none' }}>
           <span className="label-caps bg-black/60 backdrop-blur-md px-4 py-2 border border-white/10 text-white/50">
             Pré-visualização ao Vivo
           </span>
         </div>
-        <div className="w-full h-full overflow-y-auto">
+        <div
+          className="w-full h-full overflow-y-auto"
+          style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+        >
           <ProfileView profile={liveProfile as any} isOwner={true} />
         </div>
       </div>

@@ -9,7 +9,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "Hungria2021@";
 const ADMIN_SECRET = process.env.ADMIN_SECRET ?? process.env.SESSION_SECRET ?? "faren-admin-secret";
 
 function signAdminToken() {
-  return jwt.sign({ admin: true }, ADMIN_SECRET, { expiresIn: "12h" });
+  return jwt.sign({ admin: true }, ADMIN_SECRET, { expiresIn: "7d" });
 }
 
 function requireAdmin(req: any, res: any, next: any) {
@@ -70,16 +70,23 @@ router.post("/admin/users/:userId/ban", requireAdmin, async (req, res): Promise<
 router.post("/admin/users/:userId/verified", requireAdmin, async (req, res): Promise<void> => {
   const userId = Number(req.params.userId);
   const enabled = req.body?.verified !== false;
+  const type: string = req.body?.type || "verified";
+  const validTypes = ["verified", "verified_gold", "verified_white"];
+  const badgeType = validTypes.includes(type) ? type : "verified";
   const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
   if (!profile) {
     res.status(404).json({ error: "Perfil não encontrado" });
     return;
   }
   const badges = new Set(profile.badges ?? []);
-  if (enabled) badges.add("verified");
-  else badges.delete("verified");
+  if (enabled) {
+    validTypes.forEach(t => badges.delete(t));
+    badges.add(badgeType);
+  } else {
+    validTypes.forEach(t => badges.delete(t));
+  }
   await db.update(profilesTable).set({ badges: [...badges] }).where(eq(profilesTable.userId, userId));
-  res.json({ success: true, verified: enabled });
+  res.json({ success: true, verified: enabled, type: badgeType });
 });
 
 router.get("/admin/reports", requireAdmin, async (req, res): Promise<void> => {

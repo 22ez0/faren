@@ -28,6 +28,11 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Dark mode, pure black theme (keefnow.com.br aesthetic)
 - Admin moderation panel at `/devkeefnow` and `/keefaren`
 - Footer credits Faren and links Keefnow to `https://keefnow.com.br`
+- **3-tier verification badges**: blue (verified), gold (verified_gold), white (verified_white) — Instagram-style SVG badges with glow
+- **Open Graph meta tags**: site-level in index.html + dynamic per-profile on page load + `/api/og/:username` endpoint for bots/crawlers
+- **Save login**: token stored in both localStorage AND a 30-day cookie (`faren_token`) for redundancy
+- **Spotify player**: height=152 (full player, not compact) with support for tracks, playlists, and albums
+- **Follow button**: transparent with rounded-full borders (both Follow and Following states)
 
 ### Routes
 - `/` — Landing page with hero and trending profiles
@@ -56,8 +61,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Admin route: `/devkeefnow`
 - Default admin login: `keefaren`
 - Default admin password: `Hungria2021@`
-- Token is stored in `localStorage` as `adminToken`
-- Admin panel can search users, ban/unban, grant/revoke verified badge, and view registration/last-login IPs.
+- Token is stored in `localStorage` as `adminToken` (expires 7 days — auto-clears on 401 and forces re-login)
+- Admin panel can search users, ban/unban, grant/revoke 3 types of verified badge (blue/gold/white), and view registration/last-login IPs.
 
 ### Security Notes
 - Express JSON/body limit is 75mb to allow larger profile media saves.

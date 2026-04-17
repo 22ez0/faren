@@ -76,6 +76,11 @@ export default function DevKeefnow() {
       },
     });
     const data = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      localStorage.removeItem("adminToken");
+      setToken("");
+      throw new Error("Sessão expirada. Faça login novamente.");
+    }
     if (!response.ok) throw new Error(data.error || "Erro na operação");
     return data;
   };
@@ -163,10 +168,10 @@ export default function DevKeefnow() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const updateUser = async (userId: number, action: "ban" | "verified", enabled: boolean) => {
+  const updateUser = async (userId: number, action: "ban" | "verified", enabled: boolean, verifiedType?: string) => {
     await request(`/admin/users/${userId}/${action}`, {
       method: "POST",
-      body: JSON.stringify(action === "ban" ? { banned: enabled } : { verified: enabled }),
+      body: JSON.stringify(action === "ban" ? { banned: enabled } : { verified: enabled, type: verifiedType || "verified" }),
     });
     fetchUsers(query);
   };
@@ -306,13 +311,19 @@ export default function DevKeefnow() {
             {loading && <p className="text-white/40 text-sm">Carregando...</p>}
             <div className="space-y-2">
               {users.map(user => {
-                const verified = !!user.badges?.includes("verified");
+                const isVerifiedBlue = !!user.badges?.includes("verified");
+                const isVerifiedGold = !!user.badges?.includes("verified_gold");
+                const isVerifiedWhite = !!user.badges?.includes("verified_white");
+                const isVerified = isVerifiedBlue || isVerifiedGold || isVerifiedWhite;
+                const currentType = isVerifiedGold ? "verified_gold" : isVerifiedWhite ? "verified_white" : "verified";
                 return (
                   <div key={user.id} className="border border-white/10 bg-white/[0.03] p-4 flex flex-col md:flex-row gap-4 md:items-center">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-bold">@{user.username}</p>
-                        {verified && <BadgeCheck className="w-4 h-4 text-blue-400" />}
+                        {isVerifiedGold && <BadgeCheck className="w-4 h-4" style={{ color: '#FFD700' }} title="Verificado Dourado" />}
+                        {isVerifiedWhite && <BadgeCheck className="w-4 h-4 text-white" title="Verificado Branco" />}
+                        {isVerifiedBlue && <BadgeCheck className="w-4 h-4 text-blue-400" title="Verificado Azul" />}
                         {user.banned && <span className="text-xs text-red-400 uppercase tracking-wider">Banido</span>}
                       </div>
                       <p className="text-sm text-white/45 truncate">{user.email}{user.displayName ? ` • ${user.displayName}` : ""}</p>
@@ -324,13 +335,40 @@ export default function DevKeefnow() {
                         {user.createdAt && <span>Criado: {new Date(user.createdAt).toLocaleDateString('pt-BR')}</span>}
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => updateUser(user.id, "verified", !verified)}
-                        className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider hover:bg-white/5 transition-colors"
-                      >
-                        {verified ? "Remover ✓" : "Verificar"}
-                      </button>
+                    <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                      {isVerified ? (
+                        <button
+                          onClick={() => updateUser(user.id, "verified", false)}
+                          className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider hover:bg-white/5 transition-colors"
+                        >
+                          Remover ✓
+                        </button>
+                      ) : (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => updateUser(user.id, "verified", true, "verified")}
+                            className="px-2 py-2 border border-blue-400/40 text-xs uppercase tracking-wider text-blue-400 hover:bg-blue-400/10 transition-colors"
+                            title="Verificar Azul"
+                          >
+                            ✓ Azul
+                          </button>
+                          <button
+                            onClick={() => updateUser(user.id, "verified", true, "verified_gold")}
+                            className="px-2 py-2 border text-xs uppercase tracking-wider hover:bg-yellow-400/10 transition-colors"
+                            style={{ borderColor: '#FFD70060', color: '#FFD700' }}
+                            title="Verificar Dourado"
+                          >
+                            ✓ Ouro
+                          </button>
+                          <button
+                            onClick={() => updateUser(user.id, "verified", true, "verified_white")}
+                            className="px-2 py-2 border border-white/30 text-xs uppercase tracking-wider text-white hover:bg-white/10 transition-colors"
+                            title="Verificar Branco"
+                          >
+                            ✓ Branco
+                          </button>
+                        </div>
+                      )}
                       <button
                         onClick={() => updateUser(user.id, "ban", !user.banned)}
                         className={`px-3 py-2 border text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors ${user.banned ? "border-green-500/30 text-green-400 hover:bg-green-500/10" : "border-red-500/30 text-red-300 hover:bg-red-500/10"}`}

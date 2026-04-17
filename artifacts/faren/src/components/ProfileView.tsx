@@ -50,8 +50,38 @@ function renderBio(bio: string, accent: string) {
   });
 }
 
+function VerifiedBadge({ type }: { type: 'blue' | 'gold' | 'white' }) {
+  const color = type === 'gold' ? '#FFD700' : type === 'white' ? '#FFFFFF' : '#3B82F6';
+  const shadow = type === 'gold' ? '0 0 8px #FFD70080' : type === 'white' ? '0 0 8px #FFFFFF60' : '0 0 8px #3B82F680';
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      className="flex-shrink-0 inline-block"
+      style={{ filter: `drop-shadow(${shadow})` }}
+      title={type === 'gold' ? 'Verificado Dourado' : type === 'white' ? 'Verificado' : 'Verificado'}
+    >
+      <path
+        d="M12 1L14.5 4.5L19 3.5L18.5 8L22 10L19.5 13L21 17.5L16.5 17L14 21L12 18.5L10 21L7.5 17L3 17.5L4.5 13L2 10L5.5 8L5 3.5L9.5 4.5Z"
+        fill={color}
+      />
+      <path
+        d="M8.5 12L11 14.5L15.5 9.5"
+        stroke="white"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
 const BADGE_MAP: Record<string, { icon: React.ElementType; label: string; color: string; bg: string }> = {
-  verified:    { icon: BadgeCheck, label: "Verificado",          color: "#60a5fa", bg: "rgba(59,130,246,0.12)" },
+  verified:       { icon: BadgeCheck, label: "Verificado",          color: "#60a5fa", bg: "rgba(59,130,246,0.12)" },
+  verified_gold:  { icon: BadgeCheck, label: "Verificado Dourado",  color: "#FFD700", bg: "rgba(255,215,0,0.12)" },
+  verified_white: { icon: BadgeCheck, label: "Verificado",          color: "#FFFFFF", bg: "rgba(255,255,255,0.12)" },
   creator:     { icon: Palette,    label: "Criador",             color: "#f472b6", bg: "rgba(244,114,182,0.12)" },
   "music-head":{ icon: Headphones, label: "Amante de Música",    color: "#34d399", bg: "rgba(52,211,153,0.12)" },
   gamer:       { icon: Gamepad2,   label: "Gamer",               color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
@@ -200,14 +230,24 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
 
   if (isSpotify) {
     const trackMatch = musicUrl.match(/track\/([a-zA-Z0-9]+)/);
-    const trackId = trackMatch?.[1];
-    if (!trackId) return null;
+    const playlistMatch = musicUrl.match(/playlist\/([a-zA-Z0-9]+)/);
+    const albumMatch = musicUrl.match(/album\/([a-zA-Z0-9]+)/);
+    let embedSrc = '';
+    if (trackMatch?.[1]) {
+      embedSrc = `https://open.spotify.com/embed/track/${trackMatch[1]}?utm_source=generator&theme=0&autoplay=1`;
+    } else if (playlistMatch?.[1]) {
+      embedSrc = `https://open.spotify.com/embed/playlist/${playlistMatch[1]}?utm_source=generator&theme=0&autoplay=1`;
+    } else if (albumMatch?.[1]) {
+      embedSrc = `https://open.spotify.com/embed/album/${albumMatch[1]}?utm_source=generator&theme=0&autoplay=1`;
+    } else {
+      return null;
+    }
     return (
       <div className="w-full glass-card rounded-lg overflow-hidden">
         <iframe
-          src={`https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0&autoplay=1`}
+          src={embedSrc}
           width="100%"
-          height="80"
+          height="152"
           frameBorder="0"
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           loading="lazy"
@@ -496,9 +536,9 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
 
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-0.5 flex items-center gap-1.5">
             <span>{profile.displayName || profile.username}</span>
-            {profile.badges?.includes('verified') && (
-              <BadgeCheck className="w-6 h-6 flex-shrink-0" style={{ color: '#60a5fa' }} title="Verificado" />
-            )}
+            {profile.badges?.includes('verified_gold') && <VerifiedBadge type="gold" />}
+            {profile.badges?.includes('verified_white') && <VerifiedBadge type="white" />}
+            {profile.badges?.includes('verified') && !profile.badges?.includes('verified_gold') && !profile.badges?.includes('verified_white') && <VerifiedBadge type="blue" />}
           </h1>
 
           <p className="text-sm mb-3 font-medium" style={{ color: accent }}>
@@ -517,10 +557,10 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             </p>
           )}
 
-          {/* Badges (exclude 'verified' — shown inline next to name) */}
-          {profile.badges && profile.badges.filter(b => b !== 'verified').length > 0 && (
+          {/* Badges (exclude verified types — shown inline next to name) */}
+          {profile.badges && profile.badges.filter(b => b !== 'verified' && b !== 'verified_gold' && b !== 'verified_white').length > 0 && (
             <div className={`flex flex-wrap gap-2 mb-5 ${isLeft ? '' : 'justify-center'}`}>
-              {profile.badges.filter(b => b !== 'verified').slice(0, 6).map((badgeId) => {
+              {profile.badges.filter(b => b !== 'verified' && b !== 'verified_gold' && b !== 'verified_white').slice(0, 6).map((badgeId) => {
                 const customBadge = parseCustomBadge(badgeId);
                 if (customBadge) {
                   return (
@@ -588,15 +628,15 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                 onClick={onFollow}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                className="px-7 py-2.5 text-sm font-semibold tracking-wider uppercase rounded-sm transition-all duration-200"
+                className="px-7 py-2.5 text-sm font-semibold tracking-wider uppercase rounded-full transition-all duration-200"
                 style={isFollowing ? {
                   border: `1px solid ${accent}80`,
                   color: accent,
                   background: 'transparent',
                 } : {
-                  background: accent,
-                  color: '#000',
-                  boxShadow: `0 0 20px ${glow}40`,
+                  border: `1px solid ${accent}80`,
+                  color: accent,
+                  background: 'transparent',
                 }}
               >
                 {isFollowing ? 'Seguindo' : 'Seguir'}
@@ -606,7 +646,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                 onClick={handleLike}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.9 }}
-                className={`w-11 h-11 flex items-center justify-center rounded-sm border transition-all duration-200 ${likePulse ? 'scale-125' : ''}`}
+                className={`w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-200 ${likePulse ? 'scale-125' : ''}`}
                 style={{
                   borderColor: hasLiked ? accent : 'rgba(255,255,255,0.15)',
                   background: hasLiked ? `${accent}18` : 'transparent',

@@ -2,7 +2,26 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { useGetMe, User, setAuthTokenGetter } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 
-setAuthTokenGetter(() => localStorage.getItem("token"));
+function getCookieToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)faren_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setCookieToken(token: string) {
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 30);
+  document.cookie = `faren_token=${encodeURIComponent(token)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+}
+
+function clearCookieToken() {
+  document.cookie = "faren_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+}
+
+function getStoredToken(): string | null {
+  return localStorage.getItem("token") || getCookieToken();
+}
+
+setAuthTokenGetter(() => getStoredToken());
 
 interface AuthContextType {
   user: User | null;
@@ -15,7 +34,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
+  const [token, setToken] = useState<string | null>(getStoredToken());
   const [, setLocation] = useLocation();
 
   const { data: user, isLoading, refetch } = useGetMe({
@@ -29,13 +48,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (token) {
       localStorage.setItem("token", token);
+      setCookieToken(token);
     } else {
       localStorage.removeItem("token");
+      clearCookieToken();
     }
   }, [token]);
 
   const login = (newToken: string) => {
     localStorage.setItem("token", newToken);
+    setCookieToken(newToken);
     setToken(newToken);
     setTimeout(() => refetch(), 0);
   };

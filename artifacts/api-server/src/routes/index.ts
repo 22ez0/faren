@@ -8,6 +8,7 @@ import analyticsRouter from "./analytics";
 import adminRouter from "./admin";
 import postsRouter from "./posts";
 import supportRouter from "./support";
+import ogRouter from "./og";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(analyticsRouter);
 router.use(adminRouter);
 router.use(postsRouter);
 router.use(supportRouter);
+router.use(ogRouter);
 
 export default router;
