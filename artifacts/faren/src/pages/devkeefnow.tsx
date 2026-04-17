@@ -336,39 +336,41 @@ export default function DevKeefnow() {
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0 flex-wrap">
-                      {isVerified ? (
+                      <div className="flex gap-1">
                         <button
-                          onClick={() => updateUser(user.id, "verified", false)}
-                          className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider hover:bg-white/5 transition-colors"
+                          onClick={() => updateUser(user.id, "verified", true, "verified")}
+                          className="px-2 py-2 border text-xs uppercase tracking-wider transition-colors"
+                          style={isVerifiedBlue ? { borderColor: '#60a5fa', color: '#60a5fa', background: 'rgba(96,165,250,0.15)' } : { borderColor: 'rgba(96,165,250,0.3)', color: '#60a5fa' }}
+                          title="Verificar Azul"
                         >
-                          Remover ✓
+                          ✓ Azul
                         </button>
-                      ) : (
-                        <div className="flex gap-1">
+                        <button
+                          onClick={() => updateUser(user.id, "verified", true, "verified_gold")}
+                          className="px-2 py-2 border text-xs uppercase tracking-wider transition-colors"
+                          style={isVerifiedGold ? { borderColor: '#FFD700', color: '#FFD700', background: 'rgba(255,215,0,0.15)' } : { borderColor: 'rgba(255,215,0,0.3)', color: '#FFD700' }}
+                          title="Verificar Dourado"
+                        >
+                          ✓ Ouro
+                        </button>
+                        <button
+                          onClick={() => updateUser(user.id, "verified", true, "verified_white")}
+                          className="px-2 py-2 border text-xs uppercase tracking-wider transition-colors"
+                          style={isVerifiedWhite ? { borderColor: 'rgba(255,255,255,0.8)', color: '#fff', background: 'rgba(255,255,255,0.1)' } : { borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)' }}
+                          title="Verificar Branco"
+                        >
+                          ✓ Branco
+                        </button>
+                        {isVerified && (
                           <button
-                            onClick={() => updateUser(user.id, "verified", true, "verified")}
-                            className="px-2 py-2 border border-blue-400/40 text-xs uppercase tracking-wider text-blue-400 hover:bg-blue-400/10 transition-colors"
-                            title="Verificar Azul"
+                            onClick={() => updateUser(user.id, "verified", false)}
+                            className="px-2 py-2 border border-white/15 text-xs uppercase tracking-wider text-white/40 hover:bg-white/5 transition-colors"
+                            title="Remover verificação"
                           >
-                            ✓ Azul
+                            ✕
                           </button>
-                          <button
-                            onClick={() => updateUser(user.id, "verified", true, "verified_gold")}
-                            className="px-2 py-2 border text-xs uppercase tracking-wider hover:bg-yellow-400/10 transition-colors"
-                            style={{ borderColor: '#FFD70060', color: '#FFD700' }}
-                            title="Verificar Dourado"
-                          >
-                            ✓ Ouro
-                          </button>
-                          <button
-                            onClick={() => updateUser(user.id, "verified", true, "verified_white")}
-                            className="px-2 py-2 border border-white/30 text-xs uppercase tracking-wider text-white hover:bg-white/10 transition-colors"
-                            title="Verificar Branco"
-                          >
-                            ✓ Branco
-                          </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                       <button
                         onClick={() => updateUser(user.id, "ban", !user.banned)}
                         className={`px-3 py-2 border text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors ${user.banned ? "border-green-500/30 text-green-400 hover:bg-green-500/10" : "border-red-500/30 text-red-300 hover:bg-red-500/10"}`}
