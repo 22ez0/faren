@@ -63,10 +63,16 @@ export default function Home() {
           <Link href="/login" className="nav-link">{t.nav.login}</Link>
           <button
             onClick={toggleLang}
-            className="nav-link flex items-center gap-1 text-white/40 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-sm text-xs transition-all"
+            className="nav-link flex items-center gap-1.5 text-white/40 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-sm text-xs transition-all"
             title="Mudar idioma / Change language"
           >
-            {lang === 'PT' ? '🇧🇷 PT' : '🇺🇸 EN'}
+            <img
+              src={lang === 'PT' ? 'https://flagcdn.com/20x15/br.png' : 'https://flagcdn.com/20x15/us.png'}
+              alt={lang === 'PT' ? 'Brasil' : 'USA'}
+              width={20} height={15}
+              className="rounded-[2px] flex-shrink-0"
+            />
+            {lang === 'PT' ? 'PT' : 'EN'}
           </button>
           <Link href="/register">
             <span className="btn-outline-white text-xs">{t.nav.cta}</span>
@@ -195,8 +201,14 @@ export default function Home() {
           <Link href="/login" className="nav-link">{t.footer.login}</Link>
           <Link href="/register" className="nav-link">{t.footer.register}</Link>
           <Link href="/suporte" className="nav-link">{t.footer.support}</Link>
-          <button onClick={toggleLang} className="nav-link text-white/40">
-            {lang === 'PT' ? '🇺🇸 EN' : '🇧🇷 PT'}
+          <button onClick={toggleLang} className="nav-link text-white/40 flex items-center gap-1.5">
+            <img
+              src={lang === 'PT' ? 'https://flagcdn.com/20x15/us.png' : 'https://flagcdn.com/20x15/br.png'}
+              alt={lang === 'PT' ? 'USA' : 'Brasil'}
+              width={20} height={15}
+              className="rounded-[2px] flex-shrink-0"
+            />
+            {lang === 'PT' ? 'EN' : 'PT'}
           </button>
         </div>
       </footer>
