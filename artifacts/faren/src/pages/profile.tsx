@@ -26,6 +26,8 @@ export default function ProfilePage() {
       queryKey: getGetUserByUsernameQueryKey(username || ""),
       enabled: !!username,
       retry: false,
+      staleTime: 25_000,
+      gcTime: 60_000,
     }
   });
 
