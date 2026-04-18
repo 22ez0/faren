@@ -115,14 +115,19 @@ router.get("/og/:username", async (req, res): Promise<void> => {
   await serveOgPage(req.params.username || "", res);
 });
 
-router.get("/:username([a-zA-Z0-9_.]{2,30})", async (req, res): Promise<void> => {
+router.get("/:username", async (req, res): Promise<void> => {
+  const username = req.params.username || "";
+  if (!username || !/^[a-zA-Z0-9_.]{2,30}$/.test(username)) {
+    res.redirect(302, SITE_URL);
+    return;
+  }
   const ua = req.get("user-agent") || "";
   const isSocialBot = /facebookexternalhit|twitterbot|whatsapp|linkedinbot|slackbot|telegrambot|discordbot|pinterestbot|applebot|googlebot|bingbot|duckduckbot|ia_archiver|embedly|quora|outbrain|vkshare|viber|line\//i.test(ua);
   if (!isSocialBot) {
-    res.redirect(302, `${SITE_URL}/${req.params.username}`);
+    res.redirect(302, `${SITE_URL}/${username}`);
     return;
   }
-  await serveOgPage(req.params.username || "", res);
+  await serveOgPage(username, res);
 });
 
 export { serveOgPage };
