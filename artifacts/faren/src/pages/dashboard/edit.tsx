@@ -5,7 +5,7 @@ import { useGetMyProfile, useUpdateProfile, useAddProfileLink, useDeleteProfileL
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import ProfileView from "@/components/ProfileView";
-import { ArrowLeft, Save, Plus, Trash2, GripVertical, Upload, X, Link as LinkIcon, Music, Image, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, GripVertical, Upload, X, Link as LinkIcon, Music, Image, ExternalLink, Eye } from "lucide-react";
 import {
   SiDiscord, SiSpotify, SiLastdotfm, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram,
   SiTiktok, SiSteam, SiKick, SiPatreon, SiSnapchat, SiReddit, SiPinterest, SiThreads,
@@ -239,13 +239,6 @@ function MediaUrlInput({
         <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/45 rounded-sm truncate">
           Arquivo anexado ✓
         </div>
-        <button
-          type="button"
-          onClick={() => onUrl('')}
-          className="px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm text-xs font-semibold uppercase tracking-wider"
-        >
-          Usar URL
-        </button>
         <FileUploadButton onFile={onFile} accept={accept}>
           {buttonLabel}
         </FileUploadButton>
@@ -271,6 +264,74 @@ function MediaUrlInput({
   );
 }
 
+function FileOnlyUpload({
+  value,
+  onFile,
+  onClear,
+  accept = 'image/*,video/*',
+  label = 'Selecionar arquivo',
+  previewStyle = 'avatar',
+}: {
+  value: string;
+  onFile: (dataUrl: string, file: File) => void;
+  onClear: () => void;
+  accept?: string;
+  label?: string;
+  previewStyle?: 'avatar' | 'banner';
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setLocalPreview(result);
+      onFile(result, file);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const preview = localPreview || value;
+
+  return (
+    <div className="space-y-2">
+      <input ref={inputRef} type="file" accept={accept} onChange={handleChange} className="hidden" />
+      <div className="flex gap-2 items-center">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex items-center gap-2 px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm text-xs font-semibold uppercase tracking-wider"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          {preview ? 'Trocar arquivo' : label}
+        </button>
+        {preview && (
+          <button
+            type="button"
+            onClick={() => { setLocalPreview(null); onClear(); }}
+            className="px-3 py-2.5 border border-white/15 hover:border-red-400/50 text-white/40 hover:text-red-300 transition-all rounded-sm"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      {preview && (
+        <div className={`overflow-hidden rounded-sm border border-white/10 ${previewStyle === 'avatar' ? 'w-20 h-20' : 'w-full h-28'}`}>
+          {preview.startsWith('data:video') || /\.(mp4|webm|ogg)/.test(preview) ? (
+            <video src={preview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+          ) : (
+            <img src={preview} alt="" className="w-full h-full object-cover" />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EditProfile() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -290,6 +351,8 @@ export default function EditProfile() {
   const [discordConnecting, setDiscordConnecting] = useState(false);
   const [lastfmInput, setLastfmInput] = useState('');
   const [lastfmConnecting, setLastfmConnecting] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useGetMyProfile({
     query: { queryKey: [] as any, enabled: isAuthenticated },
@@ -353,6 +416,7 @@ export default function EditProfile() {
 
   const set = (key: keyof ProfileFormState, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
+    setIsDirty(true);
   };
 
   const selectMusicType = (type: typeof musicType) => {
@@ -466,17 +530,20 @@ export default function EditProfile() {
     refetchProfile();
   };
 
-  const save = () => {
-    const preservedBadges = (profile as any)?.badges?.includes('verified')
-      ? [...form.badges.filter(badge => badge !== 'verified').slice(0, 6), 'verified']
-      : form.badges.filter(badge => badge !== 'verified').slice(0, 6);
-    updateProfile.mutate(
-      { data: { ...form, badges: preservedBadges } as any },
-      {
-        onSuccess: () => { toast({ title: "Perfil salvo!" }); formHydratedRef.current = false; refetchProfile(); },
-        onError: (err: any) => toast({ title: "Falha ao salvar", description: err.error, variant: "destructive" }),
-      }
-    );
+  const save = async () => {
+    const verifiedTypes = ['verified', 'verified_gold', 'verified_white'];
+    const currentVerifiedBadge = (profile as any)?.badges?.find((b: string) => verifiedTypes.includes(b));
+    const otherBadges = form.badges.filter((b: string) => !verifiedTypes.includes(b)).slice(0, 6);
+    const preservedBadges = currentVerifiedBadge ? [...otherBadges, currentVerifiedBadge] : otherBadges;
+    try {
+      await updateProfile.mutateAsync({ data: { ...form, badges: preservedBadges } as any });
+      toast({ title: "Perfil salvo!", duration: 2000 });
+      setIsDirty(false);
+      formHydratedRef.current = false;
+      refetchProfile();
+    } catch (err: any) {
+      toast({ title: "Falha ao salvar", description: err?.message || "Erro desconhecido", variant: "destructive", duration: 3000 });
+    }
   };
 
   const handleAddLink = () => {
@@ -546,30 +613,61 @@ export default function EditProfile() {
 
   const selectedPlatformInfo = SOCIAL_PLATFORMS.find(p => p.value === selectedPlatform);
 
+  const profileSiteUrl = (profile as any)?.username ? `https://faren.com.br/${(profile as any).username}` : null;
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+
+      {/* Mobile Preview Overlay */}
+      <AnimatePresence>
+        {showMobilePreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black overflow-y-auto"
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-md border-b border-white/10">
+              <span className="text-xs font-bold uppercase tracking-widest text-white/60">Pré-visualização</span>
+              <button
+                onClick={() => setShowMobilePreview(false)}
+                className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" /> Fechar
+              </button>
+            </div>
+            <ProfileView profile={liveProfile as any} isOwner={true} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Editor panel */}
       <div className="w-full lg:w-[460px] xl:w-[520px] flex flex-col border-r border-white/8 z-20 bg-background">
 
         {/* Header */}
-        <div className="h-14 border-b border-white/8 flex items-center justify-between px-4 flex-shrink-0">
+        <div className="h-12 border-b border-white/8 flex items-center justify-between px-3 flex-shrink-0 gap-2">
           <button
             onClick={() => setLocation("/dashboard")}
-            className="flex items-center gap-2 nav-link"
+            className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-white/40 hover:text-white transition-colors flex-shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Voltar
+            <ArrowLeft className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Voltar</span>
           </button>
-          <span className="label-caps">Editor de Perfil</span>
-          <div className="flex items-center gap-2">
-            {(profile as any)?.username && (
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 truncate">Editor de Perfil</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => setShowMobilePreview(true)}
+              className="lg:hidden flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors py-1.5 px-2 border border-white/10 rounded-sm"
+            >
+              <Eye className="w-3 h-3" /> Ver
+            </button>
+            {profileSiteUrl && (
               <a
-                href={`/${(profile as any).username}`}
+                href={profileSiteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 nav-link text-xs py-2 px-3 border border-white/10 rounded-sm hover:border-white/25 transition-colors"
+                className="hidden sm:flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors py-1.5 px-2 border border-white/10 rounded-sm"
               >
-                <ExternalLink className="w-3 h-3" /> Ver Perfil
+                <ExternalLink className="w-3 h-3" /> Perfil
               </a>
             )}
             <motion.button
@@ -577,10 +675,10 @@ export default function EditProfile() {
               disabled={updateProfile.isPending}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="btn-solid-white py-2 px-4 text-xs disabled:opacity-50"
+              className="btn-solid-white py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider disabled:opacity-50"
             >
-              {updateProfile.isPending ? 'Salvando...' : (
-                <><Save className="w-3 h-3 inline mr-1.5" /> Salvar</>
+              {updateProfile.isPending ? '...' : (
+                <><Save className="w-3 h-3 inline mr-1" /> Salvar</>
               )}
             </motion.button>
           </div>
@@ -660,35 +758,25 @@ export default function EditProfile() {
                 <div className="glow-line" />
 
                 <FieldRow label="Avatar">
-                  <div className="flex gap-2">
-                    <MediaUrlInput
-                      value={form.avatarUrl}
-                      onUrl={url => set('avatarUrl', url)}
-                      onFile={url => set('avatarUrl', url)}
-                      accept="image/*,video/*"
-                      buttonLabel={
-                        <>
-                          <Image className="w-3.5 h-3.5" />
-                          Mídia
-                        </>
-                      }
-                    />
-                  </div>
+                  <FileOnlyUpload
+                    value={form.avatarUrl}
+                    onFile={(url) => set('avatarUrl', url)}
+                    onClear={() => set('avatarUrl', '')}
+                    accept="image/*,video/*,image/gif"
+                    label="Selecionar foto/gif/vídeo"
+                    previewStyle="avatar"
+                  />
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
 
                 <FieldRow label="Banner">
-                  <MediaUrlInput
+                  <FileOnlyUpload
                     value={form.bannerUrl}
-                    onUrl={url => set('bannerUrl', url)}
-                    onFile={url => set('bannerUrl', url)}
-                    accept="image/*,video/*"
-                    buttonLabel={
-                      <>
-                        <Image className="w-3.5 h-3.5" />
-                        Mídia
-                      </>
-                    }
+                    onFile={(url) => set('bannerUrl', url)}
+                    onClear={() => set('bannerUrl', '')}
+                    accept="image/*,video/*,image/gif"
+                    label="Selecionar banner"
+                    previewStyle="banner"
                   />
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
@@ -815,7 +903,7 @@ export default function EditProfile() {
                   </div>
                 </FieldRow>
 
-                <FieldRow label={form.backgroundType === 'color' ? "Cor do fundo" : "Fundo (URL ou arquivo)"}>
+                <FieldRow label={form.backgroundType === 'color' ? "Cor do fundo" : "Fundo (arquivo)"}>
                   {form.backgroundType === 'color' ? (
                     <div className="flex gap-2">
                       <input
@@ -831,24 +919,20 @@ export default function EditProfile() {
                       />
                     </div>
                   ) : (
-                    <MediaUrlInput
+                    <FileOnlyUpload
                       value={form.backgroundUrl}
-                      onUrl={url => set('backgroundUrl', url)}
-                      onFile={url => {
+                      onFile={(url) => {
                         set('backgroundType', 'image');
                         set('backgroundUrl', url);
                       }}
-                      accept="image/*,video/*"
-                      buttonLabel={
-                        <>
-                          <Upload className="w-3.5 h-3.5" />
-                          Mídia
-                        </>
-                      }
+                      onClear={() => set('backgroundUrl', '')}
+                      accept="image/*,video/*,image/gif"
+                      label="Selecionar fundo"
+                      previewStyle="banner"
                     />
                   )}
                   <p className="text-xs text-white/25 mt-1">
-                    Imagem, GIF e vídeo ficam juntos. Arquivos anexados entram direto; o campo de texto aparece só para URL.
+                    Aceita imagem, GIF ou vídeo como fundo do perfil.
                   </p>
                 </FieldRow>
 
@@ -1303,6 +1387,29 @@ export default function EditProfile() {
             )}
           </div>
         </div>
+
+        {/* Sticky save bar */}
+        <AnimatePresence>
+          {isDirty && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="border-t border-white/10 bg-background/95 backdrop-blur-sm px-4 py-3 flex items-center justify-between flex-shrink-0"
+            >
+              <span className="text-xs text-white/50 font-semibold uppercase tracking-wider">Alterações não salvas</span>
+              <motion.button
+                onClick={save}
+                disabled={updateProfile.isPending}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="btn-solid-white py-2 px-5 text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+              >
+                {updateProfile.isPending ? 'Salvando...' : 'Salvar alterações'}
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Live Preview panel */}
