@@ -5,6 +5,47 @@ import { UpdateProfileBody, ConnectDiscordBody, ConnectMusicBody, AddProfileLink
 import { requireAuth, optionalAuth } from "../lib/auth";
 import { fetchLastfmNowPlaying } from "./music";
 
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+class TtlCache<T> {
+  private store = new Map<string, CacheEntry<T>>();
+
+  get(key: string): T | undefined {
+    const entry = this.store.get(key);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return undefined;
+    }
+    return entry.data;
+  }
+
+  set(key: string, data: T, ttlMs: number) {
+    this.store.set(key, { data, expiresAt: Date.now() + ttlMs });
+  }
+
+  delete(key: string) {
+    this.store.delete(key);
+  }
+}
+
+const profileCache = new TtlCache<any>();
+const nowPlayingCache = new TtlCache<any>();
+const PROFILE_TTL_MS = 30_000;
+const NOW_PLAYING_TTL_MS = 20_000;
+
+const userIdToUsername = new Map<number, string>();
+
+function invalidateProfileCacheByUserId(userId: number) {
+  const username = userIdToUsername.get(userId);
+  if (username) {
+    profileCache.delete(`profile:${username}`);
+  }
+}
+
 function getClientIp(req: Request): string {
   const forwarded = req.headers["x-forwarded-for"];
   const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
@@ -157,6 +198,8 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   const links = await db.select().from(profileLinksTable).where(eq(profileLinksTable.profileId, profile.id)).orderBy(profileLinksTable.sortOrder);
 
+  profileCache.delete(`profile:${user.username}`);
+
   res.json(formatProfile(user, updated, links));
 });
 
@@ -182,6 +225,8 @@ router.post("/profile/links", requireAuth, async (req, res): Promise<void> => {
     iconUrl: parsed.data.iconUrl ?? null,
     sortOrder: parsed.data.sortOrder ?? 0,
   }).returning();
+
+  invalidateProfileCacheByUserId(userId);
 
   res.status(201).json({
     id: link.id,
@@ -228,6 +273,8 @@ router.patch("/profile/links/:linkId", requireAuth, async (req, res): Promise<vo
     return;
   }
 
+  invalidateProfileCacheByUserId(userId);
+
   res.json({
     id: link.id,
     platform: link.platform,
@@ -256,6 +303,8 @@ router.delete("/profile/links/:linkId", requireAuth, async (req, res): Promise<v
 
   await db.delete(profileLinksTable).where(and(eq(profileLinksTable.id, params.data.linkId), eq(profileLinksTable.profileId, profile.id)));
 
+  invalidateProfileCacheByUserId(userId);
+
   res.sendStatus(204);
 });
 
@@ -277,6 +326,8 @@ router.post("/profile/discord", requireAuth, async (req, res): Promise<void> => 
     discordNitro: parsed.data.discordNitro ?? false,
     discordBoost: parsed.data.discordBoost ?? false,
   }).where(eq(profilesTable.userId, userId)).returning();
+
+  invalidateProfileCacheByUserId(userId);
 
   res.json({
     connected: true,
@@ -305,6 +356,8 @@ router.delete("/profile/discord", requireAuth, async (req, res): Promise<void> =
     discordBoost: false,
   }).where(eq(profilesTable.userId, userId));
 
+  invalidateProfileCacheByUserId(userId);
+
   res.json({ success: true, message: "Discord disconnected" });
 });
 
@@ -332,41 +385,85 @@ router.get("/profile/discord/status", requireAuth, async (req, res): Promise<voi
 
 router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => {
   const rawUsername = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
+  const currentUserId = req.user?.userId;
+  const cacheKey = `profile:${rawUsername}`;
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.username, rawUsername)).limit(1);
-  if (!user) {
-    res.status(404).json({ error: "User not found" });
-    return;
+  const cachedBase = profileCache.get(cacheKey);
+
+  let baseData: any;
+  if (cachedBase) {
+    baseData = cachedBase;
+  } else {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.username, rawUsername)).limit(1);
+    if (!user || user.banned) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, user.id)).limit(1);
+
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
+    }
+
+    const links = await db.select().from(profileLinksTable).where(eq(profileLinksTable.profileId, profile.id)).orderBy(profileLinksTable.sortOrder);
+
+    baseData = formatProfile(user, profile, links);
+    baseData._musicConfig = {
+      musicPrivate: profile.musicPrivate,
+      musicConnected: profile.musicConnected,
+      musicService: profile.musicService,
+      musicUsername: profile.musicUsername,
+    };
+
+    profileCache.set(cacheKey, baseData, PROFILE_TTL_MS);
+    userIdToUsername.set(user.id, user.username);
   }
-  if (user.banned) {
-    res.status(404).json({ error: "User not found" });
-    return;
-  }
 
-  const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, user.id)).limit(1);
-  if (!profile) {
-    res.status(404).json({ error: "Profile not found" });
-    return;
-  }
+  const [isFollowing, hasLiked, nowPlaying] = await Promise.all([
+    currentUserId
+      ? db.select({ id: followersTable.followerId }).from(followersTable)
+          .where(and(eq(followersTable.followerId, currentUserId), eq(followersTable.followingId, baseData.userId)))
+          .limit(1)
+          .then(r => r.length > 0)
+      : Promise.resolve(false),
 
-  const links = await db.select().from(profileLinksTable).where(eq(profileLinksTable.profileId, profile.id)).orderBy(profileLinksTable.sortOrder);
+    currentUserId
+      ? db.select({ id: profileLikesTable.userId }).from(profileLikesTable)
+          .where(and(eq(profileLikesTable.userId, currentUserId), eq(profileLikesTable.profileUserId, baseData.userId)))
+          .limit(1)
+          .then(r => r.length > 0)
+      : Promise.resolve(false),
 
-  let isFollowing = false;
-  let hasLiked = false;
-  if (req.user) {
-    const [followRecord] = await db.select().from(followersTable).where(and(eq(followersTable.followerId, req.user.userId), eq(followersTable.followingId, user.id))).limit(1);
-    isFollowing = !!followRecord;
-    const [likeRecord] = await db.select().from(profileLikesTable).where(and(eq(profileLikesTable.userId, req.user.userId), eq(profileLikesTable.profileUserId, user.id))).limit(1);
-    hasLiked = !!likeRecord;
-  }
+    ((): Promise<any> => {
+      const mc = baseData._musicConfig;
+      if (!mc?.musicPrivate && mc?.musicConnected === "true" && mc?.musicService === "lastfm" && mc?.musicUsername) {
+        const npKey = `np:${mc.musicUsername}`;
+        const cached = nowPlayingCache.get(npKey);
+        if (cached) return Promise.resolve(cached);
+        return Promise.race([
+          fetchLastfmNowPlaying(mc.musicUsername).then(result => {
+            nowPlayingCache.set(npKey, result, NOW_PLAYING_TTL_MS);
+            return result;
+          }),
+          new Promise<any>(resolve => setTimeout(() => resolve({ isPlaying: false }), 1500)),
+        ]);
+      }
+      return Promise.resolve({ isPlaying: false });
+    })(),
+  ]);
 
-  let nowPlaying: any = { isPlaying: false };
-  if (!profile.musicPrivate && profile.musicConnected === "true" && profile.musicService === "lastfm" && profile.musicUsername) {
-    nowPlaying = await fetchLastfmNowPlaying(profile.musicUsername);
+  const { _musicConfig: _, ...profileData } = baseData;
+
+  if (currentUserId) {
+    res.set("Cache-Control", "private, max-age=0, no-store");
+  } else {
+    res.set("Cache-Control", "public, max-age=0, s-maxage=20, stale-while-revalidate=30");
   }
 
   res.json({
-    ...formatProfile(user, profile, links),
+    ...profileData,
     nowPlaying,
     isFollowing,
     hasLiked,
@@ -471,6 +568,8 @@ router.post("/profile/discord/lanyard", requireAuth, async (req, res): Promise<v
       discordNitro: !!discordUser?.premium_type,
       discordBoost: false,
     }).where(eq(profilesTable.userId, userId));
+
+    invalidateProfileCacheByUserId(userId);
 
     res.json({
       connected: true,
