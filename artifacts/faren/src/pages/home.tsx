@@ -37,7 +37,7 @@ const EN = {
 };
 
 export default function Home() {
-  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 6 });
+  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 6 }, { query: { staleTime: 120_000, gcTime: 300_000 } });
   const [lang, setLang] = useState<'PT' | 'EN'>(() => (localStorage.getItem('faren_lang') as any) || 'PT');
 
   const t = lang === 'PT' ? PT : EN;
