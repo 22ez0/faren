@@ -7,7 +7,7 @@ import { Search, Users, Heart, X } from "lucide-react";
 
 export default function Discover() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 24 });
+  const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 24 }, { query: { staleTime: 120_000, gcTime: 300_000 } });
   const [, setLocation] = useLocation();
 
   const filteredProfiles = trendingProfiles?.filter(profile =>
