@@ -42,7 +42,7 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
     }
 
     const [profile] = await db
-      .select({ avatarUrl: profilesTable.avatarUrl, backgroundUrl: profilesTable.backgroundUrl, bio: profilesTable.bio, accentColor: profilesTable.accentColor })
+      .select({ avatarUrl: profilesTable.avatarUrl, backgroundUrl: profilesTable.backgroundUrl, bio: profilesTable.bio, accentColor: profilesTable.accentColor, badges: profilesTable.badges })
       .from(profilesTable)
       .where(eq(profilesTable.userId, user.id))
       .limit(1);
@@ -55,6 +55,11 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
     const accentColor = profile?.accentColor || "#ffffff";
     const ogImageUrl = backgroundUrl || avatarUrl || DEFAULT_IMAGE;
 
+    const badges = profile?.badges ?? [];
+    const isVerifiedGold = badges.includes("verified_gold");
+    const isVerified = isVerifiedGold || badges.includes("verified_white") || badges.includes("verified");
+    const verifiedSymbol = isVerifiedGold ? " ✦" : isVerified ? " ✓" : "";
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     res.send(`<!DOCTYPE html>
@@ -62,12 +67,12 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>${esc(displayName)} — Faren</title>
+  <title>${esc(displayName)}${verifiedSymbol} — Faren</title>
   <meta name="description" content="${esc(bio)}"/>
 
   <meta property="og:type" content="profile"/>
   <meta property="og:url" content="${esc(profileUrl)}"/>
-  <meta property="og:title" content="${esc(displayName)} (@${esc(user.username)}) — Faren"/>
+  <meta property="og:title" content="${esc(displayName)}${verifiedSymbol} (@${esc(user.username)}) — Faren"/>
   <meta property="og:description" content="${esc(bio)}"/>
   <meta property="og:image" content="${esc(ogImageUrl)}"/>
   <meta property="og:image:width" content="1200"/>
@@ -79,7 +84,7 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
 
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:url" content="${esc(profileUrl)}"/>
-  <meta name="twitter:title" content="${esc(displayName)} (@${esc(user.username)}) — Faren"/>
+  <meta name="twitter:title" content="${esc(displayName)}${verifiedSymbol} (@${esc(user.username)}) — Faren"/>
   <meta name="twitter:description" content="${esc(bio)}"/>
   <meta name="twitter:image" content="${esc(ogImageUrl)}"/>
 
