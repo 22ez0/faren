@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
 import { ArrowRight, Users, Heart } from "lucide-react";
+import SnowGL from "@/components/SnowGL";
 
 const PT = {
   nav: { discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link" },
@@ -81,13 +82,21 @@ export default function Home() {
       </nav>
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
-        <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-[0.18]" style={{ zIndex: 0 }}>
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden" style={{ background: "#050a14" }}>
+
+        {/* Desktop: original video background */}
+        <video autoPlay muted loop playsInline className="hidden md:block absolute inset-0 w-full h-full object-cover opacity-[0.18]" style={{ zIndex: 0 }}>
           <source src={`${import.meta.env.BASE_URL}hero-bg.mp4`} type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black" style={{ zIndex: 1 }} />
 
-        <div className="relative flex flex-col items-center text-center max-w-5xl mx-auto" style={{ zIndex: 2 }}>
+        {/* Mobile: 3D snow mountain scene */}
+        <div className="md:hidden absolute inset-0" style={{ zIndex: 0 }}>
+          <SnowGL />
+        </div>
+
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black" style={{ zIndex: 2 }} />
+
+        <div className="relative flex flex-col items-center text-center max-w-5xl mx-auto" style={{ zIndex: 3 }}>
           <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="label-caps mb-8">
             {t.hero.tag}
           </motion.p>
@@ -114,7 +123,7 @@ export default function Home() {
           </motion.div>
         </div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="absolute bottom-10 left-1/2 -translate-x-1/2 scroll-indicator" style={{ zIndex: 2 }} />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="absolute bottom-10 left-1/2 -translate-x-1/2 scroll-indicator" style={{ zIndex: 3 }} />
       </section>
 
       {/* ── FEATURES ROW ──────────────────────────────────────── */}
