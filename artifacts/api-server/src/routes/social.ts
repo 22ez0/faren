@@ -19,6 +19,8 @@ function isBot(userAgent: string | undefined): boolean {
 
 const router: IRouter = Router();
 
+const trendingCache = new Map<number, { data: unknown[]; expiresAt: number }>();
+
 router.post("/users/:username/follow", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
   const rawUsername = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
@@ -158,6 +160,14 @@ router.post("/analytics/record-view", async (req, res): Promise<void> => {
 router.get("/discover/trending", async (req, res): Promise<void> => {
   const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
 
+  const cached = trendingCache.get(limit);
+  if (cached && cached.expiresAt > Date.now()) {
+    res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
+    res.setHeader("X-Cache", "HIT");
+    res.json(cached.data);
+    return;
+  }
+
   const trending = await db
     .select({
       id: profilesTable.id,
@@ -193,7 +203,7 @@ router.get("/discover/trending", async (req, res): Promise<void> => {
     .orderBy(desc(profilesTable.viewsCount))
     .limit(limit);
 
-  res.json(trending.map(p => ({
+  const result = trending.map(p => ({
     id: p.id,
     username: p.username,
     displayName: p.displayName,
@@ -224,7 +234,12 @@ router.get("/discover/trending", async (req, res): Promise<void> => {
     isFollowing: false,
     hasLiked: false,
     createdAt: p.createdAt.toISOString(),
-  })));
+  }));
+
+  trendingCache.set(limit, { data: result, expiresAt: Date.now() + 120_000 });
+  res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
+  res.setHeader("X-Cache", "MISS");
+  res.json(result);
 });
 
 export default router;
