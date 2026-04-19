@@ -1,6 +1,8 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import { existsSync } from "fs";
 import router from "./routes";
 import ogRouter from "./routes/og";
 import { logger } from "./lib/logger";
@@ -105,5 +107,19 @@ app.use(express.urlencoded({ extended: true, limit: "75mb" }));
 
 app.use("/api", router);
 app.use("/", ogRouter);
+
+const frontendDist = path.resolve(process.cwd(), "artifacts/faren/dist/public");
+if (existsSync(frontendDist)) {
+  app.use(express.static(frontendDist, { maxAge: "1h", etag: true }));
+  app.get("*", (_req, res, next) => {
+    const indexPath = path.join(frontendDist, "index.html");
+    if (existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  });
+  logger.info({ frontendDist }, "Serving frontend static files");
+}
 
 export default app;
