@@ -26,12 +26,21 @@ const registerSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+function genCaptcha() {
+  const a = Math.floor(Math.random() * 9) + 1;
+  const b = Math.floor(Math.random() * 9) + 1;
+  return { a, b, answer: a + b };
+}
+
 export default function Register() {
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
   const registerMutation = useRegister();
   const [step, setStep] = useState(1);
+  const [captcha, setCaptcha] = useState(genCaptcha);
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaError, setCaptchaError] = useState('');
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -45,6 +54,13 @@ export default function Register() {
   };
 
   const onSubmit = (data: RegisterFormValues) => {
+    if (parseInt(captchaInput, 10) !== captcha.answer) {
+      setCaptchaError('Resposta incorreta. Tente novamente.');
+      setCaptcha(genCaptcha());
+      setCaptchaInput('');
+      return;
+    }
+    setCaptchaError('');
     registerMutation.mutate({ data }, {
       onSuccess: (res) => { login(res.token); setLocation("/dashboard"); },
       onError: (err: any) => {
@@ -167,6 +183,22 @@ export default function Register() {
                       className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
                     />
                   </div>
+                  <div className="mt-2">
+                    <label className="label-caps block mb-2">
+                      Verificação — Quanto é {captcha.a} + {captcha.b}?
+                    </label>
+                    <input
+                      type="number"
+                      value={captchaInput}
+                      onChange={(e) => { setCaptchaInput(e.target.value); setCaptchaError(''); }}
+                      placeholder="Sua resposta"
+                      className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
+                    />
+                    {captchaError && (
+                      <p className="text-red-400 text-xs mt-1">{captchaError}</p>
+                    )}
+                  </div>
+
                   <div className="flex gap-3 mt-4">
                     <button
                       type="button"

@@ -411,13 +411,18 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
     "cursor-auto";
 
   useEffect(() => {
-    if (!isCustomCursor || !cursorDataUrl) return;
     const styleEl = document.createElement('style');
     styleEl.id = 'custom-cursor-style';
-    styleEl.textContent = `* { cursor: url("${cursorDataUrl}") 16 16, auto !important; }`;
-    document.head.appendChild(styleEl);
-    return () => { styleEl.remove(); };
-  }, [isCustomCursor, cursorDataUrl]);
+    if (isCustomCursor && cursorDataUrl) {
+      styleEl.textContent = `* { cursor: url("${cursorDataUrl}") 16 16, auto !important; }`;
+    } else if (cursorStyle && cursorStyle !== 'auto') {
+      styleEl.textContent = `* { cursor: ${cursorStyle} !important; }`;
+    }
+    if (styleEl.textContent) {
+      document.head.appendChild(styleEl);
+    }
+    return () => { document.getElementById('custom-cursor-style')?.remove(); };
+  }, [isCustomCursor, cursorDataUrl, cursorStyle]);
 
   const isLeft = layout === "left";
   const alignClass = isLeft ? "items-start text-left" : "items-center text-center";
@@ -805,13 +810,13 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         {/* Footer */}
         <div className="mt-12 flex flex-col items-center gap-3">
           <a
-            href="https://keefnow.com.br"
+            href="https://faren.com.br"
             target="_blank"
             rel="noopener noreferrer"
             className="label-caps hover:text-white/70 transition-colors"
             style={{ color: 'rgba(255,255,255,0.25)' }}
           >
-            Feito com Faren · Keefnow
+            Faça o seu também
           </a>
           {!isOwner && (
             <button

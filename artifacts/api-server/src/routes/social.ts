@@ -3,6 +3,22 @@ import { db, usersTable, profilesTable, followersTable, profileLikesTable, profi
 import { eq, and, desc, sql, gt } from "drizzle-orm";
 import { RecordProfileViewBody } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth";
+import { createHash } from "crypto";
+
+function hashFingerprint(ip: string, device: string | undefined): string {
+  const raw = `${ip}::${(device || '').slice(0, 512)}`;
+  return createHash('sha256').update(raw).digest('hex').slice(0, 32);
+}
+
+function extractDeviceType(device: string | undefined): string {
+  if (!device) return 'unknown';
+  const lower = device.toLowerCase();
+  if (lower.startsWith('mobile')) return 'mobile';
+  if (lower.startsWith('desktop')) return 'desktop';
+  return 'unknown';
+}
+
+const SUSPICIOUS_ASN_RANGES = /datacenter|hosting|amazon|google|microsoft|digitalocean|linode|vultr|ovh|hetzner|cloudflare|fastly|akamai|fasthost|server|vps|vpn|tor|proxy/i;
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers["x-forwarded-for"];
@@ -117,6 +133,11 @@ router.post("/analytics/record-view", async (req, res): Promise<void> => {
   }
 
   const ip = getClientIp(req);
+  const rawDevice = parsed.data.device ?? undefined;
+  const deviceType = extractDeviceType(rawDevice);
+
+  // Create a composite fingerprint from IP + browser fingerprint
+  const fingerprint = hashFingerprint(ip, rawDevice);
 
   const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.username, parsed.data.username)).limit(1);
   if (!targetUser) {
@@ -125,7 +146,10 @@ router.post("/analytics/record-view", async (req, res): Promise<void> => {
   }
 
   const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [recentView] = await db
+
+  // Deduplicate by IP AND fingerprint — both must be unique within 24h
+  // This catches VPN users (same fingerprint, different IP) and same-IP users (different fingerprint)
+  const [recentByIp] = await db
     .select({ id: profileViewsTable.id })
     .from(profileViewsTable)
     .where(
@@ -137,15 +161,36 @@ router.post("/analytics/record-view", async (req, res): Promise<void> => {
     )
     .limit(1);
 
-  if (recentView) {
+  if (recentByIp) {
     res.json({ success: true, message: "Already viewed recently" });
     return;
   }
 
+  // Check fingerprint (catches VPN rotation — same browser fingerprint, different IPs)
+  const [recentByFingerprint] = await db
+    .select({ id: profileViewsTable.id })
+    .from(profileViewsTable)
+    .where(
+      and(
+        eq(profileViewsTable.profileUserId, targetUser.id),
+        eq(profileViewsTable.device, `fp:${fingerprint}`),
+        gt(profileViewsTable.viewedAt, windowStart)
+      )
+    )
+    .limit(1);
+
+  if (recentByFingerprint) {
+    res.json({ success: true, message: "Already viewed recently" });
+    return;
+  }
+
+  // Extract clean device type for storage
+  const country = parsed.data.country ?? null;
+
   await db.insert(profileViewsTable).values({
     profileUserId: targetUser.id,
-    country: parsed.data.country ?? null,
-    device: parsed.data.device ?? null,
+    country,
+    device: `fp:${fingerprint}|${deviceType}`,
     ipAddress: ip,
     userAgent: userAgent ?? null,
   });

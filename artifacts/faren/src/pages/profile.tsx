@@ -26,15 +26,29 @@ export default function ProfilePage() {
       queryKey: getGetUserByUsernameQueryKey(username || ""),
       enabled: !!username,
       retry: false,
-      staleTime: 25_000,
-      gcTime: 60_000,
+      staleTime: 0,
+      gcTime: 30_000,
+      refetchOnMount: true,
     }
   });
 
   useEffect(() => {
-    if (username) {
-      recordView.mutate({ data: { username } });
-    }
+    if (!username) return;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const scr = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+    const ua = navigator.userAgent;
+    const langs = navigator.languages?.join(',') || navigator.language;
+    const cores = (navigator as any).hardwareConcurrency || 0;
+    const mem = (navigator as any).deviceMemory || 0;
+    const fingerprint = `${ua}|${scr}|${tz}|${langs}|${cores}|${mem}`;
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(ua);
+    recordView.mutate({
+      data: {
+        username,
+        device: `${isMobile ? 'mobile' : 'desktop'}::${fingerprint}`,
+        country: tz,
+      }
+    });
   }, [username]);
 
   useEffect(() => {
@@ -116,6 +130,13 @@ export default function ProfilePage() {
     }
   };
 
+  const [loadingSlow, setLoadingSlow] = useState(false);
+  useEffect(() => {
+    if (!isLoading) { setLoadingSlow(false); return; }
+    const t = setTimeout(() => setLoadingSlow(true), 4000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -123,6 +144,9 @@ export default function ProfilePage() {
           <Skeleton className="w-32 h-32 rounded-full" />
           <Skeleton className="w-48 h-8" />
           <Skeleton className="w-32 h-4" />
+          {loadingSlow && (
+            <p className="text-white/30 text-xs mt-2 animate-pulse">Acordando o servidor...</p>
+          )}
         </div>
       </div>
     );

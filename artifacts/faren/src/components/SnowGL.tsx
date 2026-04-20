@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
@@ -12,7 +12,7 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
     x: Math.random() * W, y: Math.random() * H,
     vx: (Math.random() - 0.5) * 0.3, vy: Math.random() * 0.7 + 0.2,
     r: Math.random() * 2.5 + 0.5,
-    op: Math.random() * 0.7 + 0.15,
+    op: Math.random() * 0.55 + 0.12,
     ph: Math.random() * Math.PI * 2,
   }));
 
@@ -48,17 +48,24 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
     tid = requestAnimationFrame(tick);
     time += 0.016;
     ctx.clearRect(0, 0, W, H);
+
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+    skyGrad.addColorStop(0, "#050a14");
+    skyGrad.addColorStop(1, "#0d1827");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, H);
+
     bursts.forEach(b => b.t += 0.016);
     for (let i = bursts.length - 1; i >= 0; i--) if (bursts[i].t > 0.8) bursts.splice(i, 1);
 
-    drawMountainLayer([[0,0.72],[0.12,0.45],[0.22,0.62],[0.35,0.30],[0.48,0.58],[0.6,0.26],[0.72,0.5],[0.86,0.35],[1,0.58]], "rgba(18,22,36,0.92)");
-    drawMountainLayer([[0,0.78],[0.09,0.56],[0.2,0.68],[0.33,0.42],[0.46,0.64],[0.59,0.38],[0.71,0.55],[0.83,0.44],[0.95,0.62],[1,0.72]], "rgba(26,32,50,0.78)");
-    drawMountainLayer([[0,0.84],[0.11,0.68],[0.26,0.76],[0.41,0.63],[0.56,0.75],[0.7,0.64],[0.85,0.73],[1,0.77]], "rgba(36,42,62,0.60)");
-    drawMountainLayer([[0,0.88],[0.15,0.79],[0.3,0.83],[0.5,0.76],[0.7,0.82],[0.88,0.78],[1,0.83]], "rgba(48,54,76,0.38)");
+    drawMountainLayer([[0,0.72],[0.12,0.45],[0.22,0.62],[0.35,0.30],[0.48,0.58],[0.6,0.26],[0.72,0.5],[0.86,0.35],[1,0.58]], "rgba(18,22,36,0.95)");
+    drawMountainLayer([[0,0.78],[0.09,0.56],[0.2,0.68],[0.33,0.42],[0.46,0.64],[0.59,0.38],[0.71,0.55],[0.83,0.44],[0.95,0.62],[1,0.72]], "rgba(26,32,50,0.82)");
+    drawMountainLayer([[0,0.84],[0.11,0.68],[0.26,0.76],[0.41,0.63],[0.56,0.75],[0.7,0.64],[0.85,0.73],[1,0.77]], "rgba(36,42,62,0.65)");
+    drawMountainLayer([[0,0.88],[0.15,0.79],[0.3,0.83],[0.5,0.76],[0.7,0.82],[0.88,0.78],[1,0.83]], "rgba(48,54,76,0.42)");
 
     const groundGrad = ctx.createLinearGradient(0, H * 0.85, 0, H);
-    groundGrad.addColorStop(0, "rgba(200,220,255,0.16)");
-    groundGrad.addColorStop(1, "rgba(180,210,255,0.04)");
+    groundGrad.addColorStop(0, "rgba(200,220,255,0.14)");
+    groundGrad.addColorStop(1, "rgba(180,210,255,0.03)");
     ctx.fillStyle = groundGrad; ctx.fillRect(0, H * 0.85, W, H * 0.15);
 
     for (const f of flakes) {
@@ -72,10 +79,10 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
         const bx = f.x - b.x, by = f.y - b.y, bd = Math.hypot(bx, by), BR = W * 0.18;
         if (bd < BR && bd > 0.5) { const p = (BR - bd) / BR * Math.max(0, 1 - b.t / 0.8); f.x += bx / bd * p * 20; f.y += by / bd * p * 20; }
       }
-      const glow = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r * 2.8);
-      glow.addColorStop(0, `rgba(255,255,255,${f.op})`);
+      const glow = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r * 2.5);
+      glow.addColorStop(0, `rgba(220,235,255,${f.op})`);
       glow.addColorStop(1, "rgba(180,210,255,0)");
-      ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 2.8, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 2.5, 0, Math.PI * 2);
       ctx.fillStyle = glow; ctx.fill();
     }
   }
@@ -98,10 +105,10 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
   };
 }
 
-/* ─── Procedural mountains (always rendered as baseline) ──────────────── */
+/* ─── Procedural mountains ────────────────────────────────────────────── */
 function buildProceduralMountains(scene: THREE.Scene) {
-  const mountainMat = new THREE.MeshStandardMaterial({ color: 0x111828, roughness: 0.95, metalness: 0.0 });
-  const snowCapMat = new THREE.MeshStandardMaterial({ color: 0xd8e8ff, roughness: 0.6, metalness: 0.05 });
+  const mountainMat = new THREE.MeshStandardMaterial({ color: 0x0e1520, roughness: 0.95, metalness: 0.0 });
+  const snowCapMat = new THREE.MeshStandardMaterial({ color: 0xd0e4ff, roughness: 0.6, metalness: 0.05 });
 
   const mountains = [
     { x: 0,   z: -14, h: 20, w: 10 },
@@ -129,10 +136,9 @@ function buildProceduralMountains(scene: THREE.Scene) {
     scene.add(cap);
   }
 
-  /* Snow ground */
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(100, 50),
-    new THREE.MeshStandardMaterial({ color: 0xc8daf0, roughness: 0.8, metalness: 0.0 })
+    new THREE.MeshStandardMaterial({ color: 0xb8d0f0, roughness: 0.8, metalness: 0.0 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -3;
@@ -141,7 +147,7 @@ function buildProceduralMountains(scene: THREE.Scene) {
 }
 
 /* ─── WebGL scene ─────────────────────────────────────────────────────── */
-function runWebGL(mount: HTMLDivElement, onFail: () => void) {
+function runWebGL(mount: HTMLDivElement, onFail: () => void, onReady: () => void) {
   let W = mount.clientWidth, H = mount.clientHeight;
   const isMobile = W < 768;
 
@@ -174,7 +180,6 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
   camera.position.set(0, 3, 18);
   camera.lookAt(0, 0, 0);
 
-  /* Lighting */
   scene.add(new THREE.AmbientLight(0x8bb4d8, 0.6));
   const moon = new THREE.DirectionalLight(0xaac8f0, 1.5);
   moon.position.set(-8, 14, 6);
@@ -189,7 +194,6 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
     moon.shadow.camera.bottom = -25;
   }
   scene.add(moon);
-  scene.add(new THREE.DirectionalLight(0x334488, 0.5).position.set(10, 5, -8) && new THREE.DirectionalLight(0x334488, 0.5));
   const rim = new THREE.DirectionalLight(0x334488, 0.5);
   rim.position.set(10, 5, -8);
   scene.add(rim);
@@ -197,12 +201,13 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
   fill.position.set(0, 8, 10);
   scene.add(fill);
 
-  /* ── Always build procedural mountains first (instant fallback) ── */
   const proceduralGroup = new THREE.Group();
   scene.add(proceduralGroup);
   buildProceduralMountains(proceduralGroup as unknown as THREE.Scene);
 
-  /* ── Try loading GLB, replace procedural if successful ── */
+  // Signal ready after first render with procedural mountains
+  let readyCalled = false;
+
   const loader = new GLTFLoader();
   const modelGroup = new THREE.Group();
 
@@ -211,7 +216,7 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
-      if (size.length() === 0) return; // empty model guard
+      if (size.length() === 0) return;
 
       const center = box.getCenter(new THREE.Vector3());
       const camFovRad = (camera.fov * Math.PI) / 180;
@@ -232,7 +237,6 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
 
       modelGroup.add(model);
       scene.add(modelGroup);
-      /* Hide procedural mountains once GLB is loaded */
       proceduralGroup.visible = false;
     } catch { /* keep procedural */ }
   }
@@ -242,7 +246,7 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
     () => loader.load(`${BASE}/snow-bg2.glb`, setupModel, undefined, () => { /* keep procedural */ })
   );
 
-  /* ── Snow particles ── */
+  /* Snow particles */
   const PCOUNT = isMobile ? 1500 : 4000;
   const pPos = new Float32Array(PCOUNT * 3);
   const pOpa = new Float32Array(PCOUNT);
@@ -256,8 +260,8 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
     pPos[i * 3 + 2] = (Math.random() - 0.5) * 12 + 2;
     pVel[i * 2] = (Math.random() - 0.5) * 0.004;
     pVel[i * 2 + 1] = -(Math.random() * 0.018 + 0.005);
-    pSiz[i] = Math.random() * 8 + 2;
-    pOpa[i] = Math.random() * 0.7 + 0.2;
+    pSiz[i] = Math.random() * 7 + 2;
+    pOpa[i] = Math.random() * 0.55 + 0.15;
     pPha[i] = Math.random() * Math.PI * 2;
   }
 
@@ -292,7 +296,6 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
   });
   scene.add(new THREE.Points(pGeo, pMat));
 
-  /* ── Mouse / touch parallax ── */
   const camTarget = { x: 0, y: 3 };
   const camCurrent = { x: 0, y: 3 };
   const bursts: { x: number; y: number; t: number }[] = [];
@@ -351,6 +354,9 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
     pGeo.attributes.position.needsUpdate = true;
 
     renderer.render(scene, camera);
+
+    // Signal ready after first rendered frame
+    if (!readyCalled) { readyCalled = true; onReady(); }
   }
   animate();
 
@@ -377,6 +383,7 @@ function runWebGL(mount: HTMLDivElement, onFail: () => void) {
 export default function SnowGL() {
   const mountRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -390,13 +397,15 @@ export default function SnowGL() {
       canvas.width = mount!.clientWidth;
       canvas.height = mount!.clientHeight;
       cleanup = runCanvas2D(canvas);
+      // Show fallback after first frame
+      requestAnimationFrame(() => setVisible(true));
     }
 
     try {
       const test = document.createElement("canvas");
       const gl = test.getContext("webgl") || test.getContext("experimental-webgl");
       if (!gl) { startFallback(); return; }
-      cleanup = runWebGL(mount, startFallback);
+      cleanup = runWebGL(mount, startFallback, () => setVisible(true));
     } catch { startFallback(); }
 
     return () => cleanup?.();
@@ -406,7 +415,12 @@ export default function SnowGL() {
     <div
       ref={mountRef}
       className="absolute inset-0"
-      style={{ zIndex: 1, pointerEvents: "none" }}
+      style={{
+        zIndex: 1,
+        pointerEvents: "none",
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.8s ease-in",
+      }}
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ display: "none" }} />
     </div>

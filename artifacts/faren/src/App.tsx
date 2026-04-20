@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AuthProvider } from "@/lib/auth";
+import { useEffect } from "react";
 
 import Home from "@/pages/home";
 import Login from "@/pages/login";
@@ -38,6 +39,13 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    const apiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    if (apiUrl) {
+      fetch(`${apiUrl}/api/healthz`, { method: 'GET', signal: AbortSignal.timeout(8000) }).catch(() => {});
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
