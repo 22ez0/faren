@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
-import { ArrowRight, Users, Heart } from "lucide-react";
-import SnowGL from "@/components/SnowGL";
+import { ArrowRight, Users, Heart, Volume2, VolumeX } from "lucide-react";
+import heroVideo from "@assets/pinterest_884112970592536960_1776809417801.mp4";
 
 const PT = {
   nav: { discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link" },
@@ -40,6 +40,20 @@ const EN = {
 export default function Home() {
   const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 6 }, { query: { staleTime: 120_000, gcTime: 300_000 } });
   const [lang, setLang] = useState<'PT' | 'EN'>(() => (localStorage.getItem('faren_lang') as any) || 'PT');
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+
+  useEffect(() => {
+    if (heroVideoRef.current) heroVideoRef.current.volume = 0.15;
+  }, [muted]);
+
+  const toggleMute = () => {
+    const v = heroVideoRef.current;
+    if (!v) return;
+    v.volume = 0.15;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+  };
 
   const t = lang === 'PT' ? PT : EN;
 
@@ -84,17 +98,29 @@ export default function Home() {
       {/* ── HERO ──────────────────────────────────────────────── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden" style={{ background: "#050a14" }}>
 
-        {/* Desktop: original video background */}
-        <video autoPlay muted loop playsInline className="hidden md:block absolute inset-0 w-full h-full object-cover opacity-[0.18]" style={{ zIndex: 0 }}>
-          <source src={`${import.meta.env.BASE_URL}hero-bg.mp4`} type="video/mp4" />
+        {/* Hero video background (desktop + mobile) */}
+        <video
+          ref={heroVideoRef}
+          autoPlay
+          muted={muted}
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.35]"
+          style={{ zIndex: 0 }}
+        >
+          <source src={heroVideo} type="video/mp4" />
         </video>
 
-        {/* Mobile: 3D snow mountain scene */}
-        <div className="md:hidden absolute inset-0" style={{ zIndex: 0 }}>
-          <SnowGL />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" style={{ zIndex: 2 }} />
 
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black" style={{ zIndex: 2 }} />
+        <button
+          onClick={toggleMute}
+          aria-label={muted ? "Ativar som" : "Silenciar"}
+          className="absolute bottom-6 right-6 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/70 border border-white/15 text-white/70 hover:text-white backdrop-blur-sm transition-all"
+          style={{ zIndex: 4 }}
+        >
+          {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
 
         <div className="relative flex flex-col items-center text-center max-w-5xl mx-auto" style={{ zIndex: 3 }}>
           <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="label-caps mb-8" style={{ textShadow: '0 0 20px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.8)' }}>
