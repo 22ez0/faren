@@ -47,7 +47,7 @@ export default function Home() {
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const audioGainRef = useRef<GainNode | null>(null);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const [showB, setShowB] = useState(false);
 
   // Seamless loop: two stacked <video> elements, one starts a tiny moment before the other ends, fading between them
@@ -90,55 +90,74 @@ export default function Home() {
     };
   }, []);
 
-  // Gapless audio loop via Web Audio API (AudioBufferSourceNode loops natively, no gap)
+  // Gapless audio: pre-create context+source, start playing immediately. Use gesture fallback if autoplay blocked.
+  const mutedRef = useRef(muted);
+  useEffect(() => { mutedRef.current = muted; }, [muted]);
+
   useEffect(() => {
     let cancelled = false;
+    let removeGestureListeners: (() => void) | null = null;
+
     (async () => {
       try {
-        const res = await fetch(heroAudioSrc);
-        const buf = await res.arrayBuffer();
         const Ctx: typeof AudioContext = (window.AudioContext || (window as any).webkitAudioContext);
         const ctx = new Ctx();
-        const decoded = await ctx.decodeAudioData(buf);
-        if (cancelled) { ctx.close(); return; }
         audioCtxRef.current = ctx;
-        audioBufferRef.current = decoded;
         const gain = ctx.createGain();
-        gain.gain.value = 0;
+        gain.gain.value = mutedRef.current ? 0 : 1;
         gain.connect(ctx.destination);
         audioGainRef.current = gain;
+
+        const res = await fetch(heroAudioSrc);
+        const arrBuf = await res.arrayBuffer();
+        const decoded = await ctx.decodeAudioData(arrBuf);
+        if (cancelled) { ctx.close(); return; }
+        audioBufferRef.current = decoded;
+
+        const src = ctx.createBufferSource();
+        src.buffer = decoded;
+        src.loop = true;
+        src.connect(gain);
+        src.start(0);
+        audioSourceRef.current = src;
+
+        const tryResume = () => ctx.resume().catch(() => {});
+        await tryResume();
+
+        if (ctx.state !== "running") {
+          const events: (keyof DocumentEventMap)[] = ["pointerdown", "touchstart", "keydown", "click", "scroll"];
+          const onGesture = () => {
+            tryResume();
+            if (ctx.state === "running") removeGestureListeners?.();
+          };
+          events.forEach(e => document.addEventListener(e, onGesture, { passive: true, capture: true }));
+          removeGestureListeners = () => events.forEach(e => document.removeEventListener(e, onGesture, { capture: true } as any));
+        }
       } catch (e) {
         console.warn("Audio init failed:", e);
       }
     })();
+
     return () => {
       cancelled = true;
-      audioSourceRef.current?.stop();
+      removeGestureListeners?.();
+      try { audioSourceRef.current?.stop(); } catch {}
       audioSourceRef.current?.disconnect();
       audioCtxRef.current?.close();
     };
   }, []);
 
-  const toggleMute = async () => {
+  const toggleMute = () => {
     const ctx = audioCtxRef.current;
-    const buf = audioBufferRef.current;
     const gain = audioGainRef.current;
-    if (!ctx || !buf || !gain) return;
-    if (ctx.state === "suspended") await ctx.resume();
     const newMuted = !muted;
-    const target = newMuted ? 0 : 1;
-    if (!newMuted && !audioSourceRef.current) {
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.loop = true;
-      src.connect(gain);
-      src.start(0);
-      audioSourceRef.current = src;
-    }
-    gain.gain.cancelScheduledValues(ctx.currentTime);
-    gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.2);
     setMuted(newMuted);
+    if (!ctx || !gain) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const now = ctx.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(newMuted ? 0 : 1, now + 0.08);
   };
 
   const t = lang === 'PT' ? PT : EN;
