@@ -47,6 +47,57 @@ export default function Home() {
     if (heroVideoRef.current) heroVideoRef.current.volume = 0.15;
   }, [muted]);
 
+  // Frame-perfect ping-pong loop: forward → reverse → forward …
+  useEffect(() => {
+    const v = heroVideoRef.current;
+    if (!v) return;
+    let direction: 1 | -1 = 1;
+    let lastTs = 0;
+    let rafId = 0;
+
+    const onMeta = () => {
+      v.currentTime = 0;
+      v.play().catch(() => {});
+    };
+
+    const tick = (ts: number) => {
+      if (!v.duration || isNaN(v.duration)) {
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+      if (direction === 1) {
+        if (v.paused) v.play().catch(() => {});
+        if (v.currentTime >= v.duration - 0.06) {
+          direction = -1;
+          v.pause();
+          lastTs = ts;
+        }
+      } else {
+        const dt = lastTs ? (ts - lastTs) / 1000 : 0;
+        lastTs = ts;
+        const next = v.currentTime - dt;
+        if (next <= 0.02) {
+          v.currentTime = 0;
+          direction = 1;
+          lastTs = 0;
+          v.play().catch(() => {});
+        } else {
+          v.currentTime = next;
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    if (v.readyState >= 1) onMeta();
+    else v.addEventListener("loadedmetadata", onMeta, { once: true });
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      v.removeEventListener("loadedmetadata", onMeta);
+    };
+  }, []);
+
   const toggleMute = () => {
     const v = heroVideoRef.current;
     if (!v) return;
@@ -103,7 +154,6 @@ export default function Home() {
           ref={heroVideoRef}
           autoPlay
           muted={muted}
-          loop
           playsInline
           className="absolute inset-0 w-full h-full object-cover opacity-[0.35]"
           style={{ zIndex: 0 }}
