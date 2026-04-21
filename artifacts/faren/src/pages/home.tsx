@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
 import { ArrowRight, Users, Heart, Volume2, VolumeX } from "lucide-react";
 import heroVideo from "@assets/pinterest_884112970592536960_1776809417801.mp4";
+import heroAudioSrc from "@assets/Download_1776810133370.mp4";
 
 const PT = {
   nav: { discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link" },
@@ -40,70 +41,69 @@ const EN = {
 export default function Home() {
   const { data: trendingProfiles, isLoading } = useGetTrendingProfiles({ limit: 6 }, { query: { staleTime: 120_000, gcTime: 300_000 } });
   const [lang, setLang] = useState<'PT' | 'EN'>(() => (localStorage.getItem('faren_lang') as any) || 'PT');
-  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const heroVideoARef = useRef<HTMLVideoElement>(null);
+  const heroVideoBRef = useRef<HTMLVideoElement>(null);
+  const heroAudioRef = useRef<HTMLAudioElement>(null);
   const [muted, setMuted] = useState(true);
+  const [showB, setShowB] = useState(false);
 
+  // Seamless loop: two stacked <video> elements, one starts a tiny moment before the other ends, fading between them
   useEffect(() => {
-    if (heroVideoRef.current) heroVideoRef.current.volume = 0.15;
-  }, [muted]);
-
-  // Frame-perfect ping-pong loop: forward → reverse → forward …
-  useEffect(() => {
-    const v = heroVideoRef.current;
-    if (!v) return;
-    let direction: 1 | -1 = 1;
-    let lastTs = 0;
+    const a = heroVideoARef.current;
+    const b = heroVideoBRef.current;
+    if (!a || !b) return;
+    const FADE = 0.45; // seconds before end to start swap
+    let active: "A" | "B" = "A";
     let rafId = 0;
 
-    const onMeta = () => {
-      v.currentTime = 0;
-      v.play().catch(() => {});
+    const startBoth = async () => {
+      try { a.currentTime = 0; await a.play(); } catch {}
+      try { b.currentTime = 0; b.pause(); } catch {}
     };
 
-    const tick = (ts: number) => {
-      if (!v.duration || isNaN(v.duration)) {
-        rafId = requestAnimationFrame(tick);
-        return;
+    const tick = () => {
+      const cur = active === "A" ? a : b;
+      const other = active === "A" ? b : a;
+      if (cur.duration && cur.currentTime >= cur.duration - FADE && other.paused) {
+        other.currentTime = 0;
+        other.play().catch(() => {});
       }
-      if (direction === 1) {
-        if (v.paused) v.play().catch(() => {});
-        if (v.currentTime >= v.duration - 0.06) {
-          direction = -1;
-          v.pause();
-          lastTs = ts;
-        }
-      } else {
-        const dt = lastTs ? (ts - lastTs) / 1000 : 0;
-        lastTs = ts;
-        const next = v.currentTime - dt;
-        if (next <= 0.02) {
-          v.currentTime = 0;
-          direction = 1;
-          lastTs = 0;
-          v.play().catch(() => {});
-        } else {
-          v.currentTime = next;
-        }
+      if (cur.duration && cur.currentTime >= cur.duration - 0.05) {
+        active = active === "A" ? "B" : "A";
+        setShowB(active === "B");
+        cur.pause();
+        cur.currentTime = 0;
       }
       rafId = requestAnimationFrame(tick);
     };
 
-    if (v.readyState >= 1) onMeta();
-    else v.addEventListener("loadedmetadata", onMeta, { once: true });
+    if (a.readyState >= 1) startBoth();
+    else a.addEventListener("loadedmetadata", startBoth, { once: true });
     rafId = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(rafId);
-      v.removeEventListener("loadedmetadata", onMeta);
+      a.removeEventListener("loadedmetadata", startBoth);
     };
   }, []);
 
+  // Audio track (separate file) — low volume, loops
+  useEffect(() => {
+    const a = heroAudioRef.current;
+    if (!a) return;
+    a.volume = 0.15;
+    a.muted = muted;
+    if (!muted) a.play().catch(() => {});
+  }, [muted]);
+
   const toggleMute = () => {
-    const v = heroVideoRef.current;
-    if (!v) return;
-    v.volume = 0.15;
-    v.muted = !v.muted;
-    setMuted(v.muted);
+    const a = heroAudioRef.current;
+    if (!a) return;
+    const next = !a.muted;
+    a.volume = 0.15;
+    a.muted = next;
+    if (!next) a.play().catch(() => {});
+    setMuted(next);
   };
 
   const t = lang === 'PT' ? PT : EN;
@@ -149,17 +149,29 @@ export default function Home() {
       {/* ── HERO ──────────────────────────────────────────────── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden" style={{ background: "#050a14" }}>
 
-        {/* Hero video background (desktop + mobile) */}
+        {/* Hero video background — two stacked videos crossfading for seamless loop */}
         <video
-          ref={heroVideoRef}
+          ref={heroVideoARef}
           autoPlay
-          muted={muted}
+          muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-[0.35]"
-          style={{ zIndex: 0 }}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[450ms]"
+          style={{ zIndex: 0, opacity: showB ? 0 : 0.35 }}
         >
           <source src={heroVideo} type="video/mp4" />
         </video>
+        <video
+          ref={heroVideoBRef}
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[450ms]"
+          style={{ zIndex: 0, opacity: showB ? 0.35 : 0 }}
+        >
+          <source src={heroVideo} type="video/mp4" />
+        </video>
+
+        {/* Audio-only track from a different file */}
+        <audio ref={heroAudioRef} src={heroAudioSrc} loop preload="auto" />
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" style={{ zIndex: 2 }} />
 
