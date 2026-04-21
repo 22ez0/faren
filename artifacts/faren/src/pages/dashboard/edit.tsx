@@ -564,7 +564,7 @@ export default function EditProfile() {
         setNewLinkLabel('');
         refetchProfile();
       },
-      onError: () => toast({ title: "Erro ao adicionar link", variant: "destructive" }),
+      onError: (err: any) => toast({ title: "Erro ao adicionar link", description: err?.message || "Verifique se a URL está correta", variant: "destructive" }),
     });
   };
 

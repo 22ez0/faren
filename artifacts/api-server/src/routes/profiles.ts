@@ -5,6 +5,23 @@ import { UpdateProfileBody, ConnectDiscordBody, ConnectMusicBody, AddProfileLink
 import { requireAuth, optionalAuth } from "../lib/auth";
 import { fetchLastfmNowPlaying } from "./music";
 
+function normalizeLinkUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  let candidate = trimmed;
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = "https://" + candidate.replace(/^\/+/, "");
+  }
+  try {
+    const u = new URL(candidate);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    if (!u.hostname || !u.hostname.includes(".")) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 interface CacheEntry<T> {
   data: T;
   expiresAt: number;
@@ -217,11 +234,17 @@ router.post("/profile/links", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const normalizedUrl = normalizeLinkUrl(parsed.data.url);
+  if (!normalizedUrl) {
+    res.status(400).json({ error: "URL inválida" });
+    return;
+  }
+
   const [link] = await db.insert(profileLinksTable).values({
     profileId: profile.id,
     platform: parsed.data.platform,
     label: parsed.data.label,
-    url: parsed.data.url,
+    url: normalizedUrl,
     iconUrl: parsed.data.iconUrl ?? null,
     sortOrder: parsed.data.sortOrder ?? 0,
   }).returning();
@@ -260,10 +283,20 @@ router.patch("/profile/links/:linkId", requireAuth, async (req, res): Promise<vo
     return;
   }
 
+  let normalizedUrl: string | undefined;
+  if (parsed.data.url !== undefined) {
+    const n = normalizeLinkUrl(parsed.data.url);
+    if (!n) {
+      res.status(400).json({ error: "URL inválida" });
+      return;
+    }
+    normalizedUrl = n;
+  }
+
   const [link] = await db.update(profileLinksTable).set({
     ...(parsed.data.platform !== undefined ? { platform: parsed.data.platform } : {}),
     ...(parsed.data.label !== undefined ? { label: parsed.data.label } : {}),
-    ...(parsed.data.url !== undefined ? { url: parsed.data.url } : {}),
+    ...(normalizedUrl !== undefined ? { url: normalizedUrl } : {}),
     ...(parsed.data.iconUrl !== undefined ? { iconUrl: parsed.data.iconUrl } : {}),
     ...(parsed.data.sortOrder !== undefined ? { sortOrder: parsed.data.sortOrder } : {}),
   }).where(and(eq(profileLinksTable.id, params.data.linkId), eq(profileLinksTable.profileId, profile.id))).returning();
