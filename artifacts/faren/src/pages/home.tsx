@@ -104,7 +104,7 @@ export default function Home() {
         const ctx = new Ctx();
         audioCtxRef.current = ctx;
         const gain = ctx.createGain();
-        gain.gain.value = mutedRef.current ? 0 : 1;
+        gain.gain.value = mutedRef.current ? 0 : 1.8;
         gain.connect(ctx.destination);
         audioGainRef.current = gain;
 
@@ -157,7 +157,7 @@ export default function Home() {
     const now = ctx.currentTime;
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(gain.gain.value, now);
-    gain.gain.linearRampToValueAtTime(newMuted ? 0 : 1, now + 0.08);
+    gain.gain.linearRampToValueAtTime(newMuted ? 0 : 1.8, now + 0.08);
   };
 
   const t = lang === 'PT' ? PT : EN;
