@@ -43,7 +43,10 @@ export default function Home() {
   const [lang, setLang] = useState<'PT' | 'EN'>(() => (localStorage.getItem('faren_lang') as any) || 'PT');
   const heroVideoARef = useRef<HTMLVideoElement>(null);
   const heroVideoBRef = useRef<HTMLVideoElement>(null);
-  const heroAudioRef = useRef<HTMLAudioElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioGainRef = useRef<GainNode | null>(null);
   const [muted, setMuted] = useState(true);
   const [showB, setShowB] = useState(false);
 
@@ -87,23 +90,55 @@ export default function Home() {
     };
   }, []);
 
-  // Audio track (separate file) — low volume, loops
+  // Gapless audio loop via Web Audio API (AudioBufferSourceNode loops natively, no gap)
   useEffect(() => {
-    const a = heroAudioRef.current;
-    if (!a) return;
-    a.volume = 1;
-    a.muted = muted;
-    if (!muted) a.play().catch(() => {});
-  }, [muted]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(heroAudioSrc);
+        const buf = await res.arrayBuffer();
+        const Ctx: typeof AudioContext = (window.AudioContext || (window as any).webkitAudioContext);
+        const ctx = new Ctx();
+        const decoded = await ctx.decodeAudioData(buf);
+        if (cancelled) { ctx.close(); return; }
+        audioCtxRef.current = ctx;
+        audioBufferRef.current = decoded;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        gain.connect(ctx.destination);
+        audioGainRef.current = gain;
+      } catch (e) {
+        console.warn("Audio init failed:", e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      audioSourceRef.current?.stop();
+      audioSourceRef.current?.disconnect();
+      audioCtxRef.current?.close();
+    };
+  }, []);
 
-  const toggleMute = () => {
-    const a = heroAudioRef.current;
-    if (!a) return;
-    const next = !a.muted;
-    a.volume = 1;
-    a.muted = next;
-    if (!next) a.play().catch(() => {});
-    setMuted(next);
+  const toggleMute = async () => {
+    const ctx = audioCtxRef.current;
+    const buf = audioBufferRef.current;
+    const gain = audioGainRef.current;
+    if (!ctx || !buf || !gain) return;
+    if (ctx.state === "suspended") await ctx.resume();
+    const newMuted = !muted;
+    const target = newMuted ? 0 : 1;
+    if (!newMuted && !audioSourceRef.current) {
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      src.connect(gain);
+      src.start(0);
+      audioSourceRef.current = src;
+    }
+    gain.gain.cancelScheduledValues(ctx.currentTime);
+    gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.2);
+    setMuted(newMuted);
   };
 
   const t = lang === 'PT' ? PT : EN;
@@ -169,9 +204,6 @@ export default function Home() {
         >
           <source src={heroVideo} type="video/mp4" />
         </video>
-
-        {/* Audio-only track from a different file */}
-        <audio ref={heroAudioRef} src={heroAudioSrc} loop preload="auto" />
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" style={{ zIndex: 2 }} />
 
