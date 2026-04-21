@@ -91,7 +91,7 @@ export default function Home() {
   useEffect(() => {
     const a = heroAudioRef.current;
     if (!a) return;
-    a.volume = 0.15;
+    a.volume = 1;
     a.muted = muted;
     if (!muted) a.play().catch(() => {});
   }, [muted]);
@@ -100,7 +100,7 @@ export default function Home() {
     const a = heroAudioRef.current;
     if (!a) return;
     const next = !a.muted;
-    a.volume = 0.15;
+    a.volume = 1;
     a.muted = next;
     if (!next) a.play().catch(() => {});
     setMuted(next);
