@@ -51,8 +51,9 @@ class TtlCache<T> {
 
 const profileCache = new TtlCache<any>();
 const nowPlayingCache = new TtlCache<any>();
-const PROFILE_TTL_MS = 30_000;
-const NOW_PLAYING_TTL_MS = 20_000;
+const PROFILE_TTL_MS = 120_000;
+const NOW_PLAYING_TTL_MS = 30_000;
+const NOW_PLAYING_REFRESHING = new Set<string>();
 
 const userIdToUsername = new Map<number, string>();
 
@@ -474,14 +475,16 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
       if (!mc?.musicPrivate && mc?.musicConnected === "true" && mc?.musicService === "lastfm" && mc?.musicUsername) {
         const npKey = `np:${mc.musicUsername}`;
         const cached = nowPlayingCache.get(npKey);
-        if (cached) return Promise.resolve(cached);
-        return Promise.race([
-          fetchLastfmNowPlaying(mc.musicUsername).then(result => {
-            nowPlayingCache.set(npKey, result, NOW_PLAYING_TTL_MS);
-            return result;
-          }),
-          new Promise<any>(resolve => setTimeout(() => resolve({ isPlaying: false }), 1500)),
-        ]);
+        // Always return immediately — never block the profile response.
+        // If cache is missing/stale, refresh in background (single-flight per username).
+        if (!NOW_PLAYING_REFRESHING.has(npKey)) {
+          NOW_PLAYING_REFRESHING.add(npKey);
+          fetchLastfmNowPlaying(mc.musicUsername)
+            .then(result => nowPlayingCache.set(npKey, result, NOW_PLAYING_TTL_MS))
+            .catch(() => {})
+            .finally(() => NOW_PLAYING_REFRESHING.delete(npKey));
+        }
+        return Promise.resolve(cached ?? { isPlaying: false });
       }
       return Promise.resolve({ isPlaying: false });
     })(),
@@ -492,7 +495,7 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
   if (currentUserId) {
     res.set("Cache-Control", "private, max-age=0, no-store");
   } else {
-    res.set("Cache-Control", "public, max-age=0, s-maxage=20, stale-while-revalidate=30");
+    res.set("Cache-Control", "public, max-age=0, s-maxage=60, stale-while-revalidate=300");
   }
 
   res.json({
