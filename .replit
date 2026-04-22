@@ -9,28 +9,6 @@ args = ["pnpm", "store", "prune"]
 env = { "CI" = "true" }
 
 [workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start application"
-
-[[workflows.workflow]]
-name = "Start application"
-author = "agent"
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx -y concurrently -k -n API,WEB -c blue,magenta \"PORT=8080 pnpm --filter @workspace/api-server run dev\" \"PORT=21395 BASE_PATH=/ pnpm --filter @workspace/faren run dev\""
-waitForPort = 21395
 
 [agent]
 stack = "PNPM_WORKSPACE"
