@@ -261,15 +261,49 @@ export default function Home() {
             {t.hero.sub}
           </motion.p>
 
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }} className="mt-10 flex flex-col sm:flex-row items-center gap-4">
+            <Link href="/register">
+              <button className="btn-solid-white">{t.hero.btn1} <ArrowRight className="ml-2 w-4 h-4 inline" /></button>
+            </Link>
+            <Link href="/discover">
+              <button className="btn-outline-white">{t.hero.btn2}</button>
+            </Link>
+          </motion.div>
+        </div>
+
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="absolute bottom-10 left-1/2 -translate-x-1/2 scroll-indicator" style={{ zIndex: 3 }} />
+      </section>
+
+      {/* ── CLAIM YOUR URL ────────────────────────────────────── */}
+      <section className="pt-24 pb-8 px-6 md:px-12">
+        <div className="max-w-2xl mx-auto text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="label-caps mb-4"
+          >
+            {lang === 'PT' ? 'Reserve Seu Link' : 'Claim Your Link'}
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.05 }}
+            className="text-3xl md:text-4xl font-bold tracking-tight uppercase mb-8"
+          >
+            {lang === 'PT' ? 'Garanta Seu Username' : 'Get Your Username'}
+          </motion.h2>
           <motion.form
             onSubmit={handleClaim}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="mt-8 w-full max-w-md"
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="w-full max-w-lg mx-auto"
           >
-            <div className="flex items-stretch h-12 rounded-sm overflow-hidden border border-white/15 bg-black/40 backdrop-blur-sm focus-within:border-white/40 transition-colors">
-              <span className="flex items-center pl-4 pr-1 text-sm select-none" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <div className="flex items-stretch h-14 rounded-sm overflow-hidden border border-white/15 bg-white/[0.03] backdrop-blur-sm focus-within:border-white/40 transition-colors">
+              <span className="flex items-center pl-5 pr-1 text-sm select-none" style={{ color: 'rgba(255,255,255,0.45)' }}>
                 faren.com.br/
               </span>
               <input
@@ -284,28 +318,20 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={!claimUsername.trim()}
-                className="px-5 bg-white text-black text-xs font-bold uppercase tracking-[0.15em] hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 bg-white text-black text-xs font-bold uppercase tracking-[0.15em] hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Reservar <ArrowRight className="w-3.5 h-3.5" />
+                {lang === 'PT' ? 'Reservar' : 'Claim'} <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className="mt-3 text-[11px] tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <p className="mt-4 text-[11px] tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>
               {lang === 'PT' ? 'Garanta seu link antes que alguém pegue' : 'Claim your link before someone else does'}
             </p>
           </motion.form>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }} className="mt-6 flex flex-col sm:flex-row items-center gap-4">
-            <Link href="/discover">
-              <button className="btn-outline-white">{t.hero.btn2}</button>
-            </Link>
-          </motion.div>
         </div>
-
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="absolute bottom-10 left-1/2 -translate-x-1/2 scroll-indicator" style={{ zIndex: 3 }} />
       </section>
 
       {/* ── FEATURES ROW ──────────────────────────────────────── */}
-      <section className="py-24 px-6 md:px-12">
+      <section className="pt-8 pb-24 px-6 md:px-12">
         <div className="max-w-6xl mx-auto">
           <div className="glow-line mb-16" />
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-px bg-white/5">
