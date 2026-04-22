@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
-import { ArrowRight, Users, Heart, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, Users, Heart, Volume2, VolumeX, Check, X, Loader2 } from "lucide-react";
+
+const RESERVED_USERNAMES = new Set(['keefaren','admin','administrator','api','dashboard','login','register','profile','settings','support','root','faren','keef','null','comunidade','community','explore','feed']);
 import heroVideo from "@assets/pinterest_884112970592536960_1776809417801.mp4";
 import heroAudioSrc from "@assets/Download_1776810133370.mp4";
 
@@ -50,12 +52,41 @@ export default function Home() {
   const [muted, setMuted] = useState(false);
   const [showB, setShowB] = useState(false);
   const [claimUsername, setClaimUsername] = useState('');
+  const [claimStatus, setClaimStatus] = useState<'idle' | 'invalid' | 'reserved' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const [, navigate] = useLocation();
+
+  // Real-time username availability check (debounced)
+  useEffect(() => {
+    const u = claimUsername.trim().toLowerCase();
+    if (!u) { setClaimStatus('idle'); return; }
+    if (u.length < 3 || u.length > 15 || u.startsWith('_') || u.endsWith('_') || /__/.test(u)) {
+      setClaimStatus('invalid');
+      return;
+    }
+    if (RESERVED_USERNAMES.has(u)) {
+      setClaimStatus('reserved');
+      return;
+    }
+    setClaimStatus('checking');
+    const ctrl = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+        const res = await fetch(`${apiBase}/api/users/${encodeURIComponent(u)}`, { signal: ctrl.signal });
+        if (res.status === 404) setClaimStatus('available');
+        else if (res.ok) setClaimStatus('taken');
+        else setClaimStatus('error');
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') setClaimStatus('error');
+      }
+    }, 350);
+    return () => { ctrl.abort(); clearTimeout(timer); };
+  }, [claimUsername]);
 
   const handleClaim = (e?: React.FormEvent) => {
     e?.preventDefault();
     const u = claimUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    if (!u) return;
+    if (!u || claimStatus === 'taken' || claimStatus === 'invalid' || claimStatus === 'reserved') return;
     navigate(`/register?username=${encodeURIComponent(u)}`);
   };
 
@@ -302,29 +333,53 @@ export default function Home() {
             transition={{ delay: 0.1 }}
             className="w-full max-w-lg mx-auto"
           >
-            <div className="flex items-stretch h-14 rounded-sm overflow-hidden border border-white/15 bg-white/[0.03] backdrop-blur-sm focus-within:border-white/40 transition-colors">
-              <span className="flex items-center pl-5 pr-1 text-sm select-none" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                faren.com.br/
-              </span>
-              <input
-                type="text"
-                value={claimUsername}
-                onChange={(e) => setClaimUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="seu_user"
-                maxLength={20}
-                className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none border-none px-1 min-w-0"
-                aria-label="Escolha seu username"
-              />
-              <button
-                type="submit"
-                disabled={!claimUsername.trim()}
-                className="px-6 bg-white text-black text-xs font-bold uppercase tracking-[0.15em] hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {lang === 'PT' ? 'Reservar' : 'Claim'} <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <p className="mt-4 text-[11px] tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {lang === 'PT' ? 'Garanta seu link antes que alguém pegue' : 'Claim your link before someone else does'}
+            {(() => {
+              const borderClr =
+                claimStatus === 'available' ? 'rgba(74,222,128,0.55)' :
+                claimStatus === 'taken' || claimStatus === 'invalid' || claimStatus === 'reserved' ? 'rgba(248,113,113,0.55)' :
+                'rgba(255,255,255,0.15)';
+              return (
+                <div className="flex items-stretch h-14 rounded-sm overflow-hidden border bg-white/[0.03] backdrop-blur-sm transition-colors" style={{ borderColor: borderClr }}>
+                  <span className="flex items-center pl-5 pr-1 text-sm select-none" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    faren.com.br/
+                  </span>
+                  <input
+                    type="text"
+                    value={claimUsername}
+                    onChange={(e) => setClaimUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    placeholder="seu_user"
+                    maxLength={15}
+                    className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none border-none px-1 min-w-0"
+                    aria-label="Escolha seu username"
+                  />
+                  <div className="flex items-center px-2">
+                    {claimStatus === 'checking' && <Loader2 className="w-4 h-4 animate-spin text-white/40" />}
+                    {claimStatus === 'available' && <Check className="w-4 h-4 text-green-400" />}
+                    {(claimStatus === 'taken' || claimStatus === 'invalid' || claimStatus === 'reserved') && <X className="w-4 h-4 text-red-400" />}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!claimUsername.trim() || claimStatus === 'taken' || claimStatus === 'invalid' || claimStatus === 'reserved' || claimStatus === 'checking'}
+                    className="px-6 bg-white text-black text-xs font-bold uppercase tracking-[0.15em] hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {lang === 'PT' ? 'Reservar' : 'Claim'} <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })()}
+            <p className="mt-4 text-[11px] tracking-wider uppercase min-h-[14px]" style={{
+              color:
+                claimStatus === 'available' ? 'rgba(74,222,128,0.85)' :
+                claimStatus === 'taken' || claimStatus === 'invalid' || claimStatus === 'reserved' ? 'rgba(248,113,113,0.85)' :
+                'rgba(255,255,255,0.35)'
+            }}>
+              {claimStatus === 'available' && (lang === 'PT' ? `✓ faren.com.br/${claimUsername} está disponível` : `✓ faren.com.br/${claimUsername} is available`)}
+              {claimStatus === 'taken' && (lang === 'PT' ? '✗ Esse username já está em uso' : '✗ That username is taken')}
+              {claimStatus === 'reserved' && (lang === 'PT' ? '✗ Esse username é reservado' : '✗ That username is reserved')}
+              {claimStatus === 'invalid' && (lang === 'PT' ? '✗ 3-15 caracteres, sem _ no início/fim' : '✗ 3-15 chars, no leading/trailing _')}
+              {claimStatus === 'checking' && (lang === 'PT' ? 'Verificando…' : 'Checking…')}
+              {claimStatus === 'idle' && (lang === 'PT' ? 'Garanta seu link antes que alguém pegue' : 'Claim your link before someone else does')}
+              {claimStatus === 'error' && (lang === 'PT' ? 'Erro ao verificar, tente novamente' : 'Failed to check, try again')}
             </p>
           </motion.form>
         </div>
