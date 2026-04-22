@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,6 +47,16 @@ export default function Register() {
     defaultValues: { email: "", username: "", password: "", displayName: "" },
     mode: "onChange",
   });
+
+  // Pre-fill username from ?username=... query (coming from the homepage claim input)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const u = params.get('username');
+    if (u) {
+      const clean = u.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 15);
+      if (clean) form.setValue('username', clean, { shouldValidate: true });
+    }
+  }, [form]);
 
   const nextStep = async () => {
     const valid = await form.trigger(["email", "password"] as const);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
 import { ArrowRight, Users, Heart, Volume2, VolumeX } from "lucide-react";
@@ -49,6 +49,15 @@ export default function Home() {
   const audioGainRef = useRef<GainNode | null>(null);
   const [muted, setMuted] = useState(false);
   const [showB, setShowB] = useState(false);
+  const [claimUsername, setClaimUsername] = useState('');
+  const [, navigate] = useLocation();
+
+  const handleClaim = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const u = claimUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (!u) return;
+    navigate(`/register?username=${encodeURIComponent(u)}`);
+  };
 
   // Seamless loop: two stacked <video> elements, one starts a tiny moment before the other ends, fading between them
   useEffect(() => {
@@ -252,10 +261,40 @@ export default function Home() {
             {t.hero.sub}
           </motion.p>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }} className="mt-10 flex flex-col sm:flex-row items-center gap-4">
-            <Link href="/register">
-              <button className="btn-solid-white">{t.hero.btn1} <ArrowRight className="ml-2 w-4 h-4 inline" /></button>
-            </Link>
+          <motion.form
+            onSubmit={handleClaim}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="mt-8 w-full max-w-md"
+          >
+            <div className="flex items-stretch h-12 rounded-sm overflow-hidden border border-white/15 bg-black/40 backdrop-blur-sm focus-within:border-white/40 transition-colors">
+              <span className="flex items-center pl-4 pr-1 text-sm select-none" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                faren.com.br/
+              </span>
+              <input
+                type="text"
+                value={claimUsername}
+                onChange={(e) => setClaimUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                placeholder="seu_user"
+                maxLength={20}
+                className="flex-1 bg-transparent text-white text-sm placeholder:text-white/25 outline-none border-none px-1 min-w-0"
+                aria-label="Escolha seu username"
+              />
+              <button
+                type="submit"
+                disabled={!claimUsername.trim()}
+                className="px-5 bg-white text-black text-xs font-bold uppercase tracking-[0.15em] hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                Reservar <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="mt-3 text-[11px] tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {lang === 'PT' ? 'Garanta seu link antes que alguém pegue' : 'Claim your link before someone else does'}
+            </p>
+          </motion.form>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }} className="mt-6 flex flex-col sm:flex-row items-center gap-4">
             <Link href="/discover">
               <button className="btn-outline-white">{t.hero.btn2}</button>
             </Link>
