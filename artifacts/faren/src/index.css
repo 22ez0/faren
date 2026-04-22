@@ -318,11 +318,11 @@
 }
 
 /* ── PROFILE FONTS ───────────────────────────────────────────── */
-.font-profile-default { font-family: 'Inter', system-ui, sans-serif; }
-.font-profile-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
-.font-profile-cursive { font-family: 'Dancing Script', 'Brush Script MT', cursive; }
-.font-profile-serif { font-family: 'Playfair Display', Georgia, serif; }
-.font-profile-pixel { font-family: 'Press Start 2P', monospace; font-size: 0.85em; }
+.font-profile-default { font-family: 'Inter', system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', sans-serif; }
+.font-profile-mono { font-family: 'JetBrains Mono', 'Fira Code', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', monospace; }
+.font-profile-cursive { font-family: 'Dancing Script', 'Brush Script MT', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', cursive; }
+.font-profile-serif { font-family: 'Playfair Display', Georgia, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', serif; }
+.font-profile-pixel { font-family: 'Press Start 2P', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', monospace; font-size: 0.85em; }
 
 /* ── PROFILE VIDEO BG ────────────────────────────────────────── */
 .bg-video {

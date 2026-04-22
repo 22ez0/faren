@@ -355,7 +355,7 @@ export default function EditProfile() {
   const [isDirty, setIsDirty] = useState(false);
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useGetMyProfile({
-    query: { queryKey: [] as any, enabled: isAuthenticated },
+    query: { enabled: isAuthenticated },
   });
 
   const updateProfile = useUpdateProfile();

@@ -66,11 +66,11 @@ export default function Dashboard() {
   }, [authLoading, isAuthenticated, setLocation]);
 
   const { data: analytics, isLoading: analyticsLoading } = useGetProfileAnalytics({
-    query: { queryKey: [] as any, enabled: isAuthenticated },
+    query: { enabled: isAuthenticated },
   });
 
   const { data: profile } = useGetMyProfile({
-    query: { queryKey: [] as any, enabled: isAuthenticated },
+    query: { enabled: isAuthenticated },
   });
 
   const updateProfile = useUpdateProfile();

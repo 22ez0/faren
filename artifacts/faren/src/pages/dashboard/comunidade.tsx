@@ -408,7 +408,7 @@ export default function Comunidade() {
   const { user, logout, isAuthenticated, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { data: profile } = useGetMyProfile({ query: { queryKey: [] as any, enabled: isAuthenticated } });
+  const { data: profile } = useGetMyProfile({ query: { enabled: isAuthenticated } });
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
