@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useGetTrendingProfiles } from "@workspace/api-client-react";
+import { useGetTrendingProfiles, getUserByUsername, getGetUserByUsernameQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Users, Heart, Volume2, VolumeX, Check, X, Loader2 } from "lucide-react";
 
 const RESERVED_USERNAMES = new Set(['keefaren','admin','administrator','api','dashboard','login','register','profile','settings','support','root','faren','keef','null','comunidade','community','explore','feed']);
@@ -54,6 +55,7 @@ export default function Home() {
   const [claimUsername, setClaimUsername] = useState('');
   const [claimStatus, setClaimStatus] = useState<'idle' | 'invalid' | 'reserved' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const [, navigate] = useLocation();
+  const qc = useQueryClient();
 
   // Real-time username availability check (debounced)
   useEffect(() => {
@@ -419,7 +421,22 @@ export default function Home() {
             {isLoading
               ? Array(6).fill(0).map((_, i) => <div key={i} className="aspect-[3/4] rounded-sm bg-white/5 animate-pulse" />)
               : trendingProfiles?.map((profile, i) => (
-                  <motion.div key={profile.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}>
+                  <motion.div key={profile.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }}
+                    onMouseEnter={() => {
+                      qc.prefetchQuery({
+                        queryKey: getGetUserByUsernameQueryKey(profile.username),
+                        queryFn: ({ signal }) => getUserByUsername(profile.username, { signal }),
+                        staleTime: 30_000,
+                      });
+                    }}
+                    onTouchStart={() => {
+                      qc.prefetchQuery({
+                        queryKey: getGetUserByUsernameQueryKey(profile.username),
+                        queryFn: ({ signal }) => getUserByUsername(profile.username, { signal }),
+                        staleTime: 30_000,
+                      });
+                    }}
+                  >
                     <Link href={`/${profile.username}`}>
                       <div className="group aspect-[3/4] relative overflow-hidden rounded-sm cursor-pointer hover-lift">
                         <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: profile.backgroundUrl ? `url(${profile.backgroundUrl})` : `linear-gradient(135deg, #1a1a2e, #16213e)`, opacity: profile.backgroundUrl ? (profile.backgroundOpacity || 60) / 100 : 1 }} />

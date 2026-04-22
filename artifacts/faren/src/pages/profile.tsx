@@ -25,10 +25,11 @@ export default function ProfilePage() {
     query: {
       queryKey: getGetUserByUsernameQueryKey(username || ""),
       enabled: !!username,
-      retry: false,
-      staleTime: 0,
-      gcTime: 30_000,
-      refetchOnMount: true,
+      retry: 1,
+      // Show cached profile instantly, refetch in background
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnMount: "always",
     }
   });
 

@@ -17,7 +17,16 @@ import ProfilePage from "@/pages/profile";
 import DevKeefnow from "@/pages/devkeefnow";
 import Support from "@/pages/support";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function Router() {
   return (
@@ -41,9 +50,23 @@ function Router() {
 function App() {
   useEffect(() => {
     const apiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
-    if (apiUrl) {
-      fetch(`${apiUrl}/api/healthz`, { method: 'GET', signal: AbortSignal.timeout(8000) }).catch(() => {});
-    }
+    if (!apiUrl) return;
+    const ping = () => {
+      try {
+        fetch(`${apiUrl}/api/healthz`, { method: 'GET', cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(() => {});
+      } catch {}
+    };
+    ping();
+    // Render free tier sleeps after ~15min idle. Keep warm every 4min while tab is open.
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') ping();
+    }, 4 * 60_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') ping(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   return (
