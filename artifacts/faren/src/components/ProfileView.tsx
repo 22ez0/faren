@@ -467,26 +467,14 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         </div>
       ) : null}
 
-      {/* Overlay */}
+      {/* Overlay — softer for cleaner look */}
       <div
         className="fixed inset-0 z-0"
-        style={{ background: `linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%)` }}
+        style={{ background: `linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.78) 100%)` }}
       />
 
-      {/* Ambient glow blobs */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute top-[-15%] left-[-10%] w-[55%] h-[55%] rounded-full opacity-[0.08] animate-pulse"
-          style={{ backgroundColor: glow, filter: 'blur(120px)' }}
-        />
-        <div
-          className="absolute bottom-[-15%] right-[-10%] w-[55%] h-[55%] rounded-full opacity-[0.08] animate-pulse"
-          style={{ backgroundColor: glow, filter: 'blur(120px)', animationDelay: '2s' }}
-        />
-      </div>
-
       {/* Content */}
-      <div className={`relative z-10 max-w-2xl mx-auto px-4 py-16 flex flex-col ${alignClass} gap-0`}>
+      <div className={`relative z-10 max-w-md mx-auto px-5 py-14 md:py-20 flex flex-col ${alignClass} gap-0`}>
 
         {/* Banner */}
         {profile.bannerUrl && (
@@ -508,12 +496,12 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
           className={`flex flex-col ${alignClass} mb-6`}
         >
-          <div className="relative mb-5">
+          <div className="relative mb-4">
             <div
-              className="w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-2 relative"
+              className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden relative"
               style={{
-                borderColor: `${accent}80`,
-                boxShadow: `0 0 0 4px ${accent}18, 0 0 40px ${glow}30`,
+                border: `1px solid ${accent}40`,
+                boxShadow: `0 0 24px ${glow}20`,
               }}
             >
               {profile.avatarUrl ? (
@@ -539,14 +527,14 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             )}
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-0.5 flex items-center gap-1.5">
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight mb-0.5 flex items-center gap-1.5">
             <span>{profile.displayName || profile.username}</span>
             {profile.badges?.includes('verified_gold') && <VerifiedBadge type="gold" />}
             {profile.badges?.includes('verified_white') && <VerifiedBadge type="white" />}
             {profile.badges?.includes('verified') && !profile.badges?.includes('verified_gold') && !profile.badges?.includes('verified_white') && <VerifiedBadge type="blue" />}
           </h1>
 
-          <p className="text-sm mb-3 font-medium" style={{ color: accent }}>
+          <p className="text-xs mb-3 opacity-50" style={{ color: accent }}>
             @{profile.username}
           </p>
 
@@ -571,17 +559,16 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                   return (
                     <motion.div
                       key={badgeId}
-                      whileHover={{ scale: 1.08 }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                      whileHover={{ scale: 1.05 }}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium tracking-wide"
                       style={{
-                        backgroundColor: `${customBadge.color}18`,
+                        backgroundColor: `${customBadge.color}14`,
                         color: customBadge.color,
-                        border: `1px solid ${customBadge.color}40`,
-                        boxShadow: `0 0 18px ${customBadge.color}22`,
+                        border: `1px solid ${customBadge.color}30`,
                       }}
                       title={customBadge.label}
                     >
-                      <span className="text-base leading-none">{customBadge.emoji}</span>
+                      <span className="emoji text-base leading-none">{customBadge.emoji}</span>
                       <span>{customBadge.label}</span>
                     </motion.div>
                   );
@@ -593,10 +580,10 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                   <motion.div
                     key={badgeId}
                     whileHover={{ scale: 1.05 }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-                    style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.color}30` }}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium tracking-wide"
+                    style={{ backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.color}25` }}
                   >
-                    <Icon className="w-3 h-3" />
+                    <Icon className="w-2.5 h-2.5" />
                     {badge.label}
                   </motion.div>
                 );
@@ -605,22 +592,22 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           )}
 
           {/* Stats */}
-          <div className={`flex items-center gap-5 mb-5 ${isLeft ? '' : 'justify-center'}`}>
+          <div className={`flex items-center gap-6 mb-5 ${isLeft ? '' : 'justify-center'}`}>
             <div className="flex flex-col items-center">
-              <span className="text-xl font-bold">{(profile.followersCount || 0).toLocaleString()}</span>
-              <span className="label-caps">Seguidores</span>
+              <span className="text-base font-semibold tabular-nums">{(profile.followersCount || 0).toLocaleString()}</span>
+              <span className="text-[9px] tracking-[0.18em] uppercase opacity-40 mt-0.5">Seguidores</span>
             </div>
-            <div className="w-px h-8" style={{ backgroundColor: `${accent}30` }} />
+            <div className="w-px h-6 bg-white/10" />
             <div className="flex flex-col items-center">
-              <span className="text-xl font-bold">{(profile.likesCount || 0).toLocaleString()}</span>
-              <span className="label-caps">Curtidas</span>
+              <span className="text-base font-semibold tabular-nums">{(profile.likesCount || 0).toLocaleString()}</span>
+              <span className="text-[9px] tracking-[0.18em] uppercase opacity-40 mt-0.5">Curtidas</span>
             </div>
             {showViews && (
               <>
-                <div className="w-px h-8" style={{ backgroundColor: `${accent}30` }} />
+                <div className="w-px h-6 bg-white/10" />
                 <div className="flex flex-col items-center">
-                  <span className="text-xl font-bold">{(profile.viewsCount || 0).toLocaleString()}</span>
-                  <span className="label-caps">Visitas</span>
+                  <span className="text-base font-semibold tabular-nums">{(profile.viewsCount || 0).toLocaleString()}</span>
+                  <span className="text-[9px] tracking-[0.18em] uppercase opacity-40 mt-0.5">Visitas</span>
                 </div>
               </>
             )}
@@ -628,19 +615,15 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
 
           {/* Actions */}
           {!isOwner && onFollow && onLike && (
-            <div className="flex gap-3 mb-6">
+            <div className="flex gap-2 mb-6">
               <motion.button
                 onClick={onFollow}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="px-7 py-2.5 text-sm font-semibold tracking-wider uppercase rounded-full transition-all duration-200"
-                style={isFollowing ? {
-                  border: `1px solid ${accent}80`,
-                  color: accent,
-                  background: 'transparent',
-                } : {
-                  border: `1px solid ${accent}80`,
-                  color: accent,
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-5 py-1.5 text-[11px] font-medium tracking-[0.15em] uppercase rounded-full transition-all duration-200"
+                style={{
+                  border: `1px solid ${isFollowing ? accent + '50' : 'rgba(255,255,255,0.15)'}`,
+                  color: isFollowing ? accent : 'rgba(255,255,255,0.85)',
                   background: 'transparent',
                 }}
               >
@@ -649,16 +632,16 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
 
               <motion.button
                 onClick={handleLike}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.9 }}
-                className={`w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-200 ${likePulse ? 'scale-125' : ''}`}
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.92 }}
+                className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all duration-200 ${likePulse ? 'scale-125' : ''}`}
                 style={{
-                  borderColor: hasLiked ? accent : 'rgba(255,255,255,0.15)',
-                  background: hasLiked ? `${accent}18` : 'transparent',
+                  borderColor: hasLiked ? `${accent}60` : 'rgba(255,255,255,0.15)',
+                  background: hasLiked ? `${accent}14` : 'transparent',
                 }}
               >
                 <Heart
-                  className="w-5 h-5 transition-all"
+                  className="w-3.5 h-3.5 transition-all"
                   style={{ color: hasLiked ? accent : 'rgba(255,255,255,0.5)', fill: hasLiked ? accent : 'none' }}
                 />
               </motion.button>
@@ -790,16 +773,16 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 + i * 0.05 }}
-                  whileHover={{ y: -2, scale: 1.08 }}
-                  className="group w-12 h-12 flex items-center justify-center rounded-full relative overflow-hidden transition-all duration-300"
-                  style={{ color: accent, background: "transparent", border: `1px solid ${accent}22` }}
+                  whileHover={{ y: -2, scale: 1.1 }}
+                  className="group w-9 h-9 flex items-center justify-center rounded-full relative overflow-hidden transition-all duration-300"
+                  style={{ color: 'rgba(255,255,255,0.7)' }}
                   aria-label={link.label || link.platform}
                   title={link.label || link.platform}
                 >
                   {link.iconUrl ? (
-                    <img src={link.iconUrl} alt="" className="w-8 h-8 object-contain" />
+                    <img src={link.iconUrl} alt="" className="w-6 h-6 object-contain" />
                   ) : (
-                    <Icon className="w-6 h-6" />
+                    <Icon className="w-[18px] h-[18px]" />
                   )}
                 </motion.a>
               );
