@@ -530,26 +530,30 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           </motion.div>
         )}
 
-        {/* Avatar + Name */}
+        {/* Avatar + Name — compact glass pill (minimalist, image-1 style) */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          className={`flex flex-col ${alignClass} mb-6`}
+          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 220, damping: 26 }}
+          className={`flex ${isLeft ? '' : 'self-center'} items-center gap-3 mb-5 px-3.5 py-2.5 rounded-2xl`}
+          style={{
+            background: 'rgba(20,20,22,0.45)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            boxShadow: `0 6px 30px rgba(0,0,0,0.35), 0 0 18px ${glow}12`,
+          }}
         >
-          <div className="relative mb-4">
+          <div className="relative flex-shrink-0">
             <div
-              className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden relative"
-              style={{
-                border: `1px solid ${accent}40`,
-                boxShadow: `0 0 24px ${glow}20`,
-              }}
+              className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden relative"
+              style={{ border: `1px solid ${accent}33` }}
             >
               {profile.avatarUrl ? (
                 <MediaFill src={profile.avatarUrl} alt={profile.username} />
               ) : (
                 <div
-                  className="w-full h-full flex items-center justify-center text-3xl font-bold"
+                  className="w-full h-full flex items-center justify-center text-base font-bold"
                   style={{ backgroundColor: `${accent}20`, color: accent }}
                 >
                   {profile.username?.substring(0, 2).toUpperCase()}
@@ -559,25 +563,35 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
 
             {profile.discordConnected && showDiscordPresence && (
               <div
-                className="absolute bottom-1 right-1 w-5 h-5 rounded-full border-[3px] border-black"
+                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black"
                 style={{
                   backgroundColor: STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline,
-                  boxShadow: `0 0 8px ${STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline}`,
+                  boxShadow: `0 0 6px ${STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline}`,
                 }}
               />
             )}
           </div>
 
-          <h1 className="text-xl md:text-2xl font-semibold tracking-tight mb-0.5 flex items-center gap-1.5">
-            <span>{profile.displayName || profile.username}</span>
-            {profile.badges?.includes('verified_gold') && <VerifiedBadge type="gold" />}
-            {profile.badges?.includes('verified_white') && <VerifiedBadge type="white" />}
-            {profile.badges?.includes('verified') && !profile.badges?.includes('verified_gold') && !profile.badges?.includes('verified_white') && <VerifiedBadge type="blue" />}
-          </h1>
+          <div className="flex flex-col min-w-0 leading-none">
+            <h1 className="text-sm md:text-base font-semibold tracking-tight flex items-center gap-1.5">
+              <span className="truncate">{profile.displayName || profile.username}</span>
+              {profile.badges?.includes('verified_gold') && <VerifiedBadge type="gold" />}
+              {profile.badges?.includes('verified_white') && <VerifiedBadge type="white" />}
+              {profile.badges?.includes('verified') && !profile.badges?.includes('verified_gold') && !profile.badges?.includes('verified_white') && <VerifiedBadge type="blue" />}
+            </h1>
+            <p className="text-[11px] mt-1 opacity-50" style={{ color: accent }}>
+              @{profile.username}
+            </p>
+          </div>
+        </motion.div>
 
-          <p className="text-xs mb-3 opacity-50" style={{ color: accent }}>
-            @{profile.username}
-          </p>
+        {/* Bio + badges + stats + actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className={`flex flex-col ${alignClass} mb-6`}
+        >
 
           {typewriterTexts.length > 0 && (
             <p className="text-sm opacity-60 mb-3">

@@ -232,7 +232,7 @@ export default function Dashboard() {
               <div className="flex flex-col gap-2">
                 {[
                   { label: "Editar Perfil", icon: Settings, href: "/dashboard/edit", desc: "Personalize sua página", external: false },
-                  { label: "Ver Perfil", icon: ExternalLink, href: profileSiteUrl || "#", desc: "Veja como os outros te veem", external: true },
+                  { label: "Visualizar como visitante", icon: Eye, href: profileSiteUrl ? `${profileSiteUrl}?preview=visitor` : "#", desc: "Veja seu perfil como um visitante vê", external: true },
                   { label: "Comunidade", icon: Globe, href: "/dashboard/comunidade", desc: "Feed social da plataforma", external: false },
                 ].map((action) => {
                   const Icon = action.icon;
