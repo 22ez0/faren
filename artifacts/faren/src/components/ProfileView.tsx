@@ -336,6 +336,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const [reportDetails, setReportDetails] = useState('');
   const [reportSent, setReportSent] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   const handleReport = async () => {
     if (!reportReason || reportLoading) return;
@@ -434,6 +435,46 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   };
 
   return (
+    <>
+      {/* Click-to-enter splash — keeps page silent and blurred until user interacts.
+         Required so browsers allow audio/video autoplay with sound after the click. */}
+      <AnimatePresence>
+        {!entered && (
+          <motion.button
+            type="button"
+            onClick={() => setEntered(true)}
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 z-[9998] w-full h-full flex items-center justify-center cursor-pointer"
+            style={{
+              background: 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            }}
+            aria-label="Entrar no perfil"
+          >
+            {profile.backgroundUrl && backgroundType !== 'color' && !isVideoMedia(profile.backgroundUrl) && (
+              <img
+                src={profile.backgroundUrl}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 w-full h-full object-cover -z-10"
+                style={{ filter: 'blur(24px) brightness(0.4)', transform: 'scale(1.1)' }}
+              />
+            )}
+            <motion.span
+              initial={{ opacity: 0.4 }}
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              className={`text-white text-base md:text-lg font-medium tracking-wide ${fontClass}`}
+            >
+              click to enter...
+            </motion.span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
     <div className={`min-h-screen relative overflow-x-hidden ${fontClass} ${cursorClass}`}>
       {/* Particle Effects */}
       <ParticleCanvas effect={particleEffect} accentColor={accent} />
@@ -751,8 +792,9 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             </motion.div>
           )}
 
-          {/* Music Player (for musicUrl) */}
-          {musicUrl && !profile.nowPlaying?.isPlaying && (
+          {/* Music Player (for musicUrl) — only mounts after the user clicks "enter"
+             so browsers allow autoplay with sound */}
+          {musicUrl && !profile.nowPlaying?.isPlaying && entered && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <MusicPlayer musicUrl={musicUrl} musicTitle={musicTitle} musicIconUrl={musicIconUrl} />
             </motion.div>
@@ -879,5 +921,6 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         )}
       </div>
     </div>
+    </>
   );
 }
