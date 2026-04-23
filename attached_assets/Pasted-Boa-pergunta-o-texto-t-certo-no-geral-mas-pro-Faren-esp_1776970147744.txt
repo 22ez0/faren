@@ -1,0 +1,32 @@
+Boa pergunta — o texto tá certo no geral, mas pro Faren especificamente nem tudo se aplica igual. Deixa eu separar o que realmente vai mover o ponteiro do que é só barulho:
+
+O que daria GANHO REAL no Faren (em ordem de impacto)
+1. Tirar avatar/background base64 do banco — esse é o monstro.
+O /api/discover/trending?limit=24 devolve 23MB. Disso, ~22.9MB são GIFs em base64 dentro do JSON. É absurdo. Mesmo com edge/CDN/cache, transferir 23MB sempre vai ser lento. O caminho certo:
+
+subir avatares/backgrounds pra Object Storage / Cloudflare R2 / S3
+guardar só a URL no Postgres
+servir como .webp/.avif (Cloudflare Images converte de graça no plano free)
+payload do trending despenca de 23MB pra ~50KB
+Sem isso, o resto é maquiagem.
+
+2. Resolver o cold start do Render free tier
+30-60s na primeira request é o que faz o site parecer "morto" quando ninguém entra há um tempo. Opções:
+
+Render Starter ($7/mês) — sem cold start
+Migrar pra Fly.io ou Railway (planos free sem cold start tão agressivo)
+Manter o Render free e botar um cron de uptime mais agressivo (a cada 5min já tem, mas não impede o sleep — Render dorme mesmo com hits frequentes no plano free desde 2024)
+3. Cache no Cloudflare pros endpoints públicos
+A API já manda Cache-Control: public, s-maxage=60, stale-while-revalidate=120 no /discover/trending (vi nos headers). Mas o Cloudflare tá só como proxy DNS, não tá cacheando JSON por padrão. Criar uma Cache Rule no Cloudflare pra cachear api.faren.com.br/api/discover/* e /api/users/* por 60s + SWR resolveria 99% dos hits sem encostar no Render.
+
+O que NÃO faz sentido pro Faren
+SSG/ISR (Next.js) — perfis mudam a hora toda (Discord status online/offline, contadores). ISR de 60s ainda seria mais lento que cache de API bem feito. E migrar de Vite/React + GH Pages pra Next.js + Vercel é um trabalhão pra ganho marginal.
+
+Edge Functions — overkill pro caso de uso. Resolve problema que o Faren não tem.
+
+SPA — Faren já É SPA (Vite + Wouter). Tá feito.
+
+Minha recomendação prática
+Se for atacar 1 coisa só → #1 (tirar base64 do banco). É o que tá te machucando agora, é o motivo do skeleton demorar no preview, e vai melhorar a vida em prod também.
+
+Se quiser atacar os 3, ordem: 1 → 3 → 2 (storage primeiro, cache CF segundo, plano pago Render por último).
