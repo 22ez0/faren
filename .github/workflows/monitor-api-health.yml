@@ -1,0 +1,177 @@
+name: Monitor API Health
+
+on:
+  schedule:
+    # A cada 5 minutos. O cron do GitHub Actions pode atrasar alguns minutos
+    # em horários de pico, mas pra esse alerta tá ok — não precisa ser exato.
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: monitor-api-health
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe /api/healthz with retries
+        id: probe
+        env:
+          HEALTH_URL: https://api.faren.com.br/api/healthz
+        run: |
+          set -u
+          # Faz até 5 tentativas espaçadas de 30s (~2 min). Render free tem
+          # cold start de até ~1 min, então uma única tentativa daria muito
+          # falso positivo. Só consideramos "fora do ar" se TODAS falharem.
+          attempts=5
+          sleep_between=30
+          ok=0
+          last_status=""
+          last_body=""
+          # IMPORTANTE: a API tem `botBlock` em produção (ENABLE_BOT_BLOCKING)
+          # que devolve 403 pra User-Agents que casam com /curl|wget|python-
+          # requests|headless|playwright|.../i. Sem UA custom o curl manda
+          # "curl/X.Y" e o monitor virava falso positivo eterno. Por isso
+          # mandamos um UA dedicado, fora da lista de bloqueio. Veja
+          # `artifacts/api-server/src/app.ts` (`blockedUserAgents`).
+          ua="faren-uptime-monitor/1.0 (+https://github.com/22ez0/faren)"
+          for i in $(seq 1 "$attempts"); do
+            echo "[$i/$attempts] GET $HEALTH_URL"
+            # -m 30: timeout total de 30s por tentativa
+            # -w "%{http_code}": só o status no stdout, corpo vai pra arquivo
+            body_file="$(mktemp)"
+            http_code=$(curl -sS -m 30 -A "$ua" -o "$body_file" -w "%{http_code}" "$HEALTH_URL" || echo "000")
+            body=$(head -c 500 "$body_file" 2>/dev/null || true)
+            rm -f "$body_file"
+            echo "  status=$http_code body=$body"
+            last_status="$http_code"
+            last_body="$body"
+            # Aceita qualquer 2xx que tenha "ok" no corpo (o endpoint retorna
+            # {"status":"ok"}). Se o body não tiver "ok", trata como falha
+            # mesmo com 200 — pode ser uma página de erro intermediária.
+            if [ "$http_code" = "200" ] && printf '%s' "$body" | grep -q '"ok"'; then
+              ok=1
+              break
+            fi
+            if [ "$i" -lt "$attempts" ]; then
+              sleep "$sleep_between"
+            fi
+          done
+
+          if [ "$ok" = "1" ]; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "last_status=$last_status"
+            echo "last_body<<HEALTH_BODY_EOF"
+            echo "$last_body"
+            echo "HEALTH_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open or update api-down issue
+        if: ${{ steps.probe.outputs.healthy == 'false' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEALTH_URL: https://api.faren.com.br/api/healthz
+          LAST_STATUS: ${{ steps.probe.outputs.last_status }}
+          LAST_BODY: ${{ steps.probe.outputs.last_body }}
+        run: |
+          set -e
+          title="API fora do ar (faren-api-wn1z.onrender.com)"
+          label="api-down"
+
+          gh label create "$label" \
+            --color "B60205" \
+            --description "Auto-aberto quando o monitor detecta a API de produção fora do ar" \
+            --repo "$GH_REPO" >/dev/null 2>&1 || true
+
+          # Acha issue aberta existente
+          existing=$(gh issue list \
+            --repo "$GH_REPO" \
+            --state open \
+            --label "$label" \
+            --search "in:title \"$title\"" \
+            --json number \
+            --jq '.[0].number // empty' 2>/dev/null || true)
+
+          body_file="$(mktemp)"
+          {
+            printf '%s\n\n' "O monitor agendado bateu em \`$HEALTH_URL\` 5 vezes seguidas (espaçadas em ~30s) e todas falharam. A API de produção parece estar **fora do ar** mesmo sem deploy quebrado — provavelmente cold start travado do plano free do Render, banco indisponível ou healthcheck falhando."
+            printf '- **Endpoint**: %s\n' "$HEALTH_URL"
+            printf '- **Último HTTP status visto**: `%s`\n' "${LAST_STATUS:-000}"
+            if [ -n "${LAST_BODY:-}" ]; then
+              printf '- **Último corpo (primeiros 500 chars)**:\n\n'
+              printf '```\n%s\n```\n\n' "$LAST_BODY"
+            fi
+            printf '- **Run do monitor**: %s\n' "$RUN_URL"
+            printf '- **Dashboard do Render**: https://dashboard.render.com/web/srv-d7gjdc5ckfvc73ftk79g\n\n'
+            printf '### Como investigar\n'
+            printf '1. Abra o dashboard do Render no link acima e veja se o service está `Live`, `Suspended` ou em `Deploy in progress`.\n'
+            printf '2. Veja os logs do service — cold start travado costuma aparecer como timeout no boot ou erro de conexão com o Postgres.\n'
+            printf '3. Se for cold start travado, basta um `Manual Deploy → Clear build cache & deploy` ou reiniciar o service.\n'
+            printf '4. Se o banco caiu, veja o status do Postgres `faren-db` no mesmo dashboard.\n'
+            printf '5. O monitor vai **comentar e fechar essa issue automaticamente** assim que `/api/healthz` voltar a responder `200 {"status":"ok"}`.\n'
+          } > "$body_file"
+
+          if [ -n "$existing" ]; then
+            echo "Issue já aberta (#$existing) — não vou comentar de novo pra não gerar ruído enquanto continuar fora do ar."
+          else
+            echo "Abrindo nova issue"
+            if ! gh issue create \
+                --repo "$GH_REPO" \
+                --title "$title" \
+                --label "$label" \
+                --body-file "$body_file"; then
+              echo "::warning::Falhou ao abrir issue de api-down."
+            fi
+          fi
+
+      - name: Close api-down issue if API is back
+        if: ${{ steps.probe.outputs.healthy == 'true' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEALTH_URL: https://api.faren.com.br/api/healthz
+        run: |
+          set -e
+          title="API fora do ar (faren-api-wn1z.onrender.com)"
+          label="api-down"
+
+          existing=$(gh issue list \
+            --repo "$GH_REPO" \
+            --state open \
+            --label "$label" \
+            --search "in:title \"$title\"" \
+            --json number \
+            --jq '.[0].number // empty' 2>/dev/null || true)
+
+          if [ -z "$existing" ]; then
+            echo "Sem issue aberta — nada a fazer."
+            exit 0
+          fi
+
+          comment_file="$(mktemp)"
+          {
+            printf '%s\n\n' "✅ A API voltou. \`$HEALTH_URL\` respondeu \`200 {\"status\":\"ok\"}\` agora."
+            printf '- **Run do monitor**: %s\n' "$RUN_URL"
+            printf '\nFechando essa issue automaticamente. Se cair de novo, o monitor reabre.\n'
+          } > "$comment_file"
+
+          if ! gh issue comment "$existing" --repo "$GH_REPO" --body-file "$comment_file"; then
+            echo "::warning::Falhou ao comentar na issue #$existing."
+          fi
+          if ! gh issue close "$existing" --repo "$GH_REPO" --reason completed; then
+            echo "::warning::Falhou ao fechar issue #$existing."
+          fi

@@ -4,6 +4,21 @@ import { eq, and, sql, gt } from "drizzle-orm";
 import { UpdateProfileBody, ConnectDiscordBody, ConnectMusicBody, AddProfileLinkBody, UpdateProfileLinkBody, UpdateProfileLinkParams, DeleteProfileLinkParams } from "@workspace/api-zod";
 import { requireAuth, optionalAuth } from "../lib/auth";
 import { fetchLastfmNowPlaying } from "./music";
+import { parseDataUri, uploadBuffer } from "../lib/r2";
+
+async function maybeUploadDataUri(value: string | undefined, prefix: string): Promise<string | undefined> {
+  if (value === undefined) return undefined;
+  if (!value.startsWith("data:")) return value;
+  const parsed = parseDataUri(value);
+  if (!parsed) return value;
+  if (!process.env.R2_BUCKET || !process.env.R2_ACCESS_KEY_ID) return value;
+  try {
+    return await uploadBuffer({ buffer: parsed.buffer, mime: parsed.mime, prefix });
+  } catch (e) {
+    console.error("[r2] upload failed, keeping data URI:", (e as Error).message);
+    return value;
+  }
+}
 
 function normalizeLinkUrl(raw: string): string | null {
   const trimmed = raw.trim();
@@ -170,9 +185,13 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     typewriterTexts, profileTitle, showViews, showDiscordAvatar, showDiscordPresence,
   } = parsed.data;
 
+  const resolvedAvatarUrl = await maybeUploadDataUri(avatarUrl, `avatars/${userId}`);
+  const resolvedBannerUrl = await maybeUploadDataUri(bannerUrl, `banners/${userId}`);
+  const resolvedBackgroundUrl = await maybeUploadDataUri(backgroundUrl, `backgrounds/${userId}`);
+
   const userUpdates = {
     ...(displayName !== undefined ? { displayName } : {}),
-    ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+    ...(resolvedAvatarUrl !== undefined ? { avatarUrl: resolvedAvatarUrl } : {}),
   };
 
   if (Object.keys(userUpdates).length > 0) {
@@ -188,8 +207,8 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
 
   const [updated] = await db.update(profilesTable).set({
     ...(bio !== undefined ? { bio } : {}),
-    ...(bannerUrl !== undefined ? { bannerUrl } : {}),
-    ...(backgroundUrl !== undefined ? { backgroundUrl } : {}),
+    ...(resolvedBannerUrl !== undefined ? { bannerUrl: resolvedBannerUrl } : {}),
+    ...(resolvedBackgroundUrl !== undefined ? { backgroundUrl: resolvedBackgroundUrl } : {}),
     ...(accentColor !== undefined ? { accentColor } : {}),
     ...(backgroundOpacity !== undefined ? { backgroundOpacity } : {}),
     ...(backgroundBlur !== undefined ? { backgroundBlur } : {}),

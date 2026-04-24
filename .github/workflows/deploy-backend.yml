@@ -10,6 +10,10 @@ on:
       - 'render.yaml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -18,4 +22,195 @@ jobs:
         run: |
           echo "Render is connected to this repo and auto-deploys on push to main."
           echo "Service: https://faren-api-wn1z.onrender.com"
-          echo "No additional step required."
+          echo "No additional step required to trigger the deploy."
+
+      - name: Warn if RENDER_API_KEY is missing
+        if: ${{ secrets.RENDER_API_KEY == '' }}
+        run: |
+          echo "::warning::RENDER_API_KEY secret não está configurado em Settings → Secrets and variables → Actions deste repo. Sem ele, o monitor não consegue checar o status real do deploy do Render — falhas de build do backend NÃO vão gerar issue. Cadastre o secret pra reativar o alerta (ver replit-leia-aqui.md → 'Alerta automático quando o deploy do backend (Render) falha')."
+
+      - name: Wait for Render deploy to finish
+        id: render_wait
+        if: ${{ secrets.RENDER_API_KEY != '' }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: srv-d7gjdc5ckfvc73ftk79g
+          COMMIT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -u
+          api="https://api.render.com/v1"
+          auth_header="Authorization: Bearer $RENDER_API_KEY"
+
+          # Render normally takes a few seconds to register the new deploy
+          # triggered by the GitHub push webhook. Give it some time before
+          # we try to match it by commit SHA.
+          echo "Waiting up to 90s for Render to register the deploy for commit $COMMIT_SHA..."
+          deploy_id=""
+          for i in $(seq 1 18); do
+            list=$(curl -sS -H "$auth_header" "$api/services/$RENDER_SERVICE_ID/deploys?limit=10" || echo "[]")
+            # Try to find the deploy whose commit id matches our SHA.
+            deploy_id=$(printf '%s' "$list" | jq -r --arg sha "$COMMIT_SHA" \
+              'map(.deploy) | map(select(.commit and .commit.id == $sha)) | .[0].id // empty' 2>/dev/null || true)
+            if [ -n "$deploy_id" ] && [ "$deploy_id" != "null" ]; then
+              echo "Found Render deploy id $deploy_id for commit $COMMIT_SHA"
+              break
+            fi
+            sleep 5
+          done
+
+          # Fallback: if we couldn't match by SHA, only fall back to the
+          # latest deploy when the workflow was triggered manually
+          # (workflow_dispatch). For real pushes, blindly using the latest
+          # deploy can attach us to an unrelated deploy (rapid consecutive
+          # pushes) and cause false positives/negatives — better to skip
+          # monitoring this run and emit a warning.
+          if [ -z "$deploy_id" ] || [ "$deploy_id" = "null" ]; then
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+              deploy_id=$(printf '%s' "$list" | jq -r '.[0].deploy.id // empty' 2>/dev/null || true)
+              if [ -n "$deploy_id" ] && [ "$deploy_id" != "null" ]; then
+                echo "::warning::workflow_dispatch run: no commit-matched deploy found. Falling back to latest deploy $deploy_id."
+              fi
+            else
+              reason="Não achei nenhum deploy do Render cujo commit bata com $COMMIT_SHA dentro do tempo de espera. O Render pode ter ignorado esse push (paths fora do filtro de auto-deploy) ou o webhook pode ter atrasado. Nada foi monitorado — verifique o dashboard manualmente se for um push relevante de backend."
+              {
+                echo "deploy_id="
+                echo "deploy_status=not_found"
+                echo "logs_url=https://dashboard.render.com/web/$RENDER_SERVICE_ID/deploys"
+                echo "failure_reason<<RENDER_REASON_EOF"
+                echo "$reason"
+                echo "RENDER_REASON_EOF"
+              } >> "$GITHUB_OUTPUT"
+              echo "::warning::$reason"
+              exit 0
+            fi
+          fi
+
+          if [ -z "$deploy_id" ] || [ "$deploy_id" = "null" ]; then
+            reason="Não consegui localizar nenhum deploy recente do Render para o service $RENDER_SERVICE_ID. Verifique o RENDER_API_KEY e se o auto-deploy está habilitado."
+            {
+              echo "deploy_id="
+              echo "deploy_status=unknown"
+              echo "logs_url=https://dashboard.render.com/web/$RENDER_SERVICE_ID/deploys"
+              echo "failure_reason<<RENDER_REASON_EOF"
+              echo "$reason"
+              echo "RENDER_REASON_EOF"
+            } >> "$GITHUB_OUTPUT"
+            echo "::warning::$reason"
+            exit 0
+          fi
+
+          # Poll the deploy until it reaches a terminal status.
+          # Terminal statuses per Render API: live, deactivated,
+          # build_failed, update_failed, pre_deploy_failed, canceled.
+          # Free plan builds can take a few minutes, so allow up to ~25 min.
+          status="unknown"
+          finished_at=""
+          for i in $(seq 1 150); do
+            deploy=$(curl -sS -H "$auth_header" "$api/services/$RENDER_SERVICE_ID/deploys/$deploy_id" || echo '{}')
+            status=$(printf '%s' "$deploy" | jq -r '.status // "unknown"')
+            finished_at=$(printf '%s' "$deploy" | jq -r '.finishedAt // ""')
+            echo "[$i] Render deploy $deploy_id status: $status"
+            case "$status" in
+              live|deactivated|build_failed|update_failed|pre_deploy_failed|canceled)
+                break
+                ;;
+            esac
+            sleep 10
+          done
+
+          logs_url="https://dashboard.render.com/web/$RENDER_SERVICE_ID/deploys/$deploy_id"
+          reason=""
+          case "$status" in
+            live)
+              echo "Render deploy $deploy_id finished successfully (status=live)."
+              ;;
+            deactivated)
+              # The deploy was superseded by a newer one before going live.
+              # Not a build failure — treat as a non-issue and just log it.
+              echo "::notice::Render deploy $deploy_id was deactivated (superseded by a newer deploy). Not treating as failure."
+              ;;
+            build_failed|update_failed|pre_deploy_failed|canceled)
+              reason="Deploy do Render terminou com status \`$status\`. Veja os logs e o último commit para identificar a causa (build quebrado, migration, dependência, etc.)."
+              ;;
+            *)
+              reason="Deploy do Render não chegou a um status final dentro do tempo de espera (último status visto: \`$status\`). Pode estar travado — verifique manualmente."
+              ;;
+          esac
+
+          {
+            echo "deploy_id=$deploy_id"
+            echo "deploy_status=$status"
+            echo "logs_url=$logs_url"
+            echo "failure_reason<<RENDER_REASON_EOF"
+            echo "$reason"
+            echo "RENDER_REASON_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$reason" ]; then
+            echo "::warning::$reason"
+          fi
+          # Never fail the workflow — push to main must not be blocked.
+          exit 0
+
+      - name: Notify on Render deploy failure
+        if: ${{ steps.render_wait.outcome == 'success' && steps.render_wait.outputs.failure_reason != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          RENDER_DEPLOY_ID: ${{ steps.render_wait.outputs.deploy_id }}
+          RENDER_DEPLOY_STATUS: ${{ steps.render_wait.outputs.deploy_status }}
+          RENDER_LOGS_URL: ${{ steps.render_wait.outputs.logs_url }}
+          RENDER_REASON: ${{ steps.render_wait.outputs.failure_reason }}
+        run: |
+          set -e
+          title="Render backend deploy failed"
+          label="render-deploy-failure"
+
+          gh label create "$label" \
+            --color "B60205" \
+            --description "Auto-aberto quando o deploy do backend no Render falha" \
+            --repo "$GH_REPO" >/dev/null 2>&1 || true
+
+          body_file="$(mktemp)"
+          {
+            printf '%s\n\n' "O deploy do backend no **Render** falhou. O push para \`main\` não é bloqueado, então o repositório segue como está — mas a API em produção pode estar rodando uma versão antiga (ou fora do ar) até alguém investigar."
+            printf '- **Motivo**: %s\n' "$RENDER_REASON"
+            printf '- **Deploy id**: `%s`\n' "${RENDER_DEPLOY_ID:-unknown}"
+            printf '- **Status final**: `%s`\n' "${RENDER_DEPLOY_STATUS:-unknown}"
+            printf '- **Logs do Render**: %s\n' "$RENDER_LOGS_URL"
+            printf '- **Commit**: `%s`\n' "$COMMIT_SHA"
+            printf '- **Run**: %s\n\n' "$RUN_URL"
+            printf '### Como resolver\n'
+            printf '1. Abra os logs do Render no link acima e procure pelo erro (build, migration via `pnpm --filter @workspace/db run push`, dependência, etc.).\n'
+            printf '2. Corrija no código e faça novo push para `main` — o Render vai reprocessar automaticamente.\n'
+            printf '3. Se precisar reprocessar sem novo commit, use o `curl` documentado em `replit-leia-aqui.md` ("Disparar deploy manual no Render").\n'
+            printf '4. Feche essa issue depois que o próximo deploy ficar `live`.\n'
+          } > "$body_file"
+
+          existing=$(gh issue list \
+            --repo "$GH_REPO" \
+            --state open \
+            --label "$label" \
+            --search "in:title \"$title\"" \
+            --json number \
+            --jq '.[0].number // empty' 2>/dev/null || true)
+
+          if [ -n "$existing" ]; then
+            echo "Updating existing issue #$existing"
+            if ! gh issue comment "$existing" --repo "$GH_REPO" --body-file "$body_file"; then
+              echo "::warning::Failed to comment on issue #$existing about the Render deploy failure. The push to main is still considered successful."
+            fi
+          else
+            echo "Opening new issue"
+            if ! gh issue create \
+                --repo "$GH_REPO" \
+                --title "$title" \
+                --label "$label" \
+                --body-file "$body_file"; then
+              echo "::warning::Failed to open a new issue about the Render deploy failure. The push to main is still considered successful."
+            fi
+          fi

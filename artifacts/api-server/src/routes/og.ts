@@ -5,7 +5,7 @@ import { eq, ilike } from "drizzle-orm";
 const router: IRouter = Router();
 
 const SITE_URL = "https://faren.com.br";
-const API_URL = "https://faren-api-wn1z.onrender.com";
+const API_URL = "https://api.faren.com.br";
 const DEFAULT_IMAGE = `${SITE_URL}/opengraph.jpg`;
 
 const RESERVED = new Set([
