@@ -36,6 +36,7 @@ jobs:
           BASE_PATH: /
           PORT: 5173
           VITE_API_URL: https://api.faren.com.br
+          VITE_TURNSTILE_SITE_KEY: 0x4AAAAAADCou66RkKmd1DwX
           NODE_ENV: production
 
       - name: Deploy to GitHub Pages
