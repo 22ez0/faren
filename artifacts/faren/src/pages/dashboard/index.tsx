@@ -23,27 +23,16 @@ const BG_OPTIONS = [
     emoji: 'https://cdn.discordapp.com/emojis/1482872769350860840.webp?size=22&animated=true',
     gradient: false,
   },
-  {
-    id: 'rosa',
-    label: 'Rosa Claro',
-    value: 'gradient:rosa',
-    emoji: 'https://cdn.discordapp.com/emojis/1483022927782739978.webp?size=22&animated=true',
-    gradient: true,
-  },
 ];
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
 function parseStoredBg(val: string | null | undefined): { bgId: string } {
   if (!val) return { bgId: 'black' };
-  if (val === 'gradient:rosa') return { bgId: 'rosa' };
   if (val === '#ffffff') return { bgId: 'white' };
   return { bgId: 'black' };
 }
 
 function getBgStyle(bgId: string): React.CSSProperties {
-  if (bgId === 'rosa') {
-    return { background: 'linear-gradient(to bottom, #ffffff, #ff0055)' };
-  }
   if (bgId === 'white') {
     return { backgroundColor: '#ffffff' };
   }
@@ -237,7 +226,7 @@ export default function Dashboard() {
                 ].map((action) => {
                   const Icon = action.icon;
                   const inner = (
-                    <div className="group flex items-center gap-4 p-4 border hover:opacity-80 transition-all duration-200 cursor-pointer rounded-sm" style={{ borderColor, backgroundColor: bgId === 'rosa' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)' }}>
+                    <div className="group flex items-center gap-4 p-4 border hover:opacity-80 transition-all duration-200 cursor-pointer rounded-sm" style={{ borderColor, backgroundColor: 'rgba(255,255,255,0.03)' }}>
                       <Icon className="w-4 h-4 transition-colors" style={{ color: dimText }} />
                       <div className="flex-1">
                         <p className="text-sm font-semibold" style={{ color: textColor }}>{action.label}</p>
@@ -272,7 +261,7 @@ export default function Dashboard() {
                     const max = analytics.topCountries[0].count;
                     const pct = Math.round((country.count / max) * 100);
                     return (
-                      <div key={idx} className="p-3 border rounded-sm" style={{ borderColor, backgroundColor: bgId === 'rosa' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)' }}>
+                      <div key={idx} className="p-3 border rounded-sm" style={{ borderColor, backgroundColor: 'rgba(255,255,255,0.03)' }}>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-sm font-semibold" style={{ color: textColor }}>{country.country || 'Desconhecido'}</span>
                           <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: dimText }}>{country.count} visitas</span>
