@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRegister } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, ArrowLeft } from "lucide-react";
@@ -26,21 +25,28 @@ const registerSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-function genCaptcha() {
-  const a = Math.floor(Math.random() * 9) + 1;
-  const b = Math.floor(Math.random() * 9) + 1;
-  return { a, b, answer: a + b };
+const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || "1x00000000000000000000AA";
+const API_BASE = `${(import.meta.env.VITE_API_URL || import.meta.env.BASE_URL).replace(/\/+$/, "")}/api`;
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: { sitekey: string; callback: (t: string) => void; "error-callback"?: () => void; theme?: "dark" | "light" | "auto" }) => string;
+      reset: (id?: string) => void;
+    };
+    onTurnstileLoad?: () => void;
+  }
 }
 
 export default function Register() {
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
-  const registerMutation = useRegister();
+  const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(1);
-  const [captcha, setCaptcha] = useState(genCaptcha);
-  const [captchaInput, setCaptchaInput] = useState('');
-  const [captchaError, setCaptchaError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -48,7 +54,6 @@ export default function Register() {
     mode: "onChange",
   });
 
-  // Pre-fill username from ?username=... query (coming from the homepage claim input)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const u = params.get('username');
@@ -58,25 +63,52 @@ export default function Register() {
     }
   }, [form]);
 
+  useEffect(() => {
+    if (document.querySelector('script[data-turnstile]')) { tryRender(); return; }
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";
+    s.async = true; s.defer = true;
+    s.setAttribute("data-turnstile", "1");
+    window.onTurnstileLoad = tryRender;
+    document.head.appendChild(s);
+  }, []);
+
+  useEffect(() => { if (step === 2) tryRender(); }, [step]);
+
+  function tryRender() {
+    if (!turnstileRef.current || !window.turnstile || widgetIdRef.current) return;
+    widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme: "dark",
+      callback: (t) => setTurnstileToken(t),
+      "error-callback": () => setTurnstileToken(null),
+    });
+  }
+
   const nextStep = async () => {
     const valid = await form.trigger(["email", "password"] as const);
     if (valid) setStep(2);
   };
 
-  const onSubmit = (data: RegisterFormValues) => {
-    if (parseInt(captchaInput, 10) !== captcha.answer) {
-      setCaptchaError('Resposta incorreta. Tente novamente.');
-      setCaptcha(genCaptcha());
-      setCaptchaInput('');
-      return;
+  const onSubmit = async (data: RegisterFormValues) => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, turnstileToken }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Ocorreu um erro");
+      login(body.token);
+      setLocation("/dashboard");
+    } catch (err: any) {
+      toast({ title: "Falha no cadastro", description: err.message || "Ocorreu um erro", variant: "destructive" });
+      if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current);
+      setTurnstileToken(null);
+    } finally {
+      setSubmitting(false);
     }
-    setCaptchaError('');
-    registerMutation.mutate({ data }, {
-      onSuccess: (res) => { login(res.token); setLocation("/dashboard"); },
-      onError: (err: any) => {
-        toast({ title: "Falha no cadastro", description: err.error || "Ocorreu um erro", variant: "destructive" });
-      },
-    });
   };
 
   return (
@@ -117,13 +149,7 @@ export default function Register() {
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <AnimatePresence mode="wait">
               {step === 1 && (
-                <motion.div
-                  key="step1"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-4"
-                >
+                <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
                   <div>
                     <label className="label-caps block mb-2">E-mail</label>
                     <input
@@ -132,9 +158,7 @@ export default function Register() {
                       placeholder="voce@exemplo.com"
                       className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
                     />
-                    {form.formState.errors.email && (
-                      <p className="text-red-400 text-xs mt-1">{form.formState.errors.email.message}</p>
-                    )}
+                    {form.formState.errors.email && (<p className="text-red-400 text-xs mt-1">{form.formState.errors.email.message}</p>)}
                   </div>
                   <div>
                     <label className="label-caps block mb-2">Senha</label>
@@ -144,9 +168,7 @@ export default function Register() {
                       placeholder="••••••••"
                       className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
                     />
-                    {form.formState.errors.password && (
-                      <p className="text-red-400 text-xs mt-1">{form.formState.errors.password.message}</p>
-                    )}
+                    {form.formState.errors.password && (<p className="text-red-400 text-xs mt-1">{form.formState.errors.password.message}</p>)}
                   </div>
                   <motion.button
                     type="button"
@@ -161,13 +183,7 @@ export default function Register() {
               )}
 
               {step === 2 && (
-                <motion.div
-                  key="step2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-4"
-                >
+                <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                   <div>
                     <label className="label-caps block mb-2">Nome de usuário</label>
                     <div className="flex">
@@ -181,9 +197,7 @@ export default function Register() {
                         onChange={(e) => form.setValue("username", e.target.value.toLowerCase())}
                       />
                     </div>
-                    {form.formState.errors.username && (
-                      <p className="text-red-400 text-xs mt-1">{form.formState.errors.username.message}</p>
-                    )}
+                    {form.formState.errors.username && (<p className="text-red-400 text-xs mt-1">{form.formState.errors.username.message}</p>)}
                   </div>
                   <div>
                     <label className="label-caps block mb-2">Nome de exibição (opcional)</label>
@@ -193,38 +207,21 @@ export default function Register() {
                       className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
                     />
                   </div>
-                  <div className="mt-2">
-                    <label className="label-caps block mb-2">
-                      Verificação — Quanto é {captcha.a} + {captcha.b}?
-                    </label>
-                    <input
-                      type="number"
-                      value={captchaInput}
-                      onChange={(e) => { setCaptchaInput(e.target.value); setCaptchaError(''); }}
-                      placeholder="Sua resposta"
-                      className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
-                    />
-                    {captchaError && (
-                      <p className="text-red-400 text-xs mt-1">{captchaError}</p>
-                    )}
-                  </div>
+
+                  <div ref={turnstileRef} className="flex justify-center pt-1" />
 
                   <div className="flex gap-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="btn-outline-white flex-1"
-                    >
+                    <button type="button" onClick={() => setStep(1)} className="btn-outline-white flex-1">
                       <ArrowLeft className="mr-1 w-3 h-3 inline" /> Voltar
                     </button>
                     <motion.button
                       type="submit"
-                      disabled={registerMutation.isPending}
+                      disabled={submitting}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       className="btn-solid-white flex-[2] disabled:opacity-50"
                     >
-                      {registerMutation.isPending ? "Criando..." : "Criar Perfil"}
+                      {submitting ? "Criando..." : "Criar Perfil"}
                     </motion.button>
                   </div>
                 </motion.div>
