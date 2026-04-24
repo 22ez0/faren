@@ -176,6 +176,22 @@ export default function DevKeefnow() {
     fetchUsers(query);
   };
 
+  const renameUser = async (user: AdminUser) => {
+    const next = window.prompt(`Novo @ para @${user.username}\n(3-15 chars, [a-z 0-9 _], sem _ no início/fim/duplo)`, user.username);
+    if (next == null) return;
+    const cleaned = next.trim().replace(/^@/, "").toLowerCase();
+    if (!cleaned || cleaned === user.username) return;
+    try {
+      await request(`/admin/users/${user.id}/username`, {
+        method: "POST",
+        body: JSON.stringify({ username: cleaned }),
+      });
+      fetchUsers(query);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const resolveReport = async (reportId: number, action: "dismiss" | "ban") => {
     await request(`/admin/reports/${reportId}/resolve`, {
       method: "POST",
@@ -371,6 +387,13 @@ export default function DevKeefnow() {
                           </button>
                         )}
                       </div>
+                      <button
+                        onClick={() => renameUser(user)}
+                        className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider text-white/60 hover:bg-white/5 transition-colors"
+                        title="Renomear @"
+                      >
+                        Renomear @
+                      </button>
                       <button
                         onClick={() => updateUser(user.id, "ban", !user.banned)}
                         className={`px-3 py-2 border text-xs uppercase tracking-wider flex items-center gap-1.5 transition-colors ${user.banned ? "border-green-500/30 text-green-400 hover:bg-green-500/10" : "border-red-500/30 text-red-300 hover:bg-red-500/10"}`}

@@ -8,6 +8,24 @@ import { signToken, requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
 
+const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+
+async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
+  if (!token) return false;
+  try {
+    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret: TURNSTILE_SECRET, response: token, remoteip: ip }).toString(),
+    });
+    const data = await r.json() as { success?: boolean };
+    return !!data.success;
+  } catch (e) {
+    console.error("[turnstile] verify failed", (e as Error).message);
+    return false;
+  }
+}
+
 const registerAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function getClientIp(req: Request) {
@@ -54,6 +72,12 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     registerAttempts.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
   } else {
     attempt.count += 1;
+  }
+
+  const turnstileToken = (req.body && (req.body.turnstileToken || req.body["cf-turnstile-response"])) as string | undefined;
+  if (process.env.TURNSTILE_SECRET_KEY && !(await verifyTurnstile(turnstileToken, ip))) {
+    res.status(400).json({ error: "Verificação de segurança falhou. Tente novamente." });
+    return;
   }
 
   const parsed = RegisterBody.safeParse(req.body);
@@ -129,19 +153,38 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
-  const parsed = LoginBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+  const ip = getClientIp(req);
+  const turnstileToken = (req.body && (req.body.turnstileToken || req.body["cf-turnstile-response"])) as string | undefined;
+  if (process.env.TURNSTILE_SECRET_KEY && !(await verifyTurnstile(turnstileToken, ip))) {
+    res.status(400).json({ error: "Verificação de segurança falhou. Tente novamente." });
     return;
   }
 
-  const { email, password } = parsed.data;
+  const rawIdentifier = typeof req.body?.identifier === "string"
+    ? req.body.identifier.trim()
+    : typeof req.body?.email === "string" ? req.body.email.trim() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
 
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email))
-    .limit(1);
+  if (!rawIdentifier || password.length < 6) {
+    res.status(400).json({ error: "Informe e-mail (ou @usuario) e senha." });
+    return;
+  }
+
+  const usernameCandidate = rawIdentifier.replace(/^@/, "").toLowerCase();
+  const isEmail = rawIdentifier.includes("@") && rawIdentifier.indexOf("@") > 0;
+
+  // Backward-compat with LoginBody zod (which expects email): only validate when no identifier shortcut was sent.
+  if (!req.body?.identifier) {
+    const parsed = LoginBody.safeParse({ email: rawIdentifier, password });
+    if (!parsed.success && isEmail) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+  }
+
+  const [user] = isEmail
+    ? await db.select().from(usersTable).where(eq(usersTable.email, rawIdentifier)).limit(1)
+    : await db.select().from(usersTable).where(eq(usersTable.username, usernameCandidate)).limit(1);
 
   if (!user || user.banned) {
     res.status(401).json({ error: "Invalid credentials" });

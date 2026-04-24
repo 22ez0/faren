@@ -3,41 +3,97 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { useLogin } from "@workspace/api-client-react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("E-mail inválido"),
+  identifier: z.string().min(3, "Informe e-mail ou @usuario"),
   password: z.string().min(6, "Mínimo de 6 caracteres"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || "1x00000000000000000000AA";
+const API_BASE = `${(import.meta.env.VITE_API_URL || import.meta.env.BASE_URL).replace(/\/+$/, "")}/api`;
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: { sitekey: string; callback: (t: string) => void; "error-callback"?: () => void; theme?: "dark" | "light" | "auto" }) => string;
+      reset: (id?: string) => void;
+    };
+    onTurnstileLoad?: () => void;
+  }
+}
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
-  const loginMutation = useLogin();
+  const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { identifier: "", password: "" },
   });
 
-  const onSubmit = (data: LoginFormValues) => {
-    loginMutation.mutate({ data }, {
-      onSuccess: (res) => { login(res.token); setLocation("/dashboard"); },
-      onError: (err: any) => {
-        toast({ title: "Falha no login", description: err.error || "Credenciais inválidas", variant: "destructive" });
-      },
+  useEffect(() => {
+    if (document.querySelector('script[data-turnstile]')) {
+      tryRender();
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";
+    s.async = true;
+    s.defer = true;
+    s.setAttribute("data-turnstile", "1");
+    window.onTurnstileLoad = tryRender;
+    document.head.appendChild(s);
+  }, []);
+
+  function tryRender() {
+    if (!turnstileRef.current || !window.turnstile || widgetIdRef.current) return;
+    widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme: "dark",
+      callback: (t) => setTurnstileToken(t),
+      "error-callback": () => setTurnstileToken(null),
     });
+  }
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: data.identifier,
+          email: data.identifier,
+          password: data.password,
+          turnstileToken,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Credenciais inválidas");
+      login(body.token);
+      setLocation("/dashboard");
+    } catch (err: any) {
+      toast({ title: "Falha no login", description: err.message || "Credenciais inválidas", variant: "destructive" });
+      if (window.turnstile && widgetIdRef.current) window.turnstile.reset(widgetIdRef.current);
+      setTurnstileToken(null);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-5">
         <Link href="/">
           <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">FAREN</span>
@@ -45,7 +101,6 @@ export default function Login() {
         <Link href="/register" className="nav-link">Criar conta</Link>
       </nav>
 
-      {/* Background */}
       <div
         className="fixed inset-0 bg-cover bg-center opacity-[0.08]"
         style={{ backgroundImage: "url(https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=80)" }}
@@ -68,15 +123,16 @@ export default function Login() {
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <label className="label-caps block mb-2">E-mail</label>
+              <label className="label-caps block mb-2">E-mail ou @usuário</label>
               <input
-                {...form.register("email")}
-                type="email"
-                placeholder="voce@exemplo.com"
+                {...form.register("identifier")}
+                type="text"
+                autoComplete="username"
+                placeholder="voce@exemplo.com  ou  @seuuser"
                 className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
               />
-              {form.formState.errors.email && (
-                <p className="text-red-400 text-xs mt-1">{form.formState.errors.email.message}</p>
+              {form.formState.errors.identifier && (
+                <p className="text-red-400 text-xs mt-1">{form.formState.errors.identifier.message}</p>
               )}
             </div>
 
@@ -85,6 +141,7 @@ export default function Login() {
               <input
                 {...form.register("password")}
                 type="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 className="w-full bg-white/[0.04] border border-white/10 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors rounded-sm"
               />
@@ -93,17 +150,23 @@ export default function Login() {
               )}
             </div>
 
+            <div ref={turnstileRef} className="flex justify-center pt-1" />
+
             <motion.button
               type="submit"
-              disabled={loginMutation.isPending}
+              disabled={submitting}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               className="btn-solid-white w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loginMutation.isPending ? "Entrando..." : (
+              {submitting ? "Entrando..." : (
                 <>Entrar <ArrowRight className="ml-2 w-4 h-4 inline" /></>
               )}
             </motion.button>
+
+            <p className="text-[10px] text-white/30 text-center">
+              Sessão fica ativa por 90 dias neste dispositivo.
+            </p>
           </form>
 
           <div className="glow-line mt-10 mb-6" />

@@ -9,7 +9,7 @@ function getCookieToken(): string | null {
 
 function setCookieToken(token: string) {
   const expires = new Date();
-  expires.setDate(expires.getDate() + 30);
+  expires.setDate(expires.getDate() + 90);
   document.cookie = `faren_token=${encodeURIComponent(token)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
 }
 

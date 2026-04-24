@@ -60,6 +60,30 @@ router.get("/admin/users", requireAdmin, async (req, res): Promise<void> => {
   res.json(rows);
 });
 
+const RESERVED_USERNAMES_ADMIN = new Set([
+  'keefaren', 'admin', 'administrator', 'api', 'static', 'dashboard',
+  'login', 'register', 'signup', 'profile', 'settings', 'help', 'support',
+  'root', 'system', 'moderator', 'mod', 'staff', 'team', 'official',
+  'faren', 'keef', 'null', 'undefined', 'test', 'demo', 'example',
+  'comunidade', 'community', 'notifications', 'feed', 'explore', 'search',
+]);
+
+router.post("/admin/users/:userId/username", requireAdmin, async (req, res): Promise<void> => {
+  const userId = Number(req.params.userId);
+  const newUsername = String(req.body?.username ?? "").trim().toLowerCase();
+  if (!newUsername) { res.status(400).json({ error: "Username obrigatório" }); return; }
+  if (newUsername.length < 3 || newUsername.length > 15) { res.status(400).json({ error: "Username deve ter 3 a 15 caracteres." }); return; }
+  if (!/^[a-z0-9_]+$/.test(newUsername)) { res.status(400).json({ error: "Apenas letras minúsculas, números e _" }); return; }
+  if (newUsername.startsWith("_") || newUsername.endsWith("_") || /__/.test(newUsername)) { res.status(400).json({ error: "Formato inválido (_ no início/fim ou duplo)" }); return; }
+  if (RESERVED_USERNAMES_ADMIN.has(newUsername)) { res.status(400).json({ error: "Username reservado." }); return; }
+
+  const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, newUsername)).limit(1);
+  if (existing && existing.id !== userId) { res.status(409).json({ error: "Username já em uso." }); return; }
+
+  await db.update(usersTable).set({ username: newUsername }).where(eq(usersTable.id, userId));
+  res.json({ success: true, username: newUsername });
+});
+
 router.post("/admin/users/:userId/ban", requireAdmin, async (req, res): Promise<void> => {
   const userId = Number(req.params.userId);
   const banned = req.body?.banned !== false;
