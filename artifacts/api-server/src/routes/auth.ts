@@ -13,13 +13,34 @@ const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY || "1x0000000000000000
 async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
   if (!token) return false;
   try {
+    const body = new URLSearchParams({
+      secret: TURNSTILE_SECRET,
+      response: token,
+    });
+    // remoteip is optional in Turnstile and can cause false negatives
+    // behind some proxy/mobile network combinations.
+    if (ip && ip !== "unknown") {
+      body.set("remoteip", ip);
+    }
     const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ secret: TURNSTILE_SECRET, response: token, remoteip: ip }).toString(),
+      body: body.toString(),
     });
-    const data = await r.json() as { success?: boolean };
-    return !!data.success;
+    const data = await r.json() as { success?: boolean; ["error-codes"]?: string[] };
+    if (data.success) return true;
+
+    // Retry once without remoteip to avoid proxy/IP mismatch failures.
+    const retry = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret: TURNSTILE_SECRET, response: token }).toString(),
+    });
+    const retryData = await retry.json() as { success?: boolean; ["error-codes"]?: string[] };
+    if (!retryData.success) {
+      console.warn("[turnstile] verify failed", retryData["error-codes"] || data["error-codes"] || []);
+    }
+    return !!retryData.success;
   } catch (e) {
     console.error("[turnstile] verify failed", (e as Error).message);
     return false;
