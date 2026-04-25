@@ -238,7 +238,7 @@ export default function Register() {
                     />
                   </div>
 
-                  <div ref={turnstileRef} className="flex justify-center pt-1" />
+                  <div ref={turnstileRef} className="flex justify-center pt-1 min-h-[70px]" />
 
                   <div className="flex gap-3 mt-4">
                     <button type="button" onClick={() => setStep(1)} className="btn-outline-white flex-1">
@@ -246,7 +246,7 @@ export default function Register() {
                     </button>
                     <motion.button
                       type="submit"
-                      disabled={submitting || !turnstileToken}
+                      disabled={submitting}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       className="btn-solid-white flex-[2] disabled:opacity-50"
