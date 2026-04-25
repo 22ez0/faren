@@ -5,6 +5,8 @@ import { db, usersTable, profilesTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { signToken, requireAuth } from "../lib/auth";
+import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -166,6 +168,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const token = signToken({ userId: user.id, username: user.username });
 
+  // Fire-and-forget: don't make the user wait on the SMTP round trip.
+  sendVerificationEmail(email, verificationToken).then((ok) => {
+    if (!ok) logger.warn({ email }, "[auth/register] verification email not sent");
+  });
+
+  const includeDevLink = process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY;
+
   res.status(201).json({
     user: {
       id: user.id,
@@ -177,7 +186,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     },
     token,
     emailVerificationRequired: true,
-    devVerificationLink: `/api/auth/verify-email?token=${verificationToken}`,
+    ...(includeDevLink ? { devVerificationLink: `/api/auth/verify-email?token=${verificationToken}` } : {}),
   });
 });
 
@@ -259,7 +268,8 @@ router.get("/auth/verify-email", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/forgot-password", async (req, res): Promise<void> => {
-  const email = typeof req.body?.email === "string" ? req.body.email : "";
+  const email = (typeof req.body?.email === "string" ? req.body.email : "").trim().toLowerCase();
+  const generic = { success: true, message: "Se existir uma conta, enviaremos instruções para redefinir a senha." };
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (user) {
     const token = newToken();
@@ -267,10 +277,16 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
       resetTokenHash: hashToken(token),
       resetTokenExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
     }).where(eq(usersTable.id, user.id));
-    res.json({ success: true, message: "Se existir uma conta, enviaremos instruções para redefinir a senha.", devResetLink: `/reset-password?token=${token}` });
+
+    sendPasswordResetEmail(email, token).then((ok) => {
+      if (!ok) logger.warn({ email }, "[auth/forgot-password] reset email not sent");
+    });
+
+    const includeDevLink = process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY;
+    res.json(includeDevLink ? { ...generic, devResetLink: `/reset-password?token=${token}` } : generic);
     return;
   }
-  res.json({ success: true, message: "Se existir uma conta, enviaremos instruções para redefinir a senha." });
+  res.json(generic);
 });
 
 router.post("/auth/reset-password", async (req, res): Promise<void> => {
