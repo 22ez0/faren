@@ -87,6 +87,28 @@ function getClientIp(req: Request): string {
 
 const router: IRouter = Router();
 
+const DEPRECATED_DASHBOARD_BG_COLORS = new Set<string>(["gradient:rosa"]);
+
+function normalizeDashboardBgColor(raw: string | null | undefined): string {
+  const s = (raw ?? "").trim();
+  if (!s) return "#000000";
+  if (DEPRECATED_DASHBOARD_BG_COLORS.has(s)) return "#000000";
+  return s;
+}
+
+async function persistDeprecatedDashboardBg(userId: number, profile: any) {
+  const v = profile?.dashboardBgColor;
+  if (!v) return profile;
+  const next = normalizeDashboardBgColor(v);
+  if (next === v) return profile;
+  const [migrated] = await db
+    .update(profilesTable)
+    .set({ dashboardBgColor: next })
+    .where(eq(profilesTable.userId, userId))
+    .returning();
+  return migrated ?? profile;
+}
+
 function formatProfile(
   user: { id: number; username: string; displayName: string | null; avatarUrl: string | null },
   profile: any,
@@ -145,7 +167,7 @@ function formatProfile(
     followingCount: profile.followingCount,
     likesCount: profile.likesCount,
     viewsCount: profile.viewsCount,
-    dashboardBgColor: profile.dashboardBgColor ?? "#000000",
+    dashboardBgColor: normalizeDashboardBgColor(profile.dashboardBgColor),
     createdAt: profile.createdAt.toISOString(),
   };
 }
@@ -163,6 +185,8 @@ router.get("/profile", requireAuth, async (req, res): Promise<void> => {
   if (!profile) {
     [profile] = await db.insert(profilesTable).values({ userId, badges: [] }).returning();
   }
+
+  profile = await persistDeprecatedDashboardBg(userId, profile);
 
   const links = await db.select().from(profileLinksTable).where(eq(profileLinksTable.profileId, profile.id)).orderBy(profileLinksTable.sortOrder);
 
@@ -229,7 +253,9 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     ...(showViews !== undefined ? { showViews } : {}),
     ...(showDiscordAvatar !== undefined ? { showDiscordAvatar } : {}),
     ...(showDiscordPresence !== undefined ? { showDiscordPresence } : {}),
-    ...((req.body as any).dashboardBgColor !== undefined ? { dashboardBgColor: (req.body as any).dashboardBgColor } : {}),
+    ...((req.body as any).dashboardBgColor !== undefined
+      ? { dashboardBgColor: normalizeDashboardBgColor(String((req.body as any).dashboardBgColor)) }
+      : {}),
   }).where(eq(profilesTable.userId, userId)).returning();
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
@@ -441,7 +467,11 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
   const currentUserId = req.user?.userId;
   const cacheKey = `profile:${rawUsername}`;
 
-  const cachedBase = profileCache.get(cacheKey);
+  let cachedBase = profileCache.get(cacheKey);
+  if (cachedBase?.dashboardBgColor && normalizeDashboardBgColor(cachedBase.dashboardBgColor) !== cachedBase.dashboardBgColor) {
+    profileCache.delete(cacheKey);
+    cachedBase = undefined;
+  }
 
   let baseData: any;
   if (cachedBase) {
@@ -453,11 +483,17 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
       return;
     }
 
-    const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, user.id)).limit(1);
+    let [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, user.id)).limit(1);
 
     if (!profile) {
       res.status(404).json({ error: "Profile not found" });
       return;
+    }
+
+    const prevBg = profile.dashboardBgColor;
+    profile = await persistDeprecatedDashboardBg(user.id, profile);
+    if (prevBg != null && prevBg !== profile.dashboardBgColor) {
+      profileCache.delete(cacheKey);
     }
 
     const links = await db.select().from(profileLinksTable).where(eq(profileLinksTable.profileId, profile.id)).orderBy(profileLinksTable.sortOrder);

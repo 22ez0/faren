@@ -28,6 +28,7 @@ const BG_OPTIONS = [
 /* ─── Helpers ─────────────────────────────────────────────────── */
 function parseStoredBg(val: string | null | undefined): { bgId: string } {
   if (!val) return { bgId: 'black' };
+  if (val === 'gradient:rosa') return { bgId: 'black' };
   if (val === '#ffffff') return { bgId: 'white' };
   return { bgId: 'black' };
 }

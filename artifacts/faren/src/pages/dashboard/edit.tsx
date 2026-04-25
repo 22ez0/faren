@@ -282,6 +282,10 @@ function FileOnlyUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
 
+  useEffect(() => {
+    setLocalPreview(null);
+  }, [value]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -427,13 +431,16 @@ export default function EditProfile() {
   };
 
   const selectBackgroundType = (type: string) => {
-    set('backgroundType', type);
-    if (type === 'image' && form.backgroundUrl?.startsWith('#')) {
-      set('backgroundUrl', '');
-    }
-    if (type === 'color' && !form.backgroundUrl?.startsWith('#')) {
-      set('backgroundUrl', '#000000');
-    }
+    setForm(prev => {
+      let nextUrl = prev.backgroundUrl || "";
+      if (type === "image" && prev.backgroundUrl?.startsWith("#")) {
+        nextUrl = "";
+      } else if (type === "color" && !prev.backgroundUrl?.startsWith("#")) {
+        nextUrl = "#000000";
+      }
+      return { ...prev, backgroundType: type, backgroundUrl: nextUrl };
+    });
+    setIsDirty(true);
   };
 
   const toggleBadge = (badge: string) => {

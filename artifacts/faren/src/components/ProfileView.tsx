@@ -107,6 +107,7 @@ function MediaFill({ src, alt, className = "" }: { src: string; alt?: string; cl
   if (isVideoMedia(src)) {
     return (
       <video
+        key={src}
         src={src}
         autoPlay
         muted
@@ -116,7 +117,7 @@ function MediaFill({ src, alt, className = "" }: { src: string; alt?: string; cl
       />
     );
   }
-  return <img src={src} alt={alt || ""} className={`w-full h-full object-cover ${className}`} />;
+  return <img key={src} src={src} alt={alt || ""} className={`w-full h-full object-cover ${className}`} />;
 }
 
 function parseCustomBadge(badgeId: string) {
@@ -336,7 +337,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const [reportDetails, setReportDetails] = useState('');
   const [reportSent, setReportSent] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
-  const [entered, setEntered] = useState(false);
+  const [entered, setEntered] = useState(!!isOwner);
 
   const handleReport = async () => {
     if (!reportReason || reportLoading) return;
@@ -377,6 +378,10 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const liveDiscordAvatarUrl: string | null = liveAvatarHash && discordUserId
     ? `https://cdn.discordapp.com/avatars/${discordUserId}/${liveAvatarHash}.${liveAvatarHash.startsWith("a_") ? "gif" : "png"}?size=128`
     : (profile as any).discordAvatarUrl || null;
+
+  useEffect(() => {
+    if (isOwner) setEntered(true);
+  }, [isOwner]);
 
   const accent = profile.accentColor || "#ffffff";
   const glow = profile.glowColor || accent;
@@ -439,7 +444,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
       {/* Click-to-enter splash — keeps page silent and blurred until user interacts.
          Required so browsers allow audio/video autoplay with sound after the click. */}
       <AnimatePresence>
-        {!entered && (
+        {!isOwner && !entered && (
           <motion.button
             type="button"
             onClick={() => setEntered(true)}
@@ -490,6 +495,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         />
       ) : profile.backgroundUrl && backgroundType === 'video' && !isGifMedia(profile.backgroundUrl) ? (
         <video
+          key={profile.backgroundUrl}
           autoPlay muted loop playsInline
           className="fixed inset-0 w-full h-full object-cover z-0"
           style={{ opacity: bgOpacity, filter: bgBlur > 0 ? `blur(${bgBlur}px)` : 'none' }}
@@ -498,6 +504,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         </video>
       ) : profile.backgroundUrl ? (
         <div
+          key={`bg-${backgroundType}-${profile.backgroundUrl.slice(0, 120)}`}
           className="fixed inset-0 z-0 overflow-hidden"
           style={{
             opacity: bgOpacity,

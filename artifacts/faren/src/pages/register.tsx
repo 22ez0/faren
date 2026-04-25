@@ -33,6 +33,7 @@ declare global {
     turnstile?: {
       render: (el: HTMLElement, opts: { sitekey: string; callback: (t: string) => void; "error-callback"?: () => void; theme?: "dark" | "light" | "auto" }) => string;
       reset: (id?: string) => void;
+      remove?: (id: string) => void;
     };
     onTurnstileLoad?: () => void;
   }
@@ -47,6 +48,10 @@ export default function Register() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const stepRef = useRef(step);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -73,9 +78,21 @@ export default function Register() {
     document.head.appendChild(s);
   }, []);
 
-  useEffect(() => { if (step === 2) tryRender(); }, [step]);
+  useEffect(() => {
+    if (step === 1) {
+      if (window.turnstile && widgetIdRef.current) {
+        try { window.turnstile.remove?.(widgetIdRef.current); } catch { /* noop */ }
+      }
+      widgetIdRef.current = null;
+      if (turnstileRef.current) turnstileRef.current.innerHTML = "";
+      setTurnstileToken(null);
+    } else if (step === 2) {
+      setTimeout(tryRender, 0);
+    }
+  }, [step]);
 
   function tryRender() {
+    if (stepRef.current !== 2) return;
     if (!turnstileRef.current || !window.turnstile || widgetIdRef.current) return;
     widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
       sitekey: TURNSTILE_SITE_KEY,
@@ -96,7 +113,12 @@ export default function Register() {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, turnstileToken }),
+        body: JSON.stringify({
+          ...data,
+          email: data.email.trim().toLowerCase(),
+          username: data.username.trim().toLowerCase(),
+          turnstileToken,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Ocorreu um erro");

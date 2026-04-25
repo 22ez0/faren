@@ -86,9 +86,16 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { email, username, password, displayName } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const username = parsed.data.username.trim().toLowerCase();
+  const { password, displayName } = parsed.data;
 
-  const usernameError = validateUsername(username.toLowerCase());
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: "E-mail inválido" });
+    return;
+  }
+
+  const usernameError = validateUsername(username);
   if (usernameError) {
     res.status(400).json({ error: usernameError });
     return;
@@ -101,7 +108,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .limit(1);
 
   if (existing) {
-    res.status(409).json({ error: "Email already in use" });
+    res.status(409).json({ error: "E-mail já está em uso" });
     return;
   }
 
@@ -112,7 +119,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .limit(1);
 
   if (existingUsername) {
-    res.status(409).json({ error: "Username already taken" });
+    res.status(409).json({ error: "Nome de usuário indisponível" });
     return;
   }
 
@@ -182,8 +189,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     }
   }
 
+  const emailKey = isEmail ? rawIdentifier.trim().toLowerCase() : "";
   const [user] = isEmail
-    ? await db.select().from(usersTable).where(eq(usersTable.email, rawIdentifier)).limit(1)
+    ? await db.select().from(usersTable).where(eq(usersTable.email, emailKey)).limit(1)
     : await db.select().from(usersTable).where(eq(usersTable.username, usernameCandidate)).limit(1);
 
   if (!user || user.banned) {

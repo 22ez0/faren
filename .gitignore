@@ -27,6 +27,9 @@ node_modules
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# local API deploy secrets (see scripts/deploy-all-api.ps1)
+.env.deploy
+
 # misc
 /.sass-cache
 /connect.lock
