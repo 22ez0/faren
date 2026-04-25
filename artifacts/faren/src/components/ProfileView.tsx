@@ -391,7 +391,8 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const clickEffect = profile.clickEffect || "none";
   const showViews = profile.showViews !== false;
   const bgBlur = profile.backgroundBlur || 0;
-  const bgOpacity = (profile.backgroundOpacity ?? 60) / 100;
+  const rawBgOpacity = profile.backgroundOpacity ?? 60;
+  const bgOpacity = rawBgOpacity <= 1 ? rawBgOpacity : rawBgOpacity / 100;
   const typewriterTexts = profile.typewriterTexts || [];
   const musicUrl = profile.musicUrl || '';
   const musicTitle = (profile as any).musicTitle || null;

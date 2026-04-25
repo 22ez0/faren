@@ -378,6 +378,12 @@ export default function EditProfile() {
     showViews: true, showDiscordAvatar: true, showDiscordPresence: true, badges: [],
   });
 
+  const toPercentOpacity = (value: number | null | undefined): number => {
+    if (value == null || Number.isNaN(value)) return 60;
+    if (value >= 0 && value <= 1) return Math.round(value * 100);
+    return Math.max(0, Math.min(100, Math.round(value)));
+  };
+
   useEffect(() => {
     if (profile && !formHydratedRef.current) {
       formHydratedRef.current = true;
@@ -390,7 +396,7 @@ export default function EditProfile() {
         backgroundType: (profile as any).backgroundType || 'image',
         accentColor: profile.accentColor || '#ffffff',
         glowColor: profile.glowColor || '#ffffff',
-        backgroundOpacity: profile.backgroundOpacity ?? 60,
+        backgroundOpacity: toPercentOpacity(profile.backgroundOpacity),
         backgroundBlur: (profile as any).backgroundBlur ?? 0,
         cursorStyle: profile.cursorStyle || 'auto',
         musicUrl: profile.musicUrl || '',

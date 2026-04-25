@@ -108,6 +108,14 @@ export default function Register() {
   };
 
   const onSubmit = async (data: RegisterFormValues) => {
+    if (!turnstileToken) {
+      toast({
+        title: "Confirme a verificação",
+        description: "Conclua o desafio de segurança antes de criar a conta.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
@@ -238,7 +246,7 @@ export default function Register() {
                     </button>
                     <motion.button
                       type="submit"
-                      disabled={submitting}
+                      disabled={submitting || !turnstileToken}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       className="btn-solid-white flex-[2] disabled:opacity-50"

@@ -68,12 +68,6 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(429).json({ error: "Muitas contas criadas nesse IP. Tente novamente mais tarde." });
     return;
   }
-  if (!attempt || attempt.resetAt <= now) {
-    registerAttempts.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
-  } else {
-    attempt.count += 1;
-  }
-
   const turnstileToken = (req.body && (req.body.turnstileToken || req.body["cf-turnstile-response"])) as string | undefined;
   if (process.env.TURNSTILE_SECRET_KEY && !(await verifyTurnstile(turnstileToken, ip))) {
     res.status(400).json({ error: "Verificação de segurança falhou. Tente novamente." });
@@ -141,6 +135,13 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     userId: user.id,
     badges: [],
   });
+
+  // Count only successful account creations per IP.
+  if (!attempt || attempt.resetAt <= now) {
+    registerAttempts.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+  } else {
+    attempt.count += 1;
+  }
 
   const token = signToken({ userId: user.id, username: user.username });
 
