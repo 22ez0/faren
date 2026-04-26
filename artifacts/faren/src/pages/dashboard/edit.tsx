@@ -838,7 +838,7 @@ export default function EditProfile() {
                     label="Selecionar foto/gif/vídeo"
                     previewStyle="avatar"
                     prefix="avatars"
-                    onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
+                    onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                   />
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
@@ -852,7 +852,7 @@ export default function EditProfile() {
                     label="Selecionar banner"
                     previewStyle="banner"
                     prefix="banners"
-                    onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
+                    onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                   />
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
@@ -1006,7 +1006,7 @@ export default function EditProfile() {
                       label="Selecionar fundo"
                       previewStyle="banner"
                       prefix="backgrounds"
-                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                     />
                   )}
                   <p className="text-xs text-white/25 mt-1">
@@ -1119,7 +1119,7 @@ export default function EditProfile() {
                       }}
                       accept="image/*"
                       prefix="icons"
-                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                     >
                       Cursor Personalizado
                     </FileUploadButton>
@@ -1308,7 +1308,7 @@ export default function EditProfile() {
                         }}
                         accept="audio/*"
                         prefix="music"
-                        onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
+                        onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                       >
                         Selecionar
                       </FileUploadButton>
@@ -1339,7 +1339,7 @@ export default function EditProfile() {
                       placeholder="URL do ícone/capa da música"
                       buttonLabel="Ícone"
                       prefix="icons"
-                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                     />
                   </div>
                   )}
