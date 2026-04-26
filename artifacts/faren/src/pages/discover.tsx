@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGetTrendingProfiles } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Users, Heart, X } from "lucide-react";
+import { ProfileCardMedia } from "@/components/ProfileCardMedia";
 
 export default function Discover() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,14 +97,10 @@ export default function Discover() {
                     className="group aspect-[3/4] relative overflow-hidden rounded-sm cursor-pointer hover-lift"
                   >
                     {/* Background */}
-                    <div
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                      style={{
-                        backgroundImage: profile.backgroundUrl
-                          ? `url(${profile.backgroundUrl})`
-                          : `linear-gradient(135deg, #111 0%, #1a1a2e 100%)`,
-                        opacity: profile.backgroundUrl ? (profile.backgroundOpacity || 60) / 100 : 1,
-                      }}
+                    <ProfileCardMedia
+                      url={profile.backgroundUrl}
+                      opacity={profile.backgroundOpacity}
+                      fallbackGradient="linear-gradient(135deg, #111 0%, #1a1a2e 100%)"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
 

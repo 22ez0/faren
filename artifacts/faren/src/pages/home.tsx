@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useGetTrendingProfiles, getUserByUsername, getGetUserByUsernameQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Users, Heart, Volume2, VolumeX, Check, X, Loader2 } from "lucide-react";
+import { ProfileCardMedia } from "@/components/ProfileCardMedia";
 
 const RESERVED_USERNAMES = new Set(['keefaren','admin','administrator','api','dashboard','login','register','profile','settings','support','root','faren','keef','null','comunidade','community','explore','feed']);
 import heroVideo from "@assets/pinterest_884112970592536960_1776809417801.mp4";
@@ -439,7 +440,7 @@ export default function Home() {
                   >
                     <Link href={`/${profile.username}`}>
                       <div className="group aspect-[3/4] relative overflow-hidden rounded-sm cursor-pointer hover-lift">
-                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: profile.backgroundUrl ? `url(${profile.backgroundUrl})` : `linear-gradient(135deg, #1a1a2e, #16213e)`, opacity: profile.backgroundUrl ? (profile.backgroundOpacity || 60) / 100 : 1 }} />
+                        <ProfileCardMedia url={profile.backgroundUrl} opacity={profile.backgroundOpacity} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                         <div className="absolute bottom-0 left-0 right-0 p-4">
                           <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/20 mb-2">
