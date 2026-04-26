@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { db, usersTable, profilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { parseDataUri, uploadBuffer } from "../lib/r2.js";

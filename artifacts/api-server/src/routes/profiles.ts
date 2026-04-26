@@ -299,6 +299,9 @@ router.post("/profile/upload", requireAuth, async (req, res): Promise<void> => {
   }
 
   let responded = false;
+  let fileReceived = false;
+  let uploadInFlight: Promise<void> | null = null;
+
   const fail = (status: number, message: string) => {
     if (responded) return;
     responded = true;
@@ -307,6 +310,7 @@ router.post("/profile/upload", requireAuth, async (req, res): Promise<void> => {
   };
 
   bb.on("file", (_name, fileStream, info) => {
+    fileReceived = true;
     const mime = (info.mimeType || "application/octet-stream").toLowerCase();
     if (!ALLOWED_UPLOAD_MIMES.has(mime)) {
       fileStream.resume();
@@ -331,20 +335,23 @@ router.post("/profile/upload", requireAuth, async (req, res): Promise<void> => {
       truncated = true;
     });
 
-    fileStream.on("end", async () => {
+    fileStream.on("end", () => {
       if (responded) return;
       if (truncated) {
         fail(413, `Arquivo excede o limite de ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB.`);
         return;
       }
-      try {
-        const url = await uploadBuffer({ buffer: Buffer.concat(chunks), mime, prefix });
-        responded = true;
-        res.json({ url });
-      } catch (e) {
-        console.error("[upload] r2 failed:", (e as Error).message);
-        fail(500, "Falha ao enviar para o armazenamento.");
-      }
+      uploadInFlight = (async () => {
+        try {
+          const url = await uploadBuffer({ buffer: Buffer.concat(chunks), mime, prefix });
+          if (responded) return;
+          responded = true;
+          res.json({ url });
+        } catch (e) {
+          console.error("[upload] r2 failed:", (e as Error).message);
+          fail(500, "Falha ao enviar para o armazenamento.");
+        }
+      })();
     });
 
     fileStream.on("error", (err) => {
@@ -358,9 +365,19 @@ router.post("/profile/upload", requireAuth, async (req, res): Promise<void> => {
     fail(400, "Erro no envio do arquivo.");
   });
 
-  bb.on("finish", () => {
-    if (!responded) {
+  // Busboy is a Writable stream — `finish` fires once the entire request body
+  // has been parsed. By this point, the synchronous portion of every `file`
+  // handler has already run, so `fileReceived` is reliable.
+  bb.on("finish", async () => {
+    if (responded) return;
+    if (!fileReceived) {
       fail(400, "Nenhum arquivo enviado.");
+      return;
+    }
+    // A file was received and an async upload may still be in flight.
+    // Await it so we don't fall through and accidentally leave the request hanging.
+    if (uploadInFlight) {
+      try { await uploadInFlight; } catch { /* fail() already handled */ }
     }
   });
 
