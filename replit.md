@@ -64,6 +64,17 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Token is stored in `localStorage` as `adminToken` (expires 7 days — auto-clears on 401 and forces re-login)
 - Admin panel can search users, ban/unban, grant/revoke 3 types of verified badge (blue/gold/white), and view registration/last-login IPs.
 
+### Media Uploads — Cloudflare R2 (IMPORTANT)
+**Todos os uploads de mídia do Faren vão para Cloudflare R2.** Nada de mídia é salvo em base64 no Postgres.
+
+- **What goes to R2**: avatars, banners, profile backgrounds, music files (mp3/m4a/ogg/wav/webm), and custom music icons. Anything the user uploads via the editor.
+- **Server**: `artifacts/api-server/src/lib/r2.ts` configures an S3 client pointing to `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`. `uploadBuffer({ buffer, mime, prefix })` uses sha256 of the file contents to produce a content-addressed key (`<prefix>/<userId>/<sha256>.<ext>`) — same file = same key, no duplicate uploads. `Cache-Control: public, max-age=31536000, immutable` is set since URLs change when content changes.
+- **Upload route**: `POST /api/profile/upload?prefix=avatars|banners|backgrounds|music|icons` (multipart/form-data, requires JWT). Max 50MB per file. Returns `{ url }` pointing to `R2_PUBLIC_URL/<key>`.
+- **Public URLs**: served from the public R2 bucket URL configured in `R2_PUBLIC_URL` (e.g. `https://cdn.faren.com.br` or `https://pub-xxxx.r2.dev`).
+- **Required env vars** (Render + local): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`. If `R2_BUCKET` or `R2_ACCESS_KEY_ID` is missing, the upload route returns 503 and the legacy `maybeUploadDataUri` fallback keeps any inline data URI as-is in the DB.
+- **Frontend**: `artifacts/faren/src/pages/dashboard/edit.tsx` uses the `FileOnlyUpload` component which `POST`s the file to `/api/profile/upload` and writes only the resulting R2 URL into the form state. The hidden `<input type="file">` is reset (`value = ''`) both when the picker is opened and after `handleChange` so re-picking the same file always re-triggers the upload.
+- **Legacy migration**: existing base64 data URIs in `profiles.banner_url`, `profiles.background_url`, `users.avatar_url`, `profiles.music_url`, `profiles.music_icon_url` can be migrated to R2 with `tsx artifacts/api-server/src/scripts/migrate-base64-to-r2.ts` (reads each row, decodes the data URI, uploads to R2, replaces the column with the public URL).
+
 ### Security Notes
 - Express JSON/body limit is 75mb to allow larger profile media saves.
 - Registration is IP-rate-limited to 5 accounts/hour per IP.

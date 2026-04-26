@@ -332,8 +332,10 @@ function FileOnlyUpload({
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+    if (!file) {
+      e.target.value = '';
+      return;
+    }
 
     let objectUrl: string | null = null;
     try {
@@ -351,14 +353,23 @@ function FileOnlyUpload({
       if (onError) onError(msg); else console.error('[upload]', msg);
       setLocalPreview(null);
     } finally {
+      e.target.value = '';
       if (objectUrl) {
-        try { URL.revokeObjectURL(objectUrl); } catch {}
+        const toRevoke = objectUrl;
+        setTimeout(() => { try { URL.revokeObjectURL(toRevoke); } catch {} }, 200);
       }
       setUploading(false);
     }
   };
 
+  const openPicker = () => {
+    if (!inputRef.current) return;
+    inputRef.current.value = '';
+    inputRef.current.click();
+  };
+
   const preview = localPreview || value;
+  const isVideo = !!preview && (preview.startsWith('data:video') || preview.startsWith('blob:') || /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(preview));
 
   return (
     <div className="space-y-2">
@@ -367,7 +378,7 @@ function FileOnlyUpload({
         <button
           type="button"
           disabled={uploading}
-          onClick={() => inputRef.current?.click()}
+          onClick={openPicker}
           className="flex items-center gap-2 px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm text-xs font-semibold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Upload className="w-3.5 h-3.5" />
@@ -385,10 +396,10 @@ function FileOnlyUpload({
       </div>
       {preview && (
         <div className={`overflow-hidden rounded-sm border border-white/10 ${previewStyle === 'avatar' ? 'w-20 h-20' : 'w-full h-28'}`}>
-          {preview.startsWith('data:video') || preview.startsWith('blob:') || /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(preview) ? (
-            <video src={preview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+          {isVideo ? (
+            <video key={preview} src={preview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
           ) : (
-            <img src={preview} alt="" className="w-full h-full object-cover" />
+            <img key={preview} src={preview} alt="" className="w-full h-full object-cover" />
           )}
         </div>
       )}
