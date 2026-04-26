@@ -245,7 +245,10 @@ router.get("/discover/trending", async (req, res): Promise<void> => {
     .from(profilesTable)
     .innerJoin(usersTable, eq(profilesTable.userId, usersTable.id))
     .where(eq(usersTable.banned, false))
-    .orderBy(desc(profilesTable.viewsCount))
+    .orderBy(
+      sql`(coalesce(${profilesTable.badges}, '{}'::text[]) && ARRAY['verified','verified_gold','verified_white']::text[]) DESC`,
+      desc(profilesTable.viewsCount),
+    )
     .limit(limit);
 
   const result = trending.map(p => ({

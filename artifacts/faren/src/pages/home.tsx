@@ -388,25 +388,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── FEATURES ROW ──────────────────────────────────────── */}
-      <section className="pt-8 pb-24 px-6 md:px-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="glow-line mb-16" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-px bg-white/5">
-            {t.features.map((feat, i) => (
-              <motion.div key={feat.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }} className="p-8 bg-background hover:bg-white/[0.03] transition-colors duration-300">
-                <p className="label-caps mb-3">{feat.stat}</p>
-                <h3 className="text-lg font-bold tracking-tight mb-2">{feat.title}</h3>
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{feat.sub}</p>
-              </motion.div>
-            ))}
-          </div>
-          <div className="glow-line mt-16" />
-        </div>
-      </section>
-
       {/* ── TRENDING PROFILES ──────────────────────────────────── */}
-      <section className="py-16 px-6 md:px-12 pb-32">
+      <section className="pt-8 pb-24 px-6 md:px-12">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-12 flex-wrap gap-4">
             <div>
@@ -459,6 +442,23 @@ export default function Home() {
                   </motion.div>
                 ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ROW ──────────────────────────────────────── */}
+      <section className="py-16 px-6 md:px-12 pb-32">
+        <div className="max-w-6xl mx-auto">
+          <div className="glow-line mb-16" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-px bg-white/5">
+            {t.features.map((feat, i) => (
+              <motion.div key={feat.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }} className="p-8 bg-background hover:bg-white/[0.03] transition-colors duration-300">
+                <p className="label-caps mb-3">{feat.stat}</p>
+                <h3 className="text-lg font-bold tracking-tight mb-2">{feat.title}</h3>
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{feat.sub}</p>
+              </motion.div>
+            ))}
+          </div>
+          <div className="glow-line mt-16" />
         </div>
       </section>
 
