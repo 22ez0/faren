@@ -113,6 +113,94 @@ router.post("/admin/users/:userId/verified", requireAdmin, async (req, res): Pro
   res.json({ success: true, verified: enabled, type: badgeType });
 });
 
+router.get("/admin/users/:userId/profile", requireAdmin, async (req, res): Promise<void> => {
+  const userId = Number(req.params.userId);
+  if (!Number.isFinite(userId)) { res.status(400).json({ error: "userId inválido" }); return; }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Usuário não encontrado" }); return; }
+  const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
+  if (!profile) { res.status(404).json({ error: "Perfil não encontrado" }); return; }
+  res.json({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    bio: profile.bio,
+    bannerUrl: profile.bannerUrl,
+    backgroundUrl: profile.backgroundUrl,
+    backgroundType: profile.backgroundType,
+    accentColor: profile.accentColor,
+    glowColor: profile.glowColor,
+    backgroundOpacity: profile.backgroundOpacity,
+    backgroundBlur: profile.backgroundBlur,
+    nameBorderOpacity: profile.nameBorderOpacity,
+    cursorStyle: profile.cursorStyle,
+    musicUrl: profile.musicUrl,
+    musicTitle: profile.musicTitle,
+    musicIconUrl: profile.musicIconUrl,
+    musicPrivate: profile.musicPrivate,
+    particleEffect: profile.particleEffect,
+    clickEffect: profile.clickEffect,
+    fontFamily: profile.fontFamily,
+    layoutStyle: profile.layoutStyle,
+    profileTitle: profile.profileTitle,
+    typewriterTexts: profile.typewriterTexts,
+    badges: profile.badges,
+    showViews: profile.showViews,
+    showDiscordAvatar: profile.showDiscordAvatar,
+    showDiscordPresence: profile.showDiscordPresence,
+  });
+});
+
+router.patch("/admin/users/:userId/profile", requireAdmin, async (req, res): Promise<void> => {
+  const userId = Number(req.params.userId);
+  if (!Number.isFinite(userId)) { res.status(400).json({ error: "userId inválido" }); return; }
+  const body = req.body || {};
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Usuário não encontrado" }); return; }
+  const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
+  if (!profile) { res.status(404).json({ error: "Perfil não encontrado" }); return; }
+
+  const userUpdates: Record<string, unknown> = {};
+  if (typeof body.displayName === "string") userUpdates.displayName = body.displayName.slice(0, 80);
+  if (typeof body.email === "string" && body.email.trim()) userUpdates.email = body.email.trim().toLowerCase().slice(0, 254);
+  if (typeof body.avatarUrl === "string") userUpdates.avatarUrl = body.avatarUrl;
+  if (Object.keys(userUpdates).length > 0) {
+    await db.update(usersTable).set(userUpdates).where(eq(usersTable.id, userId));
+  }
+
+  const profileUpdates: Record<string, unknown> = {};
+  const stringFields = [
+    "bio", "bannerUrl", "backgroundUrl", "backgroundType", "accentColor", "glowColor",
+    "cursorStyle", "musicUrl", "musicTitle", "musicIconUrl", "particleEffect", "clickEffect",
+    "fontFamily", "layoutStyle", "profileTitle",
+  ] as const;
+  for (const k of stringFields) {
+    if (typeof body[k] === "string") profileUpdates[k] = body[k];
+  }
+  const numberFields = ["backgroundOpacity", "backgroundBlur", "nameBorderOpacity"] as const;
+  for (const k of numberFields) {
+    if (typeof body[k] === "number" && Number.isFinite(body[k])) profileUpdates[k] = body[k];
+  }
+  const boolFields = ["musicPrivate", "showViews", "showDiscordAvatar", "showDiscordPresence"] as const;
+  for (const k of boolFields) {
+    if (typeof body[k] === "boolean") profileUpdates[k] = body[k];
+  }
+  if (Array.isArray(body.badges)) {
+    profileUpdates.badges = body.badges.filter((b: unknown) => typeof b === "string").slice(0, 12);
+  }
+  if (Array.isArray(body.typewriterTexts)) {
+    profileUpdates.typewriterTexts = body.typewriterTexts.filter((t: unknown) => typeof t === "string").slice(0, 20);
+  }
+  if (Object.keys(profileUpdates).length > 0) {
+    await db.update(profilesTable).set(profileUpdates).where(eq(profilesTable.userId, userId));
+  }
+
+  res.json({ success: true });
+});
+
 router.get("/admin/reports", requireAdmin, async (req, res): Promise<void> => {
   const status = typeof req.query.status === "string" ? req.query.status : "pending";
   const rows = await db

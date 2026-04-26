@@ -83,10 +83,44 @@ const FONT_OPTIONS = [
   { value: 'pixel', label: 'Pixel 8-Bit' },
 ];
 
-const LAYOUT_OPTIONS = [
-  { value: 'centered', label: 'Centralizado' },
-  { value: 'left', label: 'Alinhado à Esquerda' },
+const LAYOUT_OPTIONS: { value: string; label: string; description: string; preview: 'centered' | 'left' }[] = [
+  { value: 'centered', label: 'Centralizado', description: 'Avatar e textos no centro, ideal para destaque.', preview: 'centered' },
+  { value: 'left', label: 'Alinhado à Esquerda', description: 'Avatar e infos à esquerda, estilo card lateral.', preview: 'left' },
 ];
+
+function LayoutPreview({ variant, selected }: { variant: 'centered' | 'left'; selected: boolean }) {
+  const stroke = selected ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)';
+  const fill = selected ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)';
+  if (variant === 'centered') {
+    return (
+      <svg viewBox="0 0 120 80" className="w-full h-20" aria-hidden="true">
+        <rect x="2" y="2" width="116" height="76" rx="4" fill="none" stroke={stroke} strokeWidth="1" />
+        <rect x="6" y="6" width="108" height="18" rx="2" fill={fill} />
+        <circle cx="60" cy="34" r="8" fill={fill} stroke={stroke} strokeWidth="0.5" />
+        <rect x="44" y="46" width="32" height="4" rx="1" fill={stroke} />
+        <rect x="38" y="54" width="44" height="2.5" rx="1" fill={fill} />
+        <rect x="38" y="60" width="44" height="2.5" rx="1" fill={fill} />
+        <rect x="48" y="68" width="6" height="6" rx="1" fill={fill} />
+        <rect x="57" y="68" width="6" height="6" rx="1" fill={fill} />
+        <rect x="66" y="68" width="6" height="6" rx="1" fill={fill} />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 120 80" className="w-full h-20" aria-hidden="true">
+      <rect x="2" y="2" width="116" height="76" rx="4" fill="none" stroke={stroke} strokeWidth="1" />
+      <rect x="6" y="6" width="108" height="18" rx="2" fill={fill} />
+      <circle cx="20" cy="36" r="8" fill={fill} stroke={stroke} strokeWidth="0.5" />
+      <rect x="32" y="32" width="40" height="4" rx="1" fill={stroke} />
+      <rect x="32" y="40" width="60" height="2.5" rx="1" fill={fill} />
+      <rect x="32" y="46" width="48" height="2.5" rx="1" fill={fill} />
+      <rect x="6" y="58" width="8" height="8" rx="1" fill={fill} />
+      <rect x="16" y="58" width="8" height="8" rx="1" fill={fill} />
+      <rect x="26" y="58" width="8" height="8" rx="1" fill={fill} />
+      <rect x="36" y="58" width="8" height="8" rx="1" fill={fill} />
+    </svg>
+  );
+}
 
 const BADGE_OPTIONS = [
   { value: 'creator', label: '🎨 Criador' },
@@ -1054,22 +1088,44 @@ export default function EditProfile() {
                 <div className="glow-line" />
 
                 <FieldRow label="Layout">
-                  <div className="grid grid-cols-2 gap-2">
-                    {LAYOUT_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => set('layoutStyle', opt.value)}
-                        className="py-2.5 text-xs font-semibold uppercase tracking-wider transition-all rounded-sm border"
-                        style={{
-                          backgroundColor: form.layoutStyle === opt.value ? 'rgba(255,255,255,0.1)' : 'transparent',
-                          borderColor: form.layoutStyle === opt.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
-                          color: form.layoutStyle === opt.value ? '#fff' : 'rgba(255,255,255,0.4)',
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 gap-3">
+                    {LAYOUT_OPTIONS.map(opt => {
+                      const isSelected = form.layoutStyle === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => set('layoutStyle', opt.value)}
+                          className="group relative flex flex-col gap-2 p-2.5 transition-all rounded-sm border text-left"
+                          style={{
+                            backgroundColor: isSelected ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                            borderColor: isSelected ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.08)',
+                          }}
+                        >
+                          <div
+                            className="rounded-sm overflow-hidden"
+                            style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)' }}
+                          >
+                            <LayoutPreview variant={opt.preview} selected={isSelected} />
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className="text-[11px] font-semibold uppercase tracking-wider"
+                              style={{ color: isSelected ? '#fff' : 'rgba(255,255,255,0.55)' }}
+                            >
+                              {opt.label}
+                            </span>
+                            {isSelected && (
+                              <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-white/30 text-white/80">
+                                Ativo
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-white/35 leading-snug">{opt.description}</p>
+                        </button>
+                      );
+                    })}
                   </div>
+                  <p className="text-xs text-white/25 mt-1">Pré-visualize como seu perfil ficará. Clique para escolher.</p>
                 </FieldRow>
 
                 <FieldRow label="Fonte">

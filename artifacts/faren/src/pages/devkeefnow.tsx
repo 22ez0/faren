@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, ShieldBan, BadgeCheck, LogOut, AlertTriangle, CheckCircle, XCircle, Users, Flag, HeadphonesIcon, FileText } from "lucide-react";
+import { Search, ShieldBan, BadgeCheck, LogOut, AlertTriangle, CheckCircle, XCircle, Users, Flag, HeadphonesIcon, FileText, Settings, X as CloseIcon } from "lucide-react";
 
 interface AdminUser {
   id: number;
@@ -65,6 +65,10 @@ export default function DevKeefnow() {
   const [activeTab, setActiveTab] = useState<"users" | "reports" | "support" | "postReports">("users");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<any | null>(null);
+  const [editingProfileLoading, setEditingProfileLoading] = useState(false);
+  const [editingProfileSaving, setEditingProfileSaving] = useState(false);
+  const [editingProfileError, setEditingProfileError] = useState("");
 
   const request = async (path: string, options: RequestInit = {}) => {
     const response = await fetch(`${apiBase}${path}`, {
@@ -174,6 +178,77 @@ export default function DevKeefnow() {
       body: JSON.stringify(action === "ban" ? { banned: enabled } : { verified: enabled, type: verifiedType || "verified" }),
     });
     fetchUsers(query);
+  };
+
+  const openProfileEditor = async (user: AdminUser) => {
+    setEditingProfile({ id: user.id, username: user.username });
+    setEditingProfileLoading(true);
+    setEditingProfileError("");
+    try {
+      const data = await request(`/admin/users/${user.id}/profile`);
+      setEditingProfile({
+        ...data,
+        badges: Array.isArray(data.badges) ? data.badges : [],
+        typewriterTexts: Array.isArray(data.typewriterTexts) ? data.typewriterTexts.join("\n") : "",
+      });
+    } catch (err: any) {
+      setEditingProfileError(err.message || "Falha ao carregar perfil");
+    } finally {
+      setEditingProfileLoading(false);
+    }
+  };
+
+  const updateEditingField = (key: string, value: any) => {
+    setEditingProfile((prev: any) => prev ? { ...prev, [key]: value } : prev);
+  };
+
+  const saveEditingProfile = async () => {
+    if (!editingProfile?.id) return;
+    setEditingProfileSaving(true);
+    setEditingProfileError("");
+    try {
+      const payload: any = {
+        displayName: editingProfile.displayName ?? "",
+        email: editingProfile.email ?? "",
+        avatarUrl: editingProfile.avatarUrl ?? "",
+        bio: editingProfile.bio ?? "",
+        bannerUrl: editingProfile.bannerUrl ?? "",
+        backgroundUrl: editingProfile.backgroundUrl ?? "",
+        backgroundType: editingProfile.backgroundType ?? "image",
+        accentColor: editingProfile.accentColor ?? "#ffffff",
+        glowColor: editingProfile.glowColor ?? "#ffffff",
+        backgroundOpacity: Number(editingProfile.backgroundOpacity ?? 60),
+        backgroundBlur: Number(editingProfile.backgroundBlur ?? 0),
+        nameBorderOpacity: Number(editingProfile.nameBorderOpacity ?? 0.07),
+        cursorStyle: editingProfile.cursorStyle ?? "auto",
+        musicUrl: editingProfile.musicUrl ?? "",
+        musicTitle: editingProfile.musicTitle ?? "",
+        musicIconUrl: editingProfile.musicIconUrl ?? "",
+        musicPrivate: !!editingProfile.musicPrivate,
+        particleEffect: editingProfile.particleEffect ?? "none",
+        clickEffect: editingProfile.clickEffect ?? "none",
+        fontFamily: editingProfile.fontFamily ?? "default",
+        layoutStyle: editingProfile.layoutStyle ?? "centered",
+        profileTitle: editingProfile.profileTitle ?? "",
+        showViews: editingProfile.showViews !== false,
+        showDiscordAvatar: editingProfile.showDiscordAvatar !== false,
+        showDiscordPresence: editingProfile.showDiscordPresence !== false,
+        badges: Array.isArray(editingProfile.badges) ? editingProfile.badges : [],
+        typewriterTexts: typeof editingProfile.typewriterTexts === "string"
+          ? editingProfile.typewriterTexts.split("\n").map((s: string) => s.trim()).filter(Boolean)
+          : (Array.isArray(editingProfile.typewriterTexts) ? editingProfile.typewriterTexts : []),
+      };
+      await request(`/admin/users/${editingProfile.id}/profile`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      setEditingProfile(null);
+      fetchUsers(query);
+    } catch (err: any) {
+      setEditingProfileError(err.message || "Falha ao salvar");
+    } finally {
+      setEditingProfileSaving(false);
+    }
   };
 
   const renameUser = async (user: AdminUser) => {
@@ -388,6 +463,14 @@ export default function DevKeefnow() {
                         )}
                       </div>
                       <button
+                        onClick={() => openProfileEditor(user)}
+                        className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider text-white/70 hover:bg-white/5 transition-colors flex items-center gap-1.5"
+                        title="Editar perfil completo"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        Editar perfil
+                      </button>
+                      <button
                         onClick={() => renameUser(user)}
                         className="px-3 py-2 border border-white/15 text-xs uppercase tracking-wider text-white/60 hover:bg-white/5 transition-colors"
                         title="Renomear @"
@@ -572,6 +655,214 @@ export default function DevKeefnow() {
           </>
         )}
       </div>
+
+      {editingProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 overflow-y-auto" onClick={() => setEditingProfile(null)}>
+          <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/15 rounded-sm my-10" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-[#0a0a0a] z-10">
+              <div>
+                <p className="label-caps">Editar perfil</p>
+                <h2 className="text-xl font-bold uppercase tracking-tight">@{editingProfile.username || "..."}</h2>
+              </div>
+              <button onClick={() => setEditingProfile(null)} className="p-2 hover:bg-white/5 rounded-sm" aria-label="Fechar">
+                <CloseIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editingProfileLoading ? (
+              <p className="p-6 text-white/40 text-sm">Carregando perfil...</p>
+            ) : (
+              <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+                {editingProfileError && <p className="text-red-400 text-xs">{editingProfileError}</p>}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-caps mb-1.5 block">Nome de exibição</label>
+                    <input
+                      value={editingProfile.displayName ?? ""}
+                      onChange={e => updateEditingField("displayName", e.target.value)}
+                      className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">E-mail</label>
+                    <input
+                      value={editingProfile.email ?? ""}
+                      onChange={e => updateEditingField("email", e.target.value)}
+                      className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label-caps mb-1.5 block">Bio</label>
+                  <textarea
+                    value={editingProfile.bio ?? ""}
+                    onChange={e => updateEditingField("bio", e.target.value)}
+                    rows={3}
+                    className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="label-caps mb-1.5 block">Título do perfil (aba do navegador)</label>
+                  <input
+                    value={editingProfile.profileTitle ?? ""}
+                    onChange={e => updateEditingField("profileTitle", e.target.value)}
+                    className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="label-caps mb-1.5 block">Avatar URL</label>
+                    <input value={editingProfile.avatarUrl ?? ""} onChange={e => updateEditingField("avatarUrl", e.target.value)} placeholder="https://..." className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm" />
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">Banner URL</label>
+                    <input value={editingProfile.bannerUrl ?? ""} onChange={e => updateEditingField("bannerUrl", e.target.value)} placeholder="https://..." className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm" />
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">Fundo URL</label>
+                    <input value={editingProfile.backgroundUrl ?? ""} onChange={e => updateEditingField("backgroundUrl", e.target.value)} placeholder="https://... ou #000000" className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-caps mb-1.5 block">Cor de destaque</label>
+                    <div className="flex gap-2">
+                      <input type="color" value={(editingProfile.accentColor ?? "#ffffff") as string} onChange={e => updateEditingField("accentColor", e.target.value)} className="w-12 h-10 bg-transparent border border-white/10 rounded-sm" />
+                      <input value={editingProfile.accentColor ?? ""} onChange={e => updateEditingField("accentColor", e.target.value)} className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm font-mono" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">Cor do brilho</label>
+                    <div className="flex gap-2">
+                      <input type="color" value={(editingProfile.glowColor ?? "#ffffff") as string} onChange={e => updateEditingField("glowColor", e.target.value)} className="w-12 h-10 bg-transparent border border-white/10 rounded-sm" />
+                      <input value={editingProfile.glowColor ?? ""} onChange={e => updateEditingField("glowColor", e.target.value)} className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm font-mono" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="label-caps mb-1.5 block">Opacidade fundo</label>
+                    <input type="number" min="0" max="100" value={Number(editingProfile.backgroundOpacity ?? 60)} onChange={e => updateEditingField("backgroundOpacity", Number(e.target.value))} className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm" />
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">Desfoque (px)</label>
+                    <input type="number" min="0" max="20" value={Number(editingProfile.backgroundBlur ?? 0)} onChange={e => updateEditingField("backgroundBlur", Number(e.target.value))} className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm" />
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">Borda nome (0-1)</label>
+                    <input type="number" min="0" max="1" step="0.01" value={Number(editingProfile.nameBorderOpacity ?? 0.07)} onChange={e => updateEditingField("nameBorderOpacity", Number(e.target.value))} className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-caps mb-1.5 block">Layout</label>
+                    <select value={editingProfile.layoutStyle ?? "centered"} onChange={e => updateEditingField("layoutStyle", e.target.value)} className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm">
+                      <option value="centered" className="bg-black">Centralizado</option>
+                      <option value="left" className="bg-black">Alinhado à esquerda</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">Fonte</label>
+                    <select value={editingProfile.fontFamily ?? "default"} onChange={e => updateEditingField("fontFamily", e.target.value)} className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm">
+                      <option value="default" className="bg-black">Padrão</option>
+                      <option value="mono" className="bg-black">Monoespaçada</option>
+                      <option value="cursive" className="bg-black">Cursiva</option>
+                      <option value="serif" className="bg-black">Serifada</option>
+                      <option value="pixel" className="bg-black">Pixel</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-caps mb-1.5 block">Efeito partícula</label>
+                    <select value={editingProfile.particleEffect ?? "none"} onChange={e => updateEditingField("particleEffect", e.target.value)} className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm">
+                      <option value="none" className="bg-black">Nenhum</option>
+                      <option value="snow" className="bg-black">Neve</option>
+                      <option value="stars" className="bg-black">Estrelas</option>
+                      <option value="sakura" className="bg-black">Sakura</option>
+                      <option value="fireflies" className="bg-black">Vagalumes</option>
+                      <option value="bubbles" className="bg-black">Bolhas</option>
+                      <option value="rain" className="bg-black">Chuva</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label-caps mb-1.5 block">Efeito clique</label>
+                    <select value={editingProfile.clickEffect ?? "none"} onChange={e => updateEditingField("clickEffect", e.target.value)} className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm">
+                      <option value="none" className="bg-black">Nenhum</option>
+                      <option value="hearts" className="bg-black">Corações</option>
+                      <option value="stars" className="bg-black">Estrelas</option>
+                      <option value="sparkles" className="bg-black">Brilhos</option>
+                      <option value="explosions" className="bg-black">Explosões</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label-caps mb-1.5 block">Música URL</label>
+                  <input value={editingProfile.musicUrl ?? ""} onChange={e => updateEditingField("musicUrl", e.target.value)} placeholder="Spotify / SoundCloud / arquivo R2" className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm" />
+                </div>
+
+                <div>
+                  <label className="label-caps mb-1.5 block">Textos máquina-de-escrever (1 por linha)</label>
+                  <textarea
+                    value={typeof editingProfile.typewriterTexts === "string" ? editingProfile.typewriterTexts : (editingProfile.typewriterTexts || []).join("\n")}
+                    onChange={e => updateEditingField("typewriterTexts", e.target.value)}
+                    rows={3}
+                    className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm resize-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="label-caps mb-1.5 block">Emblemas (separados por vírgula)</label>
+                  <input
+                    value={(editingProfile.badges || []).join(", ")}
+                    onChange={e => updateEditingField("badges", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
+                    placeholder="creator, gamer, vip..."
+                    className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm"
+                  />
+                  <p className="text-[10px] text-white/30 mt-1">Inclui badges de verificação se já tiver. Não duplicar.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2 text-sm text-white/70">
+                    <input type="checkbox" checked={editingProfile.showViews !== false} onChange={e => updateEditingField("showViews", e.target.checked)} />
+                    Mostrar contagem de visitas
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-white/70">
+                    <input type="checkbox" checked={editingProfile.musicPrivate === true} onChange={e => updateEditingField("musicPrivate", e.target.checked)} />
+                    Música privada
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-white/70">
+                    <input type="checkbox" checked={editingProfile.showDiscordAvatar !== false} onChange={e => updateEditingField("showDiscordAvatar", e.target.checked)} />
+                    Mostrar avatar Discord
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-white/70">
+                    <input type="checkbox" checked={editingProfile.showDiscordPresence !== false} onChange={e => updateEditingField("showDiscordPresence", e.target.checked)} />
+                    Mostrar presença Discord
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-white/10 sticky bottom-0 bg-[#0a0a0a]">
+              <button onClick={() => setEditingProfile(null)} className="px-4 py-2.5 border border-white/15 text-xs uppercase tracking-wider hover:bg-white/5 rounded-sm">
+                Cancelar
+              </button>
+              <button onClick={saveEditingProfile} disabled={editingProfileSaving || editingProfileLoading} className="btn-solid-white px-5 py-2.5 disabled:opacity-50">
+                {editingProfileSaving ? "Salvando..." : "Salvar perfil"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

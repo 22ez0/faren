@@ -248,6 +248,9 @@ router.get("/discover/trending", async (req, res): Promise<void> => {
     .orderBy(
       sql`(coalesce(${profilesTable.badges}, '{}'::text[]) && ARRAY['verified','verified_gold','verified_white']::text[]) DESC`,
       desc(profilesTable.viewsCount),
+      desc(profilesTable.followersCount),
+      desc(profilesTable.likesCount),
+      desc(profilesTable.createdAt),
     )
     .limit(limit);
 
