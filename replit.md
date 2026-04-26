@@ -126,6 +126,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## Workflows ativos no workspace (configurados 2026-04-26)
+
+- **`API Server (dev-proxy)`** — `node artifacts/api-server/dev-proxy.mjs` na porta `8080`. Proxy HTTP local que repassa `/api/*` para `https://api.faren.com.br` (Cloudflare → Render) com `User-Agent: faren-replit-dev-proxy/1.0`. **Não sobe o Express real** — só repassa, então o preview enxerga dados reais da prod.
+- **`Faren Web`** — `PORT=5000 pnpm --filter @workspace/faren run dev` na porta `5000`. Vite dev server do frontend. Como o `vite.config.ts` tem proxy `/api → https://api.faren.com.br`, qualquer request da UI vai pra prod via Cloudflare também.
+
+Resultado: o preview do workspace mostra o site **igual `faren.com.br`** com dados ao vivo (perfis, trending, likes, views) lendo do Postgres do Render através do Cloudflare. Sem schema local, sem seed, sem dependência da R2 local.
+
 ## Live Cloud Inventory (verified 2026-04-26 via Cloudflare global key + Render API)
 
 ### Cloudflare account
