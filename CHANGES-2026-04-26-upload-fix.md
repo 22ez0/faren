@@ -151,25 +151,45 @@ Resultado:
 
 Pós-migração: **0** entradas base64 restantes no banco.
 
-## 6. Pendente para liberar a correção em produção
+## 6. Deploy em produção — ✅ CONCLUÍDO 2026-04-26 12:13 UTC
 
-O fix está apenas **no código local** (commit local). Pra ir pro ar:
+| Item | Valor |
+|---|---|
+| Commit pushado | `a0096224` (range `782ad2b..a009622 main -> main`) |
+| Render deploy id | `dep-d7n01qt8nd3s73eb6hj0` |
+| Status final | `live` (~1m30s: build_in_progress → update_in_progress → live) |
+| Service | `faren-api` (`srv-d7gjdc5ckfvc73ftk79g`) |
+| Endpoint testado | `POST https://api.faren.com.br/api/profile/upload?prefix=avatars` |
+| Auth | JWT forjado com `SESSION_SECRET` (44 bytes, lido via Render API `GET /env-vars`) pra `userId=1` |
+| Payload | PNG real RGBA 8×8 (75 bytes) |
 
-1. Push de `main` pro GitHub. O workflow `deploy-backend.yml` (ou o auto-deploy
-   do Render) vai rebuildar e deployar o api-server.
-2. Forçar redeploy no Render se o auto-deploy estiver inativo:
-   ```bash
-   curl -X POST -H "Authorization: Bearer $RENDER_API_KEY" \
-     https://api.render.com/v1/services/srv-d7gjdc5ckfvc73ftk79g/deploys \
-     -d '{"clearCache":"do_not_clear"}'
-   ```
-3. Smoke test em `https://api.faren.com.br/api/profile/upload?prefix=avatars`
-   com um JWT válido (deve retornar `{url: …}`).
+**Resultado do smoke test em produção:**
 
-> **Nota de versão deployada hoje cedo (`dep-d7mvo1cvikkc73b0rf6g`)**: era
-> apenas o commit `782ad2bd` (backup pipeline + TLS). Os secrets R2 já estão
-> publicados no Render, mas o **código** com a integração R2 e o fix do upload
-> ainda não foi para produção.
+```http
+HTTP/1.1 200 OK
+{"url":"https://pub-49759bd8e09c4e0b89e475d23d273d2f.r2.dev/avatars/1/b201e2de7fd1a6ee.png"}
+```
+
+**Verificação no R2 (HEAD na URL retornada):**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: image/png
+Content-Length: 75
+Cache-Control: public, max-age=31536000, immutable
+ETag: "ef497c884f27d5223f545d6c0c4b99fb"
+```
+
+**Caminho de erro continua correto:**
+
+```http
+POST .../upload (multipart sem campo "file")
+HTTP/1.1 400  {"error":"Nenhum arquivo enviado."}
+```
+
+> Antes deste deploy, o serviço rodava o `dep-d7mvo1cvikkc73b0rf6g` (commit
+> `782ad2bd`) — só backup pipeline + TLS, **sem** integração R2 e **sem** o fix
+> do upload. Agora a versão live tem ambos.
 
 ## 7. Arquivos tocados
 
