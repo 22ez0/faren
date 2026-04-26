@@ -25,6 +25,7 @@ interface ProfileFormState {
   backgroundType: string;
   accentColor: string;
   glowColor: string;
+  nameBorderOpacity: number;
   backgroundOpacity: number;
   backgroundBlur: number;
   cursorStyle: string;
@@ -429,6 +430,7 @@ export default function EditProfile() {
     displayName: '', bio: '', avatarUrl: '', bannerUrl: '',
     backgroundUrl: '', backgroundType: 'image',
     accentColor: '#ffffff', glowColor: '#ffffff',
+    nameBorderOpacity: 7,
     backgroundOpacity: 60, backgroundBlur: 0,
     cursorStyle: 'auto', musicUrl: '', musicTitle: '', musicIconUrl: '', musicPrivate: false,
     particleEffect: 'none', clickEffect: 'none',
@@ -456,6 +458,7 @@ export default function EditProfile() {
         accentColor: profile.accentColor || '#ffffff',
         glowColor: profile.glowColor || '#ffffff',
         backgroundOpacity: toPercentOpacity(profile.backgroundOpacity),
+        nameBorderOpacity: toPercentOpacity((profile as any).nameBorderOpacity ?? 0.07),
         backgroundBlur: (profile as any).backgroundBlur ?? 0,
         cursorStyle: profile.cursorStyle || 'auto',
         musicUrl: profile.musicUrl || '',
@@ -1020,6 +1023,21 @@ export default function EditProfile() {
 
                 <FieldRow label={`Desfoque do Fundo — ${form.backgroundBlur}px`}>
                   <input type="range" min="0" max="20" step="1" value={form.backgroundBlur} onChange={e => set('backgroundBlur', Number(e.target.value))} className="w-full accent-white" />
+                </FieldRow>
+
+                <FieldRow label={`Borda do Nome — ${form.nameBorderOpacity === 0 ? 'desligada' : `${form.nameBorderOpacity}%`}`}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={form.nameBorderOpacity}
+                    onChange={e => set('nameBorderOpacity', Number(e.target.value))}
+                    className="w-full accent-white"
+                  />
+                  <p className="text-xs text-white/25 mt-1">
+                    Controla a intensidade da borda cinza ao redor do nome no perfil. 0% remove totalmente.
+                  </p>
                 </FieldRow>
 
                 <div className="glow-line" />

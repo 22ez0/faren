@@ -28,6 +28,8 @@ export interface Profile {
   /** @nullable */
   glowColor?: string | null;
   /** @nullable */
+  nameBorderOpacity?: number | null;
+  /** @nullable */
   cursorStyle?: string | null;
   /** @nullable */
   musicUrl?: string | null;

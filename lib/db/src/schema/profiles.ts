@@ -12,6 +12,7 @@ export const profilesTable = pgTable("profiles", {
   accentColor: text("accent_color").default("#8b5cf6"),
   backgroundOpacity: real("background_opacity").default(0.8),
   glowColor: text("glow_color").default("#8b5cf6"),
+  nameBorderOpacity: real("name_border_opacity").default(0.07),
   cursorStyle: text("cursor_style").default("default"),
   musicUrl: text("music_url"),
   musicTitle: text("music_title"),

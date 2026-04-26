@@ -132,6 +132,7 @@ function formatProfile(
     backgroundBlur: profile.backgroundBlur,
     backgroundType: profile.backgroundType,
     glowColor: profile.glowColor,
+    nameBorderOpacity: profile.nameBorderOpacity,
     cursorStyle: profile.cursorStyle,
     musicUrl: profile.musicUrl,
     musicTitle: profile.musicTitle,
@@ -208,7 +209,7 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
   const {
     displayName, bio, avatarUrl, bannerUrl, backgroundUrl,
     accentColor, backgroundOpacity, backgroundBlur, backgroundType,
-    glowColor, cursorStyle, musicUrl, musicTitle, musicIconUrl, musicPrivate, badges,
+    glowColor, nameBorderOpacity, cursorStyle, musicUrl, musicTitle, musicIconUrl, musicPrivate, badges,
     particleEffect, clickEffect, fontFamily, layoutStyle,
     typewriterTexts, profileTitle, showViews, showDiscordAvatar, showDiscordPresence,
   } = parsed.data;
@@ -242,6 +243,7 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
     ...(backgroundBlur !== undefined ? { backgroundBlur } : {}),
     ...(backgroundType !== undefined ? { backgroundType } : {}),
     ...(glowColor !== undefined ? { glowColor } : {}),
+    ...(nameBorderOpacity !== undefined && nameBorderOpacity !== null ? { nameBorderOpacity } : {}),
     ...(cursorStyle !== undefined ? { cursorStyle } : {}),
     ...(musicUrl !== undefined ? { musicUrl } : {}),
     ...(musicTitle !== undefined ? { musicTitle } : {}),

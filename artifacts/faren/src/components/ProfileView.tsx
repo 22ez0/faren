@@ -244,11 +244,11 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
       return null;
     }
     return (
-      <div className="w-full glass-card rounded-lg overflow-hidden">
+      <div className="w-full glass-card rounded-lg overflow-hidden mx-auto" style={{ maxWidth: 360 }}>
         <iframe
           src={embedSrc}
           width="100%"
-          height="152"
+          height="80"
           frameBorder="0"
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           loading="lazy"
@@ -260,10 +260,10 @@ function MusicPlayer({ musicUrl, musicTitle, musicIconUrl }: { musicUrl: string;
 
   if (isSoundCloud) {
     return (
-      <div className="w-full glass-card rounded-lg overflow-hidden">
+      <div className="w-full glass-card rounded-lg overflow-hidden mx-auto" style={{ maxWidth: 360 }}>
         <iframe
           width="100%"
-          height="80"
+          height="56"
           scrolling="no"
           frameBorder="no"
           allow="autoplay"
@@ -401,6 +401,16 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const showDiscordAvatar = (profile as any).showDiscordAvatar !== false;
   const showDiscordPresence = (profile as any).showDiscordPresence !== false;
   const backgroundType = (profile as any).backgroundType || 'image';
+  const rawNameBorder = (profile as any).nameBorderOpacity;
+  const nameBorderOpacity =
+    rawNameBorder == null || Number.isNaN(Number(rawNameBorder))
+      ? 0.07
+      : Number(rawNameBorder) > 1
+        ? Number(rawNameBorder) / 100
+        : Number(rawNameBorder);
+  const nameBorderColor = nameBorderOpacity <= 0
+    ? 'transparent'
+    : `rgba(255,255,255,${Math.min(1, nameBorderOpacity)})`;
 
   const cursorStyle = profile.cursorStyle || 'auto';
   const isCustomCursor = cursorStyle?.startsWith('url:');
@@ -545,11 +555,13 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           transition={{ type: "spring", stiffness: 220, damping: 26 }}
           className={`flex ${isLeft ? '' : 'self-center'} items-center gap-3 mb-5 px-3.5 py-2.5 rounded-2xl`}
           style={{
-            background: 'rgba(20,20,22,0.45)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            boxShadow: `0 6px 30px rgba(0,0,0,0.35), 0 0 18px ${glow}12`,
+            background: nameBorderOpacity <= 0 ? 'transparent' : 'rgba(20,20,22,0.45)',
+            border: `1px solid ${nameBorderColor}`,
+            backdropFilter: nameBorderOpacity <= 0 ? 'none' : 'blur(14px)',
+            WebkitBackdropFilter: nameBorderOpacity <= 0 ? 'none' : 'blur(14px)',
+            boxShadow: nameBorderOpacity <= 0
+              ? 'none'
+              : `0 6px 30px rgba(0,0,0,0.35), 0 0 18px ${glow}12`,
           }}
         >
           <div className="relative flex-shrink-0">
@@ -715,46 +727,43 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         {/* Widgets */}
         <div className="w-full flex flex-col gap-3 mb-3">
 
-          {/* Discord */}
+          {/* Discord — minimalist text-only style (image-2 inspired) */}
           {profile.discordConnected && liveDiscordUsername && showDiscordPresence && (
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className={`glass-card rounded-2xl px-3 py-2 flex items-center gap-2.5 w-fit max-w-[270px] ${isLeft ? '' : 'mx-auto'}`}
+              className={`flex flex-col ${isLeft ? 'items-start' : 'items-center mx-auto'} gap-1`}
             >
-              <div className="relative flex-shrink-0">
-                <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-indigo-900/30 flex items-center justify-center">
-                  {showDiscordAvatar && liveDiscordAvatarUrl ? (
-                    <img src={liveDiscordAvatarUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <SiDiscord className="w-5 h-5 text-indigo-400" />
-                  )}
-                </div>
+              <div className="flex items-center gap-1.5 leading-none">
+                {showDiscordAvatar && liveDiscordAvatarUrl ? (
+                  <img
+                    src={liveDiscordAvatarUrl}
+                    alt=""
+                    className="w-4 h-4 rounded-full object-cover opacity-80"
+                  />
+                ) : (
+                  <SiDiscord className="w-3.5 h-3.5 text-white/55" />
+                )}
+                <span className="font-semibold text-[13px] text-white/90">{liveDiscordUsername}</span>
                 <span
-                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black"
+                  className="w-1.5 h-1.5 rounded-full inline-block"
                   style={{
                     backgroundColor: STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline,
                     boxShadow: `0 0 6px ${STATUS_COLORS[liveDiscordStatus] || STATUS_COLORS.offline}`,
                   }}
                 />
+                {(profile as any).discordNitro && <Gem className="w-3 h-3 text-pink-400/80" />}
+                {(profile as any).discordBoost && <Crown className="w-3 h-3 text-fuchsia-400/80" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="font-semibold text-sm truncate">{liveDiscordUsername}</span>
-                  {(profile as any).discordNitro && <Gem className="w-3.5 h-3.5 text-pink-400" />}
-                  {(profile as any).discordBoost && <Crown className="w-3.5 h-3.5 text-fuchsia-400" />}
-                </div>
-                <p className="text-[11px] italic text-white/55 truncate mt-0.5">
-                  {liveDiscordStatus === 'online' ? 'online now' :
-                    liveDiscordStatus === 'idle' ? 'ausente' :
-                    liveDiscordStatus === 'dnd' ? 'não perturbe' :
-                    'offline'}
-                </p>
-                {liveDiscordActivity && (
-                  <p className="text-[11px] opacity-45 truncate">{liveDiscordActivity}</p>
-                )}
-              </div>
+              <p className="text-[11px] italic text-white/45 leading-none">
+                {liveDiscordActivity
+                  ? liveDiscordActivity
+                  : liveDiscordStatus === 'online' ? 'online now'
+                  : liveDiscordStatus === 'idle' ? 'last seen recently'
+                  : liveDiscordStatus === 'dnd' ? 'do not disturb'
+                  : 'last seen unknown'}
+              </p>
             </motion.div>
           )}
 

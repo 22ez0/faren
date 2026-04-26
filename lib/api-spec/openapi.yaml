@@ -570,6 +570,8 @@ components:
           type: ["number", "null"]
         glowColor:
           type: ["string", "null"]
+        nameBorderOpacity:
+          type: ["number", "null"]
         cursorStyle:
           type: ["string", "null"]
         musicUrl:
@@ -663,6 +665,8 @@ components:
           type: ["number", "null"]
         glowColor:
           type: ["string", "null"]
+        nameBorderOpacity:
+          type: ["number", "null"]
         cursorStyle:
           type: ["string", "null"]
         musicUrl:
@@ -819,6 +823,8 @@ components:
           type: ["string", "null"]
         glowColor:
           type: ["string", "null"]
+        nameBorderOpacity:
+          type: ["number", "null"]
         cursorStyle:
           type: ["string", "null"]
         musicUrl:
