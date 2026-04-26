@@ -125,3 +125,41 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Pending production integrations: Discord OAuth, Spotify OAuth, and email sending provider for verification/reset emails
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Live Cloud Inventory (verified 2026-04-26 via Cloudflare global key + Render API)
+
+### Cloudflare account
+- **Account**: `Vgss.lly@gmail.com's Account` (id `5a9a17dc69ada45f32c4aa36d4e8fdd9`, owner `vgss.lly@gmail.com`, 2FA OFF, plan Free)
+- **Single zone**: `faren.com.br` (id `620599580cd4d65037e8d0b5af79c27e`, status active, type full, NS `gannon.ns.cloudflare.com` + `shubhi.ns.cloudflare.com`, original NS at `b/c.sec.dns.br`)
+- **DNS** (10 records): apex `faren.com.br` → 4× GitHub Pages A records (proxied), `www` → `22ez0.github.io` (proxied), `api.faren.com.br` → `faren-api-wn1z.onrender.com` (proxied), plus Resend email (`send.faren.com.br` MX/TXT, `resend._domainkey` DKIM) and `_discord.faren.com.br` TXT
+- **Cloudflare Worker (DEPLOYED, contradicts older docs)**: `faren-og-worker` running on route `faren.com.br/*`. Code (compatibility 2024-01-01, no bindings) does THREE things:
+  1. Proxies `/api/*` to `https://faren-api-wn1z.onrender.com` with edge cache (90s for `/api/discover/trending`, 20s for `/api/users/:u`, fixes CORS for `*.faren.com.br` origins, uses `X-Edge-Cache: HIT/MISS` header)
+  2. Detects social-bot UAs on `/{username}` profile paths and SSR-fetches `${API}/${username}` for OG previews (`cache-control: public, max-age=60, swr=300`)
+  3. `scheduled()` keep-alive ping every ~14 min to `${API}/api/discover/trending?limit=1` to dodge Render free cold start
+- **Cache Rules ruleset** (id `92b59739dd254ee8813db04ed79f6e0d`, exposed as env `CACHE_RULESET_ID`): 2 rules — `/api/users/*` (edge 20s, browser bypass) and `/api/discover/*` (edge 60s, browser 30s). NOTE: the Worker's per-path cache mostly supersedes these, but they coexist.
+- **R2**: bucket `faren-media` (location ENAM, created 2026-04-23). Public domain `pub-49759bd8e09c4e0b89e475d23d273d2f.r2.dev` enabled. CORS not configured. R2 access keys are NOT in Replit Secrets — backend in production has them via Render env (DATABASE_URL/RESEND_API_KEY/TURNSTILE_SECRET_KEY/etc are all set), but local backend cannot upload to R2 without them.
+- **Pages**: 1 project `faren` at `faren.pages.dev` (created 2026-04-19) — appears unused (deployment metadata returns null). Production frontend serves via GitHub Pages, not this.
+- **Turnstile**: 1 widget `faren-prod`, sitekey `0x4AAAAAADCou66RkKmd1DwX` (managed mode, world region), domains `faren.app`, `faren.com.br`, `www.faren.com.br`. Secret is set in Render as `TURNSTILE_SECRET_KEY`.
+- **Email Routing**: zone has the routing config object created but `enabled: false` and `status: unconfigured` (missing MX/SPF/DKIM Cloudflare records — the existing email DNS is for Resend/SES, not CF Routing). Default rule "drop all" is disabled.
+- **Zone settings worth noting**: SSL `full`, TLS 1.3 on, HTTP/3 on, IPv6 on, brotli on, automatic_https_rewrites on. **Security gaps**: `min_tls_version=1.0` (should be 1.2+), `always_use_https=off` (should be on for production), `security_level=medium`. No legacy Page Rules, no Firewall Rules, no Lockdowns, no Rate Limits — all caching/security goes through the new Rulesets engine and Worker.
+- **No** KV namespaces, **no** D1 databases, **no** Stream videos, **no** Workers AI bindings, **no** custom Workers Routes besides `faren.com.br/*` → `faren-og-worker`.
+- **Existing API tokens** (4 total, listable but values not retrievable): `atualização faren 1` (DNS+Zone+Cache+Pages+Workers Write, last used 2026-04-24), `Cloudflare Agent Token - 2026-04-23` (×2, broad read-only across account), `faren-deploy-agent` (Cache Purge + DNS Write on faren.com.br only — this is the dedicated `CLOUDFLARE_PURGE_TOKEN` value used in GitHub Actions).
+
+### Render account
+- **Single team**: `My Workspace` (id `tea-d2s4fh3e5dus73cpehkg`, owner `vgss.lly@gmail.com`)
+- **23 services total** (all free tier, all in Oregon). Faren-related: `faren-api` (id `srv-d7gjdc5ckfvc73ftk79g`, slug `faren-api-wn1z`, Node, autoDeploy ON from `22ez0/faren#main`, healthcheck `/api/healthz`, custom domains `api.faren.com.br` verified + `faren.com.br`/`www.faren.com.br` unverified-with-redirect-to-apex, last deploy `live` for commit `64fd5630` at 2026-04-26 04:05 UTC, ssh `srv-d7gjdc5ckfvc73ftk79g@ssh.oregon.render.com`).
+- **Other services in this account** (NOT part of Faren — bots/experiments owned by 22ez0): `adilsonstore`, `seru`, `selfbot-discord-purge`, `discord-rich-presence`, `discord-bot-nuke` (×3 incl. `nuke-cupula` rust + `discord-bot-nuke-1` python), `mitmproxy-telegram-notifier` (docker), `telegram-spotify-bot` family (×4), `laveyanism-telegram-bot` (×2), `discord-bot-clp`, `discord-bot-render-2025`, `eixobot` family (×3, mostly suspended). 6 are currently `suspended` (`spotify-oauth-server`, `discord-bot-eixo`, `eixobot`, `eixobot-1`, `471-bot`).
+- **Postgres `faren-db`** (id `dpg-d7gjd1tckfvc73ftjvr0-a`, free, region oregon, version 18, status `available`, db `faren`, user `faren`, IP allowlist `0.0.0.0/0`). **⚠️ EXPIRES 2026-05-16** (~20 days from now — Render free Postgres lasts 30 days then is deleted; need to upgrade or back up + recreate).
+- **No** Redis/KV stores, **no** env groups.
+- **`faren-api` production env vars** (15 total): `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_SECRET`, `ADMIN_LOGIN=keefaren`, `ADMIN_PASSWORD`, `NODE_ENV=production`, `PORT=10000`, `CORS_ALLOWED_ORIGINS` (includes the Replit picard.replit.dev preview URL — should be cleaned out for prod hygiene), `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX=300`, `ENABLE_BOT_BLOCKING=true`, `EMAIL_FROM=Faren <no-reply@faren.com.br>`, `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`. NOTE: **R2_* env vars are NOT in `render.yaml` nor in the live env** — the production backend currently does not have R2 credentials wired in either. Either R2 uploads are silently failing in prod (503 path) or the env was set outside `render.yaml` and dropped, or it's added at runtime somewhere else. Worth verifying before adding new upload features.
+
+### GitHub
+- **Repo**: `22ez0/faren` (default branch `main`, public Pages built with CNAME `faren.com.br`, https enforced, custom 404 enabled)
+- **Repo secrets** (3): `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_PURGE_TOKEN`, `CLOUDFLARE_ZONE_ID`. Notably **`RENDER_API_KEY` is NOT set as a repo secret** — `deploy-backend.yml` already handles this gracefully (just emits a warning and skips the polling-for-failure step), but if you want the auto-issue-on-Render-deploy-failure feature, that secret needs to be added.
+- **3 workflows** active: `deploy-backend.yml`, `deploy-frontend.yml`, `monitor-api-health.yml`. Latest 3 runs all `Monitor API Health` → success.
+- **Open issues**: 0 (no `api-down`, `render-deploy-failure`, or `cloudflare-purge-failure` alerts at the moment).
+
+### Local env vars saved (shared environment, this workspace)
+The non-sensitive metadata IDs above are now exposed as shared env vars so any local script can use them without hardcoding: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_PUBLIC_URL`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_ACCOUNT_ID`, `RENDER_SERVICE_ID`, `RENDER_DB_ID`, `RENDER_OWNER_ID`, `GITHUB_OWNER`, `GITHUB_REPO`, `VITE_TURNSTILE_SITE_KEY`, `CACHE_RULESET_ID`. Plus the existing dev defaults: `ADMIN_LOGIN`, `ADMIN_PASSWORD`, `ADMIN_SECRET`, `ENABLE_BOT_BLOCKING=false`, `NODE_ENV=development`, `BASE_PATH=/`, `VITE_API_URL=https://faren-api-wn1z.onrender.com`, `CORS_ALLOWED_ORIGINS=*`.
+
+Sensitive values that exist as Replit Secrets: `GITHUB_TOKEN`, `RENDER_API_KEY`, `CLOUDFLARE_GLOBAL_API_KEY` + `EMAIL_CLOUDFLARE` (used as the X-Auth-Email/X-Auth-Key pair — full-account access by design), `SESSION_SECRET`, `PROD_DATABASE`, `DATABASE_URL` (Replit-managed local Postgres), `PG*` (local Postgres connection split). **Not present locally** but used in production: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`, `ADMIN_SECRET` (prod value), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_PURGE_TOKEN`.
