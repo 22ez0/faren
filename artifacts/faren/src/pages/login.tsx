@@ -23,6 +23,7 @@ declare global {
     turnstile?: {
       render: (el: HTMLElement, opts: { sitekey: string; callback: (t: string) => void; "error-callback"?: () => void; theme?: "dark" | "light" | "auto" }) => string;
       reset: (id?: string) => void;
+      remove?: (id: string) => void;
     };
     onTurnstileLoad?: () => void;
   }
