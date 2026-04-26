@@ -1,0 +1,43 @@
+name: Backup production database
+
+on:
+  schedule:
+    # Every day at 03:00 UTC (00:00 BRT)
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL 18 client
+        run: |
+          set -euo pipefail
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+          pg_dump --version
+
+      - name: Run backup
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          chmod +x scripts/db-backup.sh
+          ./scripts/db-backup.sh backups
+
+      - name: Upload backup as artifact (retention 30 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: faren-db-backup-${{ github.run_id }}
+          path: backups/*.sql.gz
+          retention-days: 30
+          if-no-files-found: error

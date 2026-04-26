@@ -159,6 +159,17 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **3 workflows** active: `deploy-backend.yml`, `deploy-frontend.yml`, `monitor-api-health.yml`. Latest 3 runs all `Monitor API Health` → success.
 - **Open issues**: 0 (no `api-down`, `render-deploy-failure`, or `cloudflare-purge-failure` alerts at the moment).
 
+### Fixes applied 2026-04-26 (see `CHANGES-2026-04-26.md` for the full report)
+- **TLS hardened**: `min_tls_version=1.2`, `always_use_https=on`, `tls_1_3=on`, `opportunistic_encryption=on` (verified — TLS 1.0/1.1 connections now refused).
+- **R2 CORS configured** on bucket `faren-media` (faren.com.br + dev origins, methods GET/HEAD/PUT/POST/DELETE).
+- **Render `CORS_ALLOWED_ORIGINS` cleaned** to `https://faren.com.br,https://www.faren.com.br` (removed picard.replit.dev).
+- **`render.yaml` rewritten** to match live env and add R2/Resend/Turnstile placeholders as `sync: false`.
+- **`cloudflare-worker.js` synced** in repo (was a 40-line stub; now matches the deployed `faren-og-worker` doing API proxy + edge cache + OG SSR + cron keepalive).
+- **GitHub repo secrets added** (libsodium-encrypted PUTs): `RENDER_API_KEY`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_EMAIL`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_ACCOUNT_ID`, `PROD_DATABASE_URL`. Now 8 total.
+- **DB backup pipeline**: `scripts/db-backup.sh` + `scripts/db-restore.sh` + `.github/workflows/db-backup.yml` (daily 03:00 UTC, retention 30 days, uses `postgresql-client-18` since the server is pg18). First manual backup saved at `backups/faren-db-20260426T103629Z.sql.gz` (21 MB, 13 tables, 18 users, 18 profiles, real prod data — gitignored, kept locally).
+- **Push + redeploys triggered**: pushed `cf85600` to `origin/main` → GH Pages build + Render auto-deploy. Cloudflare cache purged (zone-wide).
+- **STILL PENDING (manual, dashboard-only)**: create R2 S3 keys via Cloudflare dashboard → R2 → Manage API Tokens → "Object Read & Write" on `faren-media`, then set `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` as Render env vars (`sync: false` placeholders already in `render.yaml`). The CF API does not expose R2 S3 key creation.
+
 ### Local env vars saved (shared environment, this workspace)
 The non-sensitive metadata IDs above are now exposed as shared env vars so any local script can use them without hardcoding: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_PUBLIC_URL`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_ACCOUNT_ID`, `RENDER_SERVICE_ID`, `RENDER_DB_ID`, `RENDER_OWNER_ID`, `GITHUB_OWNER`, `GITHUB_REPO`, `VITE_TURNSTILE_SITE_KEY`, `CACHE_RULESET_ID`. Plus the existing dev defaults: `ADMIN_LOGIN`, `ADMIN_PASSWORD`, `ADMIN_SECRET`, `ENABLE_BOT_BLOCKING=false`, `NODE_ENV=development`, `BASE_PATH=/`, `VITE_API_URL=https://faren-api-wn1z.onrender.com`, `CORS_ALLOWED_ORIGINS=*`.
 

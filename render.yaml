@@ -28,11 +28,34 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         value: https://faren.com.br,https://www.faren.com.br
       - key: RATE_LIMIT_WINDOW_MS
-        value: 60000
+        value: "60000"
       - key: RATE_LIMIT_MAX
-        value: 300
+        value: "300"
       - key: ENABLE_BOT_BLOCKING
         value: "true"
+      # Email (Resend)
+      - key: EMAIL_FROM
+        value: Faren <no-reply@faren.com.br>
+      - key: RESEND_API_KEY
+        sync: false
+      # Cloudflare Turnstile (anti-bot challenge on signup/login)
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      # Cloudflare R2 (media uploads)
+      # NOTE: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY must be created manually
+      # in the Cloudflare dashboard (R2 → Manage API Tokens → Create Token,
+      # permission "Object Read and Write" scoped to the faren-media bucket).
+      # Set them as Render env vars (sync:false).
+      - key: R2_ACCOUNT_ID
+        value: 5a9a17dc69ada45f32c4aa36d4e8fdd9
+      - key: R2_BUCKET
+        value: faren-media
+      - key: R2_PUBLIC_URL
+        value: https://pub-49759bd8e09c4e0b89e475d23d273d2f.r2.dev
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
 
 databases:
   - name: faren-db
