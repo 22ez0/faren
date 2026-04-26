@@ -145,6 +145,31 @@ function isAttachedFile(value?: string) {
   return !!value && value.startsWith('data:');
 }
 
+const moduleApiBase = () => (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+
+async function uploadFileToR2(file: File, prefix: string): Promise<string> {
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
+  const url = `${moduleApiBase()}/api/profile/upload?prefix=${encodeURIComponent(prefix)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: fd,
+  });
+  if (!res.ok) {
+    let msg = `Falha no upload (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data?.error) msg = data.error;
+    } catch {}
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  if (!data?.url) throw new Error('Resposta inválida do servidor');
+  return data.url as string;
+}
+
 function decodeBadgePart(value?: string, fallback = '') {
   if (!value) return fallback;
   try {
@@ -191,28 +216,37 @@ function StyledSelect({ value, onChange, options }: { value: string; onChange: (
   );
 }
 
-function FileUploadButton({ onFile, accept, children }: { onFile: (dataUrl: string, file: File) => void; accept?: string; children: React.ReactNode }) {
+function FileUploadButton({ onFile, accept, children, prefix, onError }: { onFile: (url: string, file: File) => void; accept?: string; children: React.ReactNode; prefix: string; onError?: (msg: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onFile(reader.result as string, file);
-    reader.readAsDataURL(file);
     e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadFileToR2(file, prefix);
+      onFile(url, file);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha no upload';
+      if (onError) onError(msg); else console.error('[upload]', msg);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <>
-      <input ref={inputRef} type="file" accept={accept || 'image/*'} onChange={handleChange} className="hidden" />
+      <input ref={inputRef} type="file" accept={accept || 'image/*'} onChange={handleChange} className="hidden" disabled={uploading} />
       <button
         type="button"
+        disabled={uploading}
         onClick={() => inputRef.current?.click()}
-        className="px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm flex items-center gap-1.5 text-xs"
+        className="px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm flex items-center gap-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Upload className="w-3.5 h-3.5" />
-        {children}
+        {uploading ? 'Enviando...' : children}
       </button>
     </>
   );
@@ -225,13 +259,17 @@ function MediaUrlInput({
   accept = 'image/*,video/*',
   placeholder = 'https://...',
   buttonLabel = 'Arquivo',
+  prefix,
+  onError,
 }: {
   value: string;
   onUrl: (value: string) => void;
-  onFile: (dataUrl: string, file: File) => void;
+  onFile: (url: string, file: File) => void;
   accept?: string;
   placeholder?: string;
   buttonLabel?: React.ReactNode;
+  prefix: string;
+  onError?: (msg: string) => void;
 }) {
   if (isAttachedFile(value)) {
     return (
@@ -239,7 +277,7 @@ function MediaUrlInput({
         <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/45 rounded-sm truncate">
           Arquivo anexado ✓
         </div>
-        <FileUploadButton onFile={onFile} accept={accept}>
+        <FileUploadButton onFile={onFile} accept={accept} prefix={prefix} onError={onError}>
           {buttonLabel}
         </FileUploadButton>
         <button
@@ -257,7 +295,7 @@ function MediaUrlInput({
   return (
     <div className="flex gap-2 w-full">
       <StyledInput value={value} onChange={e => onUrl(e.target.value)} placeholder={placeholder} className="flex-1" />
-      <FileUploadButton onFile={onFile} accept={accept}>
+      <FileUploadButton onFile={onFile} accept={accept} prefix={prefix} onError={onError}>
         {buttonLabel}
       </FileUploadButton>
     </div>
@@ -271,49 +309,70 @@ function FileOnlyUpload({
   accept = 'image/*,video/*',
   label = 'Selecionar arquivo',
   previewStyle = 'avatar',
+  prefix,
+  onError,
 }: {
   value: string;
-  onFile: (dataUrl: string, file: File) => void;
+  onFile: (url: string, file: File) => void;
   onClear: () => void;
   accept?: string;
   label?: string;
   previewStyle?: 'avatar' | 'banner';
+  prefix: string;
+  onError?: (msg: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     setLocalPreview(null);
   }, [value]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setLocalPreview(result);
-      onFile(result, file);
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    if (!file) return;
+
+    let objectUrl: string | null = null;
+    try {
+      objectUrl = URL.createObjectURL(file);
+      setLocalPreview(objectUrl);
+    } catch {}
+
+    setUploading(true);
+    try {
+      const url = await uploadFileToR2(file, prefix);
+      onFile(url, file);
+      setLocalPreview(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha no upload';
+      if (onError) onError(msg); else console.error('[upload]', msg);
+      setLocalPreview(null);
+    } finally {
+      if (objectUrl) {
+        try { URL.revokeObjectURL(objectUrl); } catch {}
+      }
+      setUploading(false);
+    }
   };
 
   const preview = localPreview || value;
 
   return (
     <div className="space-y-2">
-      <input ref={inputRef} type="file" accept={accept} onChange={handleChange} className="hidden" />
+      <input ref={inputRef} type="file" accept={accept} onChange={handleChange} className="hidden" disabled={uploading} />
       <div className="flex gap-2 items-center">
         <button
           type="button"
+          disabled={uploading}
           onClick={() => inputRef.current?.click()}
-          className="flex items-center gap-2 px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm text-xs font-semibold uppercase tracking-wider"
+          className="flex items-center gap-2 px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm text-xs font-semibold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Upload className="w-3.5 h-3.5" />
-          {preview ? 'Trocar arquivo' : label}
+          {uploading ? 'Enviando...' : preview ? 'Trocar arquivo' : label}
         </button>
-        {preview && (
+        {preview && !uploading && (
           <button
             type="button"
             onClick={() => { setLocalPreview(null); onClear(); }}
@@ -325,7 +384,7 @@ function FileOnlyUpload({
       </div>
       {preview && (
         <div className={`overflow-hidden rounded-sm border border-white/10 ${previewStyle === 'avatar' ? 'w-20 h-20' : 'w-full h-28'}`}>
-          {preview.startsWith('data:video') || /\.(mp4|webm|ogg)/.test(preview) ? (
+          {preview.startsWith('data:video') || preview.startsWith('blob:') || /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(preview) ? (
             <video src={preview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
           ) : (
             <img src={preview} alt="" className="w-full h-full object-cover" />
@@ -778,6 +837,8 @@ export default function EditProfile() {
                     accept="image/*,video/*,image/gif"
                     label="Selecionar foto/gif/vídeo"
                     previewStyle="avatar"
+                    prefix="avatars"
+                    onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
                   />
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
@@ -790,6 +851,8 @@ export default function EditProfile() {
                     accept="image/*,video/*,image/gif"
                     label="Selecionar banner"
                     previewStyle="banner"
+                    prefix="banners"
+                    onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
                   />
                   <p className="text-xs text-white/25 mt-1">Aceita imagem, GIF ou vídeo. Vídeos ficam em loop no perfil.</p>
                 </FieldRow>
@@ -942,6 +1005,8 @@ export default function EditProfile() {
                       accept="image/*,video/*,image/gif"
                       label="Selecionar fundo"
                       previewStyle="banner"
+                      prefix="backgrounds"
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
                     />
                   )}
                   <p className="text-xs text-white/25 mt-1">
@@ -1053,6 +1118,8 @@ export default function EditProfile() {
                         set('cursorStyle', `url:${url}`);
                       }}
                       accept="image/*"
+                      prefix="icons"
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
                     >
                       Cursor Personalizado
                     </FileUploadButton>
@@ -1240,6 +1307,8 @@ export default function EditProfile() {
                           }
                         }}
                         accept="audio/*"
+                        prefix="music"
+                        onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
                       >
                         Selecionar
                       </FileUploadButton>
@@ -1269,6 +1338,8 @@ export default function EditProfile() {
                       accept="image/*"
                       placeholder="URL do ícone/capa da música"
                       buttonLabel="Ícone"
+                      prefix="icons"
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' as any })}
                     />
                   </div>
                   )}

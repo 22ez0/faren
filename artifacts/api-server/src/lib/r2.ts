@@ -21,7 +21,19 @@ const MIME_EXT: Record<string, string> = {
   "image/gif": "gif",
   "image/svg+xml": "svg",
   "image/avif": "avif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/ogg": "ogv",
+  "video/x-m4v": "m4v",
+  "audio/mpeg": "mp3",
+  "audio/mp4": "m4a",
+  "audio/ogg": "ogg",
+  "audio/wav": "wav",
+  "audio/webm": "weba",
 };
+
+export const ALLOWED_UPLOAD_MIMES = new Set(Object.keys(MIME_EXT));
 
 export function parseDataUri(dataUri: string): { mime: string; buffer: Buffer } | null {
   const m = /^data:([^;,]+)(;base64)?,(.*)$/s.exec(dataUri);

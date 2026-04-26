@@ -1,10 +1,14 @@
 import { Router, type IRouter, type Request } from "express";
+import Busboy from "busboy";
 import { db, usersTable, profilesTable, profileLinksTable, profileViewsTable, profileLikesTable, followersTable, profileReportsTable } from "@workspace/db";
 import { eq, and, sql, gt } from "drizzle-orm";
 import { UpdateProfileBody, ConnectDiscordBody, ConnectMusicBody, AddProfileLinkBody, UpdateProfileLinkBody, UpdateProfileLinkParams, DeleteProfileLinkParams } from "@workspace/api-zod";
 import { requireAuth, optionalAuth } from "../lib/auth";
 import { fetchLastfmNowPlaying } from "./music";
-import { parseDataUri, uploadBuffer } from "../lib/r2";
+import { parseDataUri, uploadBuffer, ALLOWED_UPLOAD_MIMES } from "../lib/r2";
+
+const UPLOAD_PREFIXES = new Set(["avatars", "banners", "backgrounds", "music", "icons"]);
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 async function maybeUploadDataUri(value: string | undefined, prefix: string): Promise<string | undefined> {
   if (value === undefined) return undefined;
@@ -264,6 +268,101 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
   profileCache.delete(`profile:${user.username}`);
 
   res.json(formatProfile(user, updated, links));
+});
+
+router.post("/profile/upload", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+
+  if (!process.env.R2_BUCKET || !process.env.R2_ACCESS_KEY_ID) {
+    res.status(503).json({ error: "Upload de arquivos indisponível no momento." });
+    return;
+  }
+
+  const contentType = req.headers["content-type"] || "";
+  if (!contentType.toLowerCase().startsWith("multipart/form-data")) {
+    res.status(400).json({ error: "Envio deve ser multipart/form-data." });
+    return;
+  }
+
+  const rawPrefix = String((req.query.prefix as string | undefined) || "uploads").toLowerCase();
+  const prefixBase = UPLOAD_PREFIXES.has(rawPrefix) ? rawPrefix : "uploads";
+  const prefix = `${prefixBase}/${userId}`;
+
+  let bb: ReturnType<typeof Busboy>;
+  try {
+    bb = Busboy({ headers: req.headers, limits: { files: 1, fileSize: MAX_UPLOAD_BYTES } });
+  } catch (e) {
+    res.status(400).json({ error: "Não foi possível processar o upload." });
+    return;
+  }
+
+  let responded = false;
+  const fail = (status: number, message: string) => {
+    if (responded) return;
+    responded = true;
+    req.unpipe(bb);
+    res.status(status).json({ error: message });
+  };
+
+  bb.on("file", (_name, fileStream, info) => {
+    const mime = (info.mimeType || "application/octet-stream").toLowerCase();
+    if (!ALLOWED_UPLOAD_MIMES.has(mime)) {
+      fileStream.resume();
+      fail(415, `Tipo de arquivo não permitido: ${mime}`);
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    let total = 0;
+    let truncated = false;
+
+    fileStream.on("data", (chunk: Buffer) => {
+      total += chunk.length;
+      if (total > MAX_UPLOAD_BYTES) {
+        truncated = true;
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    fileStream.on("limit", () => {
+      truncated = true;
+    });
+
+    fileStream.on("end", async () => {
+      if (responded) return;
+      if (truncated) {
+        fail(413, `Arquivo excede o limite de ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB.`);
+        return;
+      }
+      try {
+        const url = await uploadBuffer({ buffer: Buffer.concat(chunks), mime, prefix });
+        responded = true;
+        res.json({ url });
+      } catch (e) {
+        console.error("[upload] r2 failed:", (e as Error).message);
+        fail(500, "Falha ao enviar para o armazenamento.");
+      }
+    });
+
+    fileStream.on("error", (err) => {
+      console.error("[upload] file stream error:", err);
+      fail(500, "Erro ao ler o arquivo.");
+    });
+  });
+
+  bb.on("error", (err) => {
+    console.error("[upload] busboy error:", err);
+    fail(400, "Erro no envio do arquivo.");
+  });
+
+  bb.on("finish", () => {
+    if (!responded) {
+      fail(400, "Nenhum arquivo enviado.");
+    }
+  });
+
+  req.pipe(bb);
 });
 
 router.post("/profile/links", requireAuth, async (req, res): Promise<void> => {
