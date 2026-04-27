@@ -121,17 +121,17 @@ export default function Dashboard() {
 
       {/* ── Middle: completion + manage account ─────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
-        <div className="lg:col-span-2 border border-white/10 p-5 bg-white/[0.02]">
+        <div className="lg:col-span-2 border border-white/10 p-5 bg-white/[0.02] rounded-2xl">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">Conclusão do perfil</h2>
             <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white">{completionPct}% concluído</span>
           </div>
-          <div className="h-1.5 bg-white/5 overflow-hidden">
+          <div className="h-2 bg-white/5 overflow-hidden rounded-full">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${completionPct}%` }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="h-full bg-white"
+              className="h-full bg-white rounded-full"
             />
           </div>
 
@@ -149,10 +149,10 @@ export default function Dashboard() {
               <Link
                 key={s.key}
                 href="/dashboard/edit"
-                className={`flex items-center gap-3 px-3 py-2 border transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors ${
                   s.done
                     ? "border-white/15 bg-white/[0.04] text-white"
-                    : "border-white/10 hover:border-white/30 text-white/70 hover:text-white"
+                    : "border-white/10 hover:border-white/30 hover:bg-white/[0.03] text-white/70 hover:text-white"
                 }`}
               >
                 {s.done ? (
@@ -168,7 +168,7 @@ export default function Dashboard() {
         </div>
 
         {/* Manage account */}
-        <div className="border border-white/10 p-5 bg-white/[0.02] flex flex-col">
+        <div className="border border-white/10 p-5 bg-white/[0.02] flex flex-col rounded-2xl">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">Gerencie sua conta</h2>
           <p className="text-[11px] text-white/40 mt-1">Altere seu e-mail, nome de usuário e mais.</p>
           <div className="mt-4 flex flex-col gap-2">
@@ -183,7 +183,7 @@ export default function Dashboard() {
             <p className="text-[11px] text-white/40 mt-1">Vincule sua conta do Discord à Faren.</p>
             <div className="mt-3">
               {profile?.discordConnected ? (
-                <div className="flex items-center justify-between px-3 py-2 border border-white/15 bg-white/[0.04]">
+                <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/15 bg-white/[0.04]">
                   <span className="flex items-center gap-2 text-[12px] font-semibold tracking-[0.08em] uppercase">
                     <SiDiscord className="w-4 h-4" />
                     Discord conectado
@@ -193,7 +193,7 @@ export default function Dashboard() {
               ) : (
                 <Link
                   href="/dashboard/edit"
-                  className="flex items-center gap-2 px-3 py-2 border border-white/15 hover:border-white/40 text-[12px] font-semibold tracking-[0.08em] uppercase"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/15 hover:border-white/40 hover:bg-white/[0.03] text-[12px] font-semibold tracking-[0.08em] uppercase transition-colors"
                 >
                   <SiDiscord className="w-4 h-4" />
                   Vincular Discord
@@ -207,7 +207,7 @@ export default function Dashboard() {
 
       {/* ── Stats: views chart + top countries ──────────────── */}
       <div id="stats" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 border border-white/10 p-5 bg-white/[0.02]">
+        <div className="lg:col-span-2 border border-white/10 p-5 bg-white/[0.02] rounded-2xl">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">
               Visualizações nos últimos 7 dias
@@ -241,7 +241,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="border border-white/10 p-5 bg-white/[0.02]">
+        <div className="border border-white/10 p-5 bg-white/[0.02] rounded-2xl">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70 mb-3">Principais países</h2>
           {analyticsLoading ? (
             <div className="space-y-2">

@@ -83,16 +83,16 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
     const Icon = item.icon;
     const isActive = item.key === active;
     const baseCls =
-      "group w-full flex items-center gap-3 px-3 py-2 text-[12px] tracking-[0.12em] uppercase transition-colors border-l-2";
+      "group w-full flex items-center gap-3 px-3 py-2 text-[12px] tracking-[0.12em] uppercase transition-colors rounded-xl";
     const stateCls = isActive
-      ? "text-white border-white bg-white/[0.04]"
-      : "text-white/45 border-transparent hover:text-white hover:border-white/30";
+      ? "text-white bg-white/10"
+      : "text-white/45 hover:text-white hover:bg-white/5";
     const inner = (
       <>
-        <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+        <Icon className="w-4 h-4" strokeWidth={1.75} />
         <span className="flex-1 text-left font-semibold">{item.label}</span>
         {item.soon && (
-          <span className="text-[8px] tracking-[0.2em] uppercase text-white/30 border border-white/10 px-1.5 py-0.5">
+          <span className="text-[8px] tracking-[0.2em] uppercase text-white/30 border border-white/10 px-1.5 py-0.5 rounded-full">
             soon
           </span>
         )}
@@ -118,7 +118,7 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
       <aside
         className={`${
           open ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 fixed md:sticky top-0 left-0 z-40 h-screen w-[260px] shrink-0 bg-black border-r border-white/10 flex flex-col transition-transform`}
+        } md:translate-x-0 fixed md:sticky top-0 left-0 z-40 h-screen w-[260px] shrink-0 bg-zinc-950 md:bg-black border-r border-white/10 flex flex-col transition-transform`}
       >
         {/* Brand */}
         <Link href="/" className="px-5 h-14 border-b border-white/10 flex items-center">
@@ -143,7 +143,7 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
         <div className="px-3 py-3 border-t border-white/10 flex flex-col gap-2">
           <Link
             href="/suporte"
-            className="flex items-center gap-2 px-3 py-2 text-[11px] tracking-[0.18em] uppercase text-white/60 hover:text-white border border-white/10 hover:border-white/30 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-[11px] tracking-[0.18em] uppercase text-white/60 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
           >
             <HelpCircle className="w-3.5 h-3.5" /> Central de Ajuda
           </Link>
@@ -152,23 +152,23 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
               href={profileUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 px-3 py-2 text-[11px] tracking-[0.18em] uppercase text-white/60 hover:text-white border border-white/10 hover:border-white/30 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-[11px] tracking-[0.18em] uppercase text-white/60 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" /> Minha página
             </a>
           )}
           <button
             onClick={copyShareLink}
-            className="flex items-center gap-2 px-3 py-2 text-[11px] tracking-[0.18em] uppercase text-white bg-white/5 hover:bg-white/10 border border-white/15 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-[11px] tracking-[0.18em] uppercase text-black bg-white hover:bg-white/90 rounded-xl transition-colors font-bold"
           >
             <Share2 className="w-3.5 h-3.5" /> Compartilhar perfil
           </button>
 
           {/* User chip */}
-          <div className="mt-2 flex items-center gap-3 px-2 py-2 border border-white/5">
-            <Avatar className="w-9 h-9 rounded-none">
-              {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={username} className="rounded-none" /> : null}
-              <AvatarFallback className="bg-white/10 text-white text-[10px] font-bold rounded-none">
+          <div className="mt-2 flex items-center gap-3 px-2 py-2 rounded-2xl bg-white/[0.04]">
+            <Avatar className="w-9 h-9 rounded-full">
+              {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={username} /> : null}
+              <AvatarFallback className="bg-white/10 text-white text-[10px] font-bold">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -181,7 +181,7 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
             <button
               onClick={() => { logout(); setLocation("/login"); }}
               title="Sair"
-              className="p-1.5 text-white/40 hover:text-red-400 transition-colors"
+              className="p-1.5 text-white/40 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>

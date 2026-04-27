@@ -94,31 +94,330 @@ function LayoutPreview({ variant, selected }: { variant: 'centered' | 'left'; se
   if (variant === 'centered') {
     return (
       <svg viewBox="0 0 120 80" className="w-full h-20" aria-hidden="true">
-        <rect x="2" y="2" width="116" height="76" rx="4" fill="none" stroke={stroke} strokeWidth="1" />
-        <rect x="6" y="6" width="108" height="18" rx="2" fill={fill} />
+        <rect x="2" y="2" width="116" height="76" rx="6" fill="none" stroke={stroke} strokeWidth="1" />
+        <rect x="6" y="6" width="108" height="18" rx="4" fill={fill} />
         <circle cx="60" cy="34" r="8" fill={fill} stroke={stroke} strokeWidth="0.5" />
-        <rect x="44" y="46" width="32" height="4" rx="1" fill={stroke} />
+        <rect x="44" y="46" width="32" height="4" rx="2" fill={stroke} />
         <rect x="38" y="54" width="44" height="2.5" rx="1" fill={fill} />
         <rect x="38" y="60" width="44" height="2.5" rx="1" fill={fill} />
-        <rect x="48" y="68" width="6" height="6" rx="1" fill={fill} />
-        <rect x="57" y="68" width="6" height="6" rx="1" fill={fill} />
-        <rect x="66" y="68" width="6" height="6" rx="1" fill={fill} />
+        <rect x="48" y="68" width="6" height="6" rx="2" fill={fill} />
+        <rect x="57" y="68" width="6" height="6" rx="2" fill={fill} />
+        <rect x="66" y="68" width="6" height="6" rx="2" fill={fill} />
       </svg>
     );
   }
   return (
     <svg viewBox="0 0 120 80" className="w-full h-20" aria-hidden="true">
-      <rect x="2" y="2" width="116" height="76" rx="4" fill="none" stroke={stroke} strokeWidth="1" />
-      <rect x="6" y="6" width="108" height="18" rx="2" fill={fill} />
+      <rect x="2" y="2" width="116" height="76" rx="6" fill="none" stroke={stroke} strokeWidth="1" />
+      <rect x="6" y="6" width="108" height="18" rx="4" fill={fill} />
       <circle cx="20" cy="36" r="8" fill={fill} stroke={stroke} strokeWidth="0.5" />
-      <rect x="32" y="32" width="40" height="4" rx="1" fill={stroke} />
+      <rect x="32" y="32" width="40" height="4" rx="2" fill={stroke} />
       <rect x="32" y="40" width="60" height="2.5" rx="1" fill={fill} />
       <rect x="32" y="46" width="48" height="2.5" rx="1" fill={fill} />
-      <rect x="6" y="58" width="8" height="8" rx="1" fill={fill} />
-      <rect x="16" y="58" width="8" height="8" rx="1" fill={fill} />
-      <rect x="26" y="58" width="8" height="8" rx="1" fill={fill} />
-      <rect x="36" y="58" width="8" height="8" rx="1" fill={fill} />
+      <rect x="6" y="58" width="8" height="8" rx="2" fill={fill} />
+      <rect x="16" y="58" width="8" height="8" rx="2" fill={fill} />
+      <rect x="26" y="58" width="8" height="8" rx="2" fill={fill} />
+      <rect x="36" y="58" width="8" height="8" rx="2" fill={fill} />
     </svg>
+  );
+}
+
+const LAYOUT_DETAILS: Record<string, { tagline: string; bestFor: string[]; tradeoffs: string[] }> = {
+  centered: {
+    tagline: 'Foco visual no avatar e no nome — estilo cartão de apresentação.',
+    bestFor: [
+      'Perfis pessoais minimalistas',
+      'Quando seu avatar é a peça principal',
+      'Bio curta (até 1–2 linhas)',
+      'Layout simétrico que respira',
+    ],
+    tradeoffs: [
+      'Bios longas ficam apertadas',
+      'Menos espaço útil em telas largas',
+    ],
+  },
+  left: {
+    tagline: 'Avatar e textos à esquerda — mais espaço para bio e links lado a lado.',
+    bestFor: [
+      'Bios longas e descrição detalhada',
+      'Quem mostra muitos links e redes',
+      'Visual de portfólio / dossiê',
+      'Aproveita melhor telas largas',
+    ],
+    tradeoffs: [
+      'Foco visual menos centrado no avatar',
+      'Pode parecer pesado se a bio for curta',
+    ],
+  },
+};
+
+/* ── Real, data-driven layout previews ─────────────────────── */
+function MiniPlatformIcon({ platform }: { platform: string }) {
+  const plat = SOCIAL_PLATFORMS.find(p => p.value === platform);
+  const Icon = plat?.icon || LinkIcon;
+  return (
+    <div
+      className="w-6 h-6 rounded-full flex items-center justify-center"
+      style={{
+        backgroundColor: plat?.color ? `${plat.color}26` : 'rgba(255,255,255,0.08)',
+        color: plat?.color || '#fff',
+      }}
+    >
+      <Icon className="w-3 h-3" />
+    </div>
+  );
+}
+
+function RealLayoutPreview({
+  variant,
+  data,
+}: {
+  variant: 'centered' | 'left';
+  data: { avatarUrl: string; displayName: string; username: string; bio: string; links: any[]; accentColor: string };
+}) {
+  const initials = (data.displayName || data.username || '?').slice(0, 2).toUpperCase();
+  // Pick up to 5 link icons
+  const socialLinks = (data.links || []).slice(0, 5);
+
+  // Subtle background to evoke "this is your profile"
+  const frame = (
+    <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-zinc-900 via-black to-zinc-950">
+      <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
+      <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_75%_85%,rgba(255,255,255,0.12),transparent_55%)]" />
+      <div className="relative h-full p-4 flex flex-col">
+        {variant === 'centered' ? (
+          <>
+            {/* Avatar centered */}
+            <div className="flex flex-col items-center text-center mt-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/20 bg-white/10 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-black/50">
+                {data.avatarUrl ? (
+                  <img src={data.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <p className="mt-2.5 text-white text-[13px] font-bold tracking-wide truncate max-w-full px-2">
+                {data.displayName || data.username}
+              </p>
+              <p className="mt-0.5 text-white/40 text-[10px] truncate max-w-full px-2">
+                {data.bio || 'sua bio aqui'}
+              </p>
+              {socialLinks.length > 0 && (
+                <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
+                  {socialLinks.map((l, i) => <MiniPlatformIcon key={i} platform={l.platform} />)}
+                </div>
+              )}
+            </div>
+            {/* Link cards stack */}
+            <div className="mt-auto flex flex-col gap-1.5">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className="h-7 rounded-xl bg-white/[0.06] border border-white/10 flex items-center px-2 gap-2"
+                >
+                  <div className="w-3 h-3 rounded-full bg-white/30" />
+                  <div className="h-1.5 rounded-full bg-white/15" style={{ width: `${50 + i * 10}%` }} />
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Avatar + name on the left */}
+            <div className="flex items-start gap-3">
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/20 bg-white/10 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg shadow-black/50">
+                {data.avatarUrl ? (
+                  <img src={data.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-[13px] font-bold tracking-wide truncate">
+                  {data.displayName || data.username}
+                </p>
+                <p className="mt-0.5 text-white/40 text-[10px] line-clamp-2 leading-tight">
+                  {data.bio || 'sua bio aqui'}
+                </p>
+                {socialLinks.length > 0 && (
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    {socialLinks.map((l, i) => <MiniPlatformIcon key={i} platform={l.platform} />)}
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Link cards stack */}
+            <div className="mt-auto flex flex-col gap-1.5">
+              {[0, 1, 2, 3].map(i => (
+                <div
+                  key={i}
+                  className="h-6 rounded-xl bg-white/[0.06] border border-white/10 flex items-center px-2 gap-2"
+                >
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
+                  <div className="h-1.5 rounded-full bg-white/15" style={{ width: `${40 + i * 12}%` }} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+  return frame;
+}
+
+function LayoutTabPanel({
+  form,
+  set,
+  profile,
+}: {
+  form: ProfileFormState;
+  set: (k: keyof ProfileFormState, v: any) => void;
+  profile: any;
+}) {
+  const previewData = {
+    avatarUrl: form.avatarUrl || (profile as any)?.avatarUrl || '',
+    displayName: form.displayName || (profile as any)?.username || 'Seu nome',
+    username: (profile as any)?.username || 'voce',
+    bio: form.bio || (profile as any)?.bio || 'Adicione uma bio na aba Básico',
+    links: (profile as any)?.links || [],
+    accentColor: form.accentColor || '#ffffff',
+  };
+
+  const fontPreviewClass: Record<string, string> = {
+    default: 'font-sans',
+    mono: 'font-mono',
+    cursive: 'italic',
+    serif: 'font-serif',
+    pixel: 'font-mono tracking-widest',
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-base font-bold uppercase tracking-[0.18em] text-white">Layout do perfil</h2>
+        <p className="text-xs text-white/45 mt-1.5 leading-relaxed">
+          Escolha como suas informações ficam organizadas na sua página pública.
+          As prévias abaixo usam <span className="text-white">seu avatar, nome, bio e redes</span> reais —
+          é exatamente o que seus visitantes vão ver.
+        </p>
+      </div>
+
+      {/* Layout cards with REAL previews */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {LAYOUT_OPTIONS.map(opt => {
+          const isSelected = form.layoutStyle === opt.value;
+          const detail = LAYOUT_DETAILS[opt.value];
+          return (
+            <button
+              key={opt.value}
+              onClick={() => set('layoutStyle', opt.value)}
+              className="group text-left rounded-2xl border transition-all overflow-hidden"
+              style={{
+                backgroundColor: isSelected ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.015)',
+                borderColor: isSelected ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.08)',
+                boxShadow: isSelected ? '0 0 0 1px rgba(255,255,255,0.15)' : 'none',
+              }}
+            >
+              {/* Real preview */}
+              <div className="p-4 pb-3">
+                <RealLayoutPreview variant={opt.preview} data={previewData} />
+              </div>
+
+              {/* Label + active badge */}
+              <div className="px-4 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">{opt.label}</h3>
+                {isSelected ? (
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded-full bg-white text-black">
+                    Em uso
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded-full border border-white/15 text-white/40 group-hover:text-white group-hover:border-white/40 transition-colors">
+                    Escolher
+                  </span>
+                )}
+              </div>
+
+              {/* Tagline */}
+              <p className="px-4 mt-2 text-xs text-white/55 leading-relaxed">{detail?.tagline}</p>
+
+              {/* Best for */}
+              <div className="px-4 pt-4 pb-4">
+                <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/35 mb-2">Bom para</p>
+                <ul className="space-y-1.5">
+                  {detail?.bestFor.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[11px] text-white/70">
+                      <span className="mt-1 w-1 h-1 rounded-full bg-white/60 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {detail?.tradeoffs && detail.tradeoffs.length > 0 && (
+                  <>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/35 mt-3 mb-2">Atenção</p>
+                    <ul className="space-y-1.5">
+                      {detail.tradeoffs.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-[11px] text-white/45">
+                          <span className="mt-1 w-1 h-1 rounded-full bg-white/30 shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="glow-line" />
+
+      {/* Font selector with real preview */}
+      <div>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-base font-bold uppercase tracking-[0.18em] text-white">Tipografia</h2>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-semibold">
+            Aplica em todo o seu perfil
+          </p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {FONT_OPTIONS.map(opt => {
+            const isSelected = form.fontFamily === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => set('fontFamily', opt.value)}
+                className="rounded-2xl border p-4 transition-all text-left"
+                style={{
+                  backgroundColor: isSelected ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                  borderColor: isSelected ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.08)',
+                }}
+              >
+                <p className={`text-2xl text-white ${fontPreviewClass[opt.value] || ''}`}>
+                  {previewData.displayName.slice(0, 8) || 'Faren'}
+                </p>
+                <p className={`text-xs text-white/45 mt-1 ${fontPreviewClass[opt.value] || ''}`}>
+                  abc 123 • {opt.label}
+                </p>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">
+                    {opt.label}
+                  </span>
+                  {isSelected && (
+                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] px-1.5 py-0.5 rounded-full bg-white text-black">
+                      Em uso
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -174,7 +473,7 @@ const SOCIAL_PLATFORMS = [
   { value: 'website', label: 'Website', icon: Globe, color: '#fff', placeholder: 'https://meusite.com' },
 ];
 
-const TABS = ['Básico', 'Tema', 'Efeitos', 'Links', 'Avançado'];
+const TABS = ['Básico', 'Tema', 'Layout', 'Efeitos', 'Links', 'Avançado'];
 
 function isAttachedFile(value?: string) {
   return !!value && value.startsWith('data:');
@@ -232,7 +531,7 @@ function StyledInput({ ...props }: React.InputHTMLAttributes<HTMLInputElement>) 
   return (
     <input
       {...props}
-      className={`w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-sm ${props.className || ''}`}
+      className={`w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-xl ${props.className || ''}`}
     />
   );
 }
@@ -242,7 +541,7 @@ function StyledSelect({ value, onChange, options }: { value: string; onChange: (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/25 transition-colors rounded-sm appearance-none"
+      className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/25 transition-colors rounded-xl appearance-none"
     >
       {options.map(opt => (
         <option key={opt.value} value={opt.value} className="bg-[#0d0d0d]">{opt.label}</option>
@@ -278,7 +577,7 @@ function FileUploadButton({ onFile, accept, children, prefix, onError }: { onFil
         type="button"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
-        className="px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm flex items-center gap-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-xl flex items-center gap-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Upload className="w-3.5 h-3.5" />
         {uploading ? 'Enviando...' : children}
@@ -309,7 +608,7 @@ function MediaUrlInput({
   if (isAttachedFile(value)) {
     return (
       <div className="flex gap-2 w-full">
-        <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/45 rounded-sm truncate">
+        <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/45 rounded-xl truncate">
           Arquivo anexado ✓
         </div>
         <FileUploadButton onFile={onFile} accept={accept} prefix={prefix} onError={onError}>
@@ -318,7 +617,7 @@ function MediaUrlInput({
         <button
           type="button"
           onClick={() => onUrl('')}
-          className="px-3 py-2.5 border border-white/15 hover:border-red-400/50 text-white/40 hover:text-red-300 transition-all rounded-sm"
+          className="px-3 py-2.5 border border-white/15 hover:border-red-400/50 text-white/40 hover:text-red-300 transition-all rounded-xl"
           aria-label="Remover arquivo"
         >
           <X className="w-3.5 h-3.5" />
@@ -413,7 +712,7 @@ function FileOnlyUpload({
           type="button"
           disabled={uploading}
           onClick={openPicker}
-          className="flex items-center gap-2 px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm text-xs font-semibold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-3 py-2.5 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-xl text-xs font-semibold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Upload className="w-3.5 h-3.5" />
           {uploading ? 'Enviando...' : preview ? 'Trocar arquivo' : label}
@@ -422,14 +721,14 @@ function FileOnlyUpload({
           <button
             type="button"
             onClick={() => { setLocalPreview(null); onClear(); }}
-            className="px-3 py-2.5 border border-white/15 hover:border-red-400/50 text-white/40 hover:text-red-300 transition-all rounded-sm"
+            className="px-3 py-2.5 border border-white/15 hover:border-red-400/50 text-white/40 hover:text-red-300 transition-all rounded-xl"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
       {preview && (
-        <div className={`overflow-hidden rounded-sm border border-white/10 ${previewStyle === 'avatar' ? 'w-20 h-20' : 'w-full h-28'}`}>
+        <div className={`overflow-hidden rounded-xl border border-white/10 ${previewStyle === 'avatar' ? 'w-20 h-20' : 'w-full h-28'}`}>
           {isVideo ? (
             <video key={preview} src={preview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
           ) : (
@@ -776,7 +1075,7 @@ export default function EditProfile() {
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={() => setShowMobilePreview(true)}
-              className="lg:hidden flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors py-1.5 px-2 border border-white/10 rounded-sm"
+              className="lg:hidden flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors py-1.5 px-2 border border-white/10 rounded-xl"
             >
               <Eye className="w-3 h-3" /> Ver
             </button>
@@ -785,7 +1084,7 @@ export default function EditProfile() {
                 href={profileSiteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors py-1.5 px-2 border border-white/10 rounded-sm"
+                className="hidden sm:flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors py-1.5 px-2 border border-white/10 rounded-xl"
               >
                 <ExternalLink className="w-3 h-3" /> Perfil
               </a>
@@ -845,7 +1144,7 @@ export default function EditProfile() {
                     onChange={e => set('bio', e.target.value)}
                     placeholder="Escreva algo sobre você..."
                     rows={3}
-                    className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-sm resize-none"
+                    className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-xl resize-none"
                   />
                 </FieldRow>
 
@@ -854,7 +1153,7 @@ export default function EditProfile() {
                     {form.typewriterTexts.map((text, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <GripVertical className="w-4 h-4 text-white/20 flex-shrink-0" />
-                        <span className="flex-1 text-sm text-white/70 bg-white/[0.04] px-3 py-2 rounded-sm border border-white/10 truncate">{text}</span>
+                        <span className="flex-1 text-sm text-white/70 bg-white/[0.04] px-3 py-2 rounded-xl border border-white/10 truncate">{text}</span>
                         <button onClick={() => removeTypewriterText(i)} className="text-white/30 hover:text-red-400 transition-colors">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -868,7 +1167,7 @@ export default function EditProfile() {
                         onKeyDown={e => e.key === 'Enter' && addTypewriterText()}
                         className="flex-1"
                       />
-                      <button onClick={addTypewriterText} className="px-3 py-2 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-sm">
+                      <button onClick={addTypewriterText} className="px-3 py-2 border border-white/15 hover:border-white/30 text-white/50 hover:text-white transition-all rounded-xl">
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
@@ -920,7 +1219,7 @@ export default function EditProfile() {
                         <button
                           key={badge.value}
                           onClick={() => toggleBadge(badge.value)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-sm border transition-all duration-150"
+                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-xl border transition-all duration-150"
                           style={{
                             backgroundColor: active ? 'rgba(255,255,255,0.1)' : 'transparent',
                             borderColor: active ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.08)',
@@ -932,7 +1231,7 @@ export default function EditProfile() {
                       );
                     })}
                   </div>
-                  <div className="mt-4 p-3 border border-white/10 bg-white/[0.02] rounded-sm space-y-3">
+                  <div className="mt-4 p-3 border border-white/10 bg-white/[0.02] rounded-xl space-y-3">
                     <p className="label-caps">Criar emblema personalizado</p>
                     <div className="grid grid-cols-[64px_1fr_44px] gap-2">
                       <StyledInput
@@ -951,7 +1250,7 @@ export default function EditProfile() {
                         type="color"
                         value={customBadgeColor}
                         onChange={e => setCustomBadgeColor(e.target.value)}
-                        className="w-11 h-10 rounded-sm border border-white/10 bg-transparent cursor-pointer"
+                        className="w-11 h-10 rounded-xl border border-white/10 bg-transparent cursor-pointer"
                       />
                     </div>
                     <button
@@ -994,13 +1293,13 @@ export default function EditProfile() {
                 <div className="grid grid-cols-2 gap-4">
                   <FieldRow label="Cor dos detalhes">
                     <div className="flex gap-2">
-                      <input type="color" value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="w-10 h-9 rounded-sm border border-white/10 bg-transparent cursor-pointer" />
+                      <input type="color" value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="w-10 h-9 rounded-xl border border-white/10 bg-transparent cursor-pointer" />
                       <StyledInput value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="flex-1" />
                     </div>
                   </FieldRow>
                   <FieldRow label="Cor do brilho">
                     <div className="flex gap-2">
-                      <input type="color" value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="w-10 h-9 rounded-sm border border-white/10 bg-transparent cursor-pointer" />
+                      <input type="color" value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="w-10 h-9 rounded-xl border border-white/10 bg-transparent cursor-pointer" />
                       <StyledInput value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="flex-1" />
                     </div>
                   </FieldRow>
@@ -1014,7 +1313,7 @@ export default function EditProfile() {
                       <button
                         key={type.value}
                         onClick={() => selectBackgroundType(type.value)}
-                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-sm border"
+                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-xl border"
                         style={{
                           backgroundColor: form.backgroundType === type.value ? 'rgba(255,255,255,0.1)' : 'transparent',
                           borderColor: form.backgroundType === type.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
@@ -1034,7 +1333,7 @@ export default function EditProfile() {
                         type="color"
                         value={form.backgroundUrl?.startsWith('#') ? form.backgroundUrl : '#000000'}
                         onChange={e => set('backgroundUrl', e.target.value)}
-                        className="w-10 h-10 rounded-sm border border-white/10 bg-transparent cursor-pointer"
+                        className="w-10 h-10 rounded-xl border border-white/10 bg-transparent cursor-pointer"
                       />
                       <StyledInput
                         value={form.backgroundUrl?.startsWith('#') ? form.backgroundUrl : '#000000'}
@@ -1085,53 +1384,12 @@ export default function EditProfile() {
                   </p>
                 </FieldRow>
 
-                <div className="glow-line" />
-
-                <FieldRow label="Layout">
-                  <div className="grid grid-cols-2 gap-3">
-                    {LAYOUT_OPTIONS.map(opt => {
-                      const isSelected = form.layoutStyle === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          onClick={() => set('layoutStyle', opt.value)}
-                          className="group relative flex flex-col gap-2 p-2.5 transition-all rounded-sm border text-left"
-                          style={{
-                            backgroundColor: isSelected ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-                            borderColor: isSelected ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.08)',
-                          }}
-                        >
-                          <div
-                            className="rounded-sm overflow-hidden"
-                            style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)' }}
-                          >
-                            <LayoutPreview variant={opt.preview} selected={isSelected} />
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              className="text-[11px] font-semibold uppercase tracking-wider"
-                              style={{ color: isSelected ? '#fff' : 'rgba(255,255,255,0.55)' }}
-                            >
-                              {opt.label}
-                            </span>
-                            {isSelected && (
-                              <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm border border-white/30 text-white/80">
-                                Ativo
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-white/35 leading-snug">{opt.description}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-white/25 mt-1">Pré-visualize como seu perfil ficará. Clique para escolher.</p>
-                </FieldRow>
-
-                <FieldRow label="Fonte">
-                  <StyledSelect value={form.fontFamily} onChange={v => set('fontFamily', v)} options={FONT_OPTIONS} />
-                </FieldRow>
               </motion.div>
+            )}
+
+            {/* ── LAYOUT TAB ─────────────────────────────── */}
+            {activeTab === 'Layout' && (
+              <LayoutTabPanel form={form} set={set} profile={profile} />
             )}
 
             {/* ── EFFECTS TAB ───────────────────────────── */}
@@ -1143,7 +1401,7 @@ export default function EditProfile() {
                       <button
                         key={opt.value}
                         onClick={() => set('particleEffect', opt.value)}
-                        className="py-2.5 px-3 text-xs text-left font-semibold uppercase tracking-wider transition-all rounded-sm border"
+                        className="py-2.5 px-3 text-xs text-left font-semibold uppercase tracking-wider transition-all rounded-xl border"
                         style={{
                           backgroundColor: form.particleEffect === opt.value ? 'rgba(255,255,255,0.1)' : 'transparent',
                           borderColor: form.particleEffect === opt.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
@@ -1164,7 +1422,7 @@ export default function EditProfile() {
                       <button
                         key={opt.value}
                         onClick={() => set('clickEffect', opt.value)}
-                        className="py-2.5 px-3 text-xs text-left font-semibold uppercase tracking-wider transition-all rounded-sm border"
+                        className="py-2.5 px-3 text-xs text-left font-semibold uppercase tracking-wider transition-all rounded-xl border"
                         style={{
                           backgroundColor: form.clickEffect === opt.value ? 'rgba(255,255,255,0.1)' : 'transparent',
                           borderColor: form.clickEffect === opt.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
@@ -1185,7 +1443,7 @@ export default function EditProfile() {
                       <button
                         key={opt.value}
                         onClick={() => set('cursorStyle', opt.value)}
-                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-sm border"
+                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-xl border"
                         style={{
                           backgroundColor: form.cursorStyle === opt.value ? 'rgba(255,255,255,0.1)' : 'transparent',
                           borderColor: form.cursorStyle === opt.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
@@ -1236,7 +1494,7 @@ export default function EditProfile() {
                         const plat = SOCIAL_PLATFORMS.find(p => p.value === link.platform);
                         const Icon = plat?.icon || LinkIcon;
                         return (
-                          <div key={link.id} className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/8 rounded-sm">
+                          <div key={link.id} className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/8 rounded-xl">
                             <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${plat?.color || '#fff'}20`, color: plat?.color || '#fff' }}>
                               <Icon className="w-3.5 h-3.5" />
                             </div>
@@ -1272,7 +1530,7 @@ export default function EditProfile() {
                             setNewLinkLabel('');
                           }}
                           title={plat.label}
-                          className="aspect-square flex items-center justify-center rounded-sm border transition-all duration-150"
+                          className="aspect-square flex items-center justify-center rounded-xl border transition-all duration-150"
                           style={{
                             backgroundColor: isSelected ? `${plat.color}22` : 'rgba(255,255,255,0.03)',
                             borderColor: isSelected ? `${plat.color}80` : 'rgba(255,255,255,0.08)',
@@ -1291,7 +1549,7 @@ export default function EditProfile() {
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
-                        className="space-y-3 p-4 border border-white/10 rounded-sm bg-white/[0.02]"
+                        className="space-y-3 p-4 border border-white/10 rounded-xl bg-white/[0.02]"
                       >
                         <div className="flex items-center gap-2 mb-3">
                           <selectedPlatformInfo.icon className="w-4 h-4" style={{ color: selectedPlatformInfo.color }} />
@@ -1325,7 +1583,7 @@ export default function EditProfile() {
                 <FieldRow label="Exibir Contador de Visitas">
                   <button
                     onClick={() => set('showViews', !form.showViews)}
-                    className="flex items-center gap-3 px-4 py-3 border rounded-sm transition-all text-sm w-full"
+                    className="flex items-center gap-3 px-4 py-3 border rounded-xl transition-all text-sm w-full"
                     style={{
                       backgroundColor: form.showViews ? 'rgba(255,255,255,0.08)' : 'transparent',
                       borderColor: form.showViews ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
@@ -1367,7 +1625,7 @@ export default function EditProfile() {
                       <button
                         key={t.value}
                         onClick={() => selectMusicType(t.value as typeof musicType)}
-                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-sm border"
+                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-xl border"
                         style={{
                           backgroundColor: musicType === t.value ? 'rgba(255,255,255,0.1)' : 'transparent',
                           borderColor: musicType === t.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
@@ -1381,7 +1639,7 @@ export default function EditProfile() {
 
                   {musicType === 'file' ? (
                     <div className="flex gap-2">
-                      <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/40 rounded-sm truncate">
+                      <div className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white/40 rounded-xl truncate">
                       {form.musicUrl ? 'Arquivo anexado ✓' : 'Nenhum arquivo'}
                       </div>
                       <FileUploadButton
@@ -1431,7 +1689,7 @@ export default function EditProfile() {
                   <div className="grid grid-cols-1 gap-3 mt-3">
                     <button
                       onClick={() => set('musicPrivate', !form.musicPrivate)}
-                      className="flex items-center justify-between gap-3 px-4 py-3 border rounded-sm transition-all text-sm w-full"
+                      className="flex items-center justify-between gap-3 px-4 py-3 border rounded-xl transition-all text-sm w-full"
                       style={{
                         backgroundColor: form.musicPrivate ? 'rgba(255,255,255,0.08)' : 'transparent',
                         borderColor: form.musicPrivate ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
@@ -1447,14 +1705,14 @@ export default function EditProfile() {
 
                 <div className="glow-line" />
 
-                <div className="p-4 border border-white/8 rounded-sm bg-white/[0.02]">
+                <div className="p-4 border border-white/8 rounded-xl bg-white/[0.02]">
                   <p className="label-caps mb-2">Integração com Discord</p>
                   <p className="text-xs text-white/30 mb-3">
                     Conecte via Lanyard para exibir status ao vivo, atividade e avatar no seu perfil.
                   </p>
                   {(profile as any)?.discordConnected ? (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 p-2 border border-white/10 rounded-sm">
+                      <div className="flex items-center gap-2 p-2 border border-white/10 rounded-xl">
                         {(profile as any)?.discordAvatarUrl && (
                           <img src={(profile as any).discordAvatarUrl} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
                         )}
@@ -1464,7 +1722,7 @@ export default function EditProfile() {
                         </div>
                         <button
                           onClick={disconnectDiscord}
-                          className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-sm uppercase tracking-wider flex-shrink-0"
+                          className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-xl uppercase tracking-wider flex-shrink-0"
                         >
                           Desconectar
                         </button>
@@ -1472,13 +1730,13 @@ export default function EditProfile() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => set('showDiscordAvatar', !form.showDiscordAvatar)}
-                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
+                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-xl text-white/60"
                         >
                           Avatar: {form.showDiscordAvatar ? 'sim' : 'não'}
                         </button>
                         <button
                           onClick={() => set('showDiscordPresence', !form.showDiscordPresence)}
-                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-sm text-white/60"
+                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-xl text-white/60"
                         >
                           Status: {form.showDiscordPresence ? 'sim' : 'não'}
                         </button>
@@ -1492,7 +1750,7 @@ export default function EditProfile() {
                           onChange={e => setDiscordUserIdInput(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && connectDiscord()}
                           placeholder="Seu Discord User ID (ex: 123456789...)"
-                          className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-sm font-mono"
+                          className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-xl font-mono"
                         />
                         <button
                           onClick={connectDiscord}
@@ -1510,13 +1768,13 @@ export default function EditProfile() {
                   )}
                 </div>
 
-                <div className="p-4 border border-white/8 rounded-sm bg-white/[0.02]">
+                <div className="p-4 border border-white/8 rounded-xl bg-white/[0.02]">
                   <p className="label-caps mb-2">Integração de Música</p>
                   <p className="text-xs text-white/30 mb-2">
                     Last.fm exibe a música que você está ouvindo ao vivo com arte do álbum.
                   </p>
                   {(profile as any)?.musicConnected && (profile as any)?.musicService === 'lastfm' ? (
-                    <div className="flex items-center gap-2 p-2 border border-white/10 rounded-sm mb-2">
+                    <div className="flex items-center gap-2 p-2 border border-white/10 rounded-xl mb-2">
                       <SiLastdotfm className="w-4 h-4 text-red-400 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold truncate">{(profile as any)?.musicUsername || 'Conectado'}</p>
@@ -1524,7 +1782,7 @@ export default function EditProfile() {
                       </div>
                       <button
                         onClick={disconnectLastfm}
-                        className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-sm uppercase tracking-wider flex-shrink-0"
+                        className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-xl uppercase tracking-wider flex-shrink-0"
                       >
                         Desconectar
                       </button>
@@ -1536,7 +1794,7 @@ export default function EditProfile() {
                         onChange={e => setLastfmInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && connectLastfm()}
                         placeholder="Seu usuário no Last.fm"
-                        className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-sm"
+                        className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-xl"
                       />
                       <button
                         onClick={connectLastfm}
