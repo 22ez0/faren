@@ -156,9 +156,27 @@ Resultado: o preview do workspace mostra o site **igual `faren.com.br`** com dad
 - **Single team**: `My Workspace` (id `tea-d2s4fh3e5dus73cpehkg`, owner `vgss.lly@gmail.com`)
 - **23 services total** (all free tier, all in Oregon). Faren-related: `faren-api` (id `srv-d7gjdc5ckfvc73ftk79g`, slug `faren-api-wn1z`, Node, autoDeploy ON from `22ez0/faren#main`, healthcheck `/api/healthz`, custom domains `api.faren.com.br` verified + `faren.com.br`/`www.faren.com.br` unverified-with-redirect-to-apex, last deploy `live` for commit `64fd5630` at 2026-04-26 04:05 UTC, ssh `srv-d7gjdc5ckfvc73ftk79g@ssh.oregon.render.com`).
 - **Other services in this account** (NOT part of Faren — bots/experiments owned by 22ez0): `adilsonstore`, `seru`, `selfbot-discord-purge`, `discord-rich-presence`, `discord-bot-nuke` (×3 incl. `nuke-cupula` rust + `discord-bot-nuke-1` python), `mitmproxy-telegram-notifier` (docker), `telegram-spotify-bot` family (×4), `laveyanism-telegram-bot` (×2), `discord-bot-clp`, `discord-bot-render-2025`, `eixobot` family (×3, mostly suspended). 6 are currently `suspended` (`spotify-oauth-server`, `discord-bot-eixo`, `eixobot`, `eixobot-1`, `471-bot`).
-- **Postgres `faren-db`** (id `dpg-d7gjd1tckfvc73ftjvr0-a`, free, region oregon, version 18, status `available`, db `faren`, user `faren`, IP allowlist `0.0.0.0/0`). **⚠️ EXPIRES 2026-05-16** (~20 days from now — Render free Postgres lasts 30 days then is deleted; need to upgrade or back up + recreate).
-- **No** Redis/KV stores, **no** env groups.
-- **`faren-api` production env vars** (15 total): `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_SECRET`, `ADMIN_LOGIN=keefaren`, `ADMIN_PASSWORD`, `NODE_ENV=production`, `PORT=10000`, `CORS_ALLOWED_ORIGINS` (includes the Replit picard.replit.dev preview URL — should be cleaned out for prod hygiene), `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX=300`, `ENABLE_BOT_BLOCKING=true`, `EMAIL_FROM=Faren <no-reply@faren.com.br>`, `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`. NOTE: **R2_* env vars are NOT in `render.yaml` nor in the live env** — the production backend currently does not have R2 credentials wired in either. Either R2 uploads are silently failing in prod (503 path) or the env was set outside `render.yaml` and dropped, or it's added at runtime somewhere else. Worth verifying before adding new upload features.
+- **Postgres `faren-db` no Render — DESCOMISSIONADO 2026-04-27** (id `dpg-d7gjd1tckfvc73ftjvr0-a`, era free, oregon, pg18). O DB foi removido e o backend de prod foi migrado pra **Neon** (ver "Neon (DB de produção)" abaixo). O secret `PROD_DATABASE` que apontava pra esse host está obsoleto — pode ser apagado pelo painel de Secrets.
+
+### Neon (DB de produção — adicionado 2026-04-27)
+- **Org**: `vgss.lly@gmail.com` (id `org-sparkling-mud-12848991`, plan `scale`, criada 2026-04-27 11:28 UTC)
+- **Projeto único**: `faren-prod` (id `red-flower-60741452`, region `aws-us-west-2`, PostgreSQL 18, criado 2026-04-27 11:33 UTC)
+- **Database**: `neondb`, owner `neondb_owner`, schema completo aplicado (13 tabelas: users, profiles, followers, music_history, posts, post_comments, post_likes, post_reports, profile_likes, profile_links, profile_reports, profile_views, support_tickets). Dados ao vivo: 27 users, 27 profiles, 12 followers, 271 views (snapshot 2026-04-27 15:05 UTC).
+- **Connection string** disponível como secret `NEON_DATABASE_URL` no workspace e como `DATABASE_URL` env var do `faren-api` no Render — **mesmo host** (`ep-hidden-bonus-ak4p6ave-pooler.c-3.us-west-2.aws.neon.tech`), ou seja, qualquer query feita localmente via `NEON_DATABASE_URL` bate em produção real.
+- **API key**: `NEON_API_KEY` (secret no workspace) — escopo conta inteira, autentica em `https://console.neon.tech/api/v2/`.
+
+### Render (atualizado 2026-04-27 após resolver suspensão)
+- **`faren-api` saiu da suspensão e foi upgrado pra plano `starter` pago** (~$7/mês). Status atual: `suspended: not_suspended`, `numInstances: 1`, último deploy `dep-d7nnfbpj2pic738npom0` `live` (2026-04-27 14:50 UTC, commit "Round all dashboard corners and add dedicated Layout tab"). API respondendo em `https://api.faren.com.br/api/discover/trending` com dados reais.
+- **No Redis/KV stores, no env groups**.
+- **`faren-api` production env vars (20 total, todos confirmados via API do Render em 2026-04-27 15:05 UTC)**:
+  - DB: `DATABASE_URL` (aponta pro Neon `ep-hidden-bonus-ak4p6ave-pooler.c-3.us-west-2.aws.neon.tech`)
+  - Auth: `SESSION_SECRET` (44b), `ADMIN_SECRET` (44b), `ADMIN_LOGIN=keefaren`, `ADMIN_PASSWORD`
+  - Server: `NODE_ENV=production`, `PORT=10000`, `CORS_ALLOWED_ORIGINS=https://faren.com.br,https://w...` (45b), `RATE_LIMIT_WINDOW_MS=60000`, `RATE_LIMIT_MAX=300`, `ENABLE_BOT_BLOCKING=true`
+  - Email: `EMAIL_FROM=Faren <no-reply@faren.com.br>`, `RESEND_API_KEY`
+  - Captcha: `TURNSTILE_SECRET_KEY`
+  - **R2 (agora presente em prod, contradiz observação anterior do replit.md)**: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`
+  - Self-referência: `RENDER_API_KEY` (o serviço tem a própria API key — usado pra cron/keep-alive interno)
+  - IDs: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ZONE_ID`, `RENDER_DB_ID`
 
 ### GitHub
 - **Repo**: `22ez0/faren` (default branch `main`, public Pages built with CNAME `faren.com.br`, https enforced, custom 404 enabled)
@@ -174,14 +192,93 @@ Resultado: o preview do workspace mostra o site **igual `faren.com.br`** com dad
 - **`cloudflare-worker.js` synced** in repo (was a 40-line stub; now matches the deployed `faren-og-worker` doing API proxy + edge cache + OG SSR + cron keepalive).
 - **GitHub repo secrets added** (libsodium-encrypted PUTs): `RENDER_API_KEY`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_EMAIL`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_ACCOUNT_ID`, `PROD_DATABASE_URL`. Now 8 total.
 - **DB backup pipeline**: `scripts/db-backup.sh` + `scripts/db-restore.sh` + `.github/workflows/db-backup.yml` (daily 03:00 UTC, retention 30 days, uses `postgresql-client-18` since the server is pg18). First manual backup saved at `backups/faren-db-20260426T103629Z.sql.gz` (21 MB, 13 tables, 18 users, 18 profiles, real prod data — gitignored, kept locally).
+- **DB backup repointado para Neon — DONE 2026-04-27 ~15:20 UTC**:
+  - `scripts/db-backup.sh` agora prefere `NEON_DATABASE_URL` (mantém `PROD_DATABASE_URL`/`PROD_DATABASE` como fallback).
+  - `.github/workflows/db-backup.yml` lê `secrets.NEON_DATABASE_URL` e prepende `/usr/lib/postgresql/18/bin` no `$GITHUB_PATH` (Ubuntu noble vem com pg16 no PATH por padrão; sem o fix, o `pg_dump` resolvido era a versão 16 e abortava com `server version mismatch` contra o Neon pg18).
+  - **Repo secret `NEON_DATABASE_URL`** adicionado via libsodium sealed box em 2026-04-27 15:12 UTC. Repo secret antigo `PROD_DATABASE_URL` apagado. Total: 8 secrets (`CLOUDFLARE_*`×4, `RENDER_API_KEY`, `NEON_DATABASE_URL`).
+  - **Commits pushados pelo main agent via API do GitHub Git Database** (não tem permissão pra `git commit/push` direto, então usa `POST /repos/.../git/blobs|trees|commits` + `PATCH /repos/.../git/refs/heads/main`): commits `6d6e4ef4` (script + workflow) e `6c42729a` (fix do PATH pg18). Ambos no branch `main` do `22ez0/faren`.
+  - **Validado end-to-end**: workflow `db-backup.yml` rodado manualmente via `workflow_dispatch` (run id `25003555908`) → `success` em ~40s, gerou artefato `faren-db-backup-25003555908` de **17.6 MB** (gzip do dump completo do `neondb`, retention 30 dias no GitHub Actions storage). Próximo run automático: amanhã 03:00 UTC pelo schedule.
+  - **Backup nativo Neon (camada redundante) criado em 2026-04-27 15:14:31 UTC**: branch `backup-2026-04-27T15-14-30Z` (id `br-wandering-frost-aksxfdpz`, parent `br-jolly-breeze-akaujewq` que é a `production`). Branches do Neon são copy-on-write — restauráveis a qualquer momento via `POST /projects/{id}/branches/{branchId}/restore`. Disparável manualmente: `POST https://console.neon.tech/api/v2/projects/red-flower-60741452/branches` com `{branch:{name:"backup-..."}}` autenticado pelo `NEON_API_KEY`.
 - **Push + redeploys triggered**: pushed `cf85600` to `origin/main` → GH Pages build + Render auto-deploy. Cloudflare cache purged (zone-wide).
 - **R2 S3 keys — DONE 2026-04-26**: usuário criou o token no dashboard da Cloudflare e colou os valores. `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `CLOUDFLARE_R2_TOKEN` foram salvos como Replit Secrets (disponíveis em qualquer sessão deste workspace). As duas chaves S3 também foram aplicadas no Render via API (`PUT /v1/services/.../env-vars`) — preservando os 23 env vars existentes — e um redeploy foi disparado (`dep-d7mvo1cvikkc73b0rf6g`). Validei as credenciais com `HEAD /faren-media` na R2 (`200 OK`, `x-amz-bucket-region: ENAM`).
 - **Upload bug fixed (race condition no Busboy) — DONE 2026-04-26**: rota `POST /api/profile/upload` (em `artifacts/api-server/src/routes/profiles.ts`) sempre devolvia `400 "Nenhum arquivo enviado."` mesmo quando o R2 recebia o arquivo. Causa: o handler `bb.on('finish')` checava só a flag `responded`, que só virava `true` **depois** do `await uploadBuffer()` resolver — ou seja, durante o upload assíncrono o `finish` corria e enviava `400` antes de o R2 terminar. Corrigi separando `fileReceived` (síncrono, marcado dentro de `bb.on('file')`) de `responded` (resposta já enviada), e fazendo o `bb.on('finish')` aguardar a `uploadInFlight` Promise quando há arquivo. Validado localmente (api-server em `:8090` com env de prod): PNG válido → 200 + URL R2; sem arquivo → 400 com mensagem certa; MIME inválido → 415. Fix está no commit local, ainda não pushado.
 - **Migração base64 → R2 — DONE 2026-04-26**: rodei `tsx artifacts/api-server/src/scripts/migrate-base64-to-r2.ts all` contra o Postgres de prod. Tive que **remover** `import "dotenv/config"` do script (dotenv não é dependência do api-server) e usar `DATABASE_URL=…?sslmode=require` (lib/db usa `new Pool({connectionString})` sem config SSL extra). Resultado: 1/19 user avatars migrado, 0/19 profile backgrounds (já estavam todos como URLs externas). Banco agora tem 0 entradas em `data:` base64.
 - **Fix de upload deployado em prod — DONE 2026-04-26 12:13 UTC**: commit `a0096224` empurrado para `origin/main` (push autenticado via `GITHUB_TOKEN` do workspace). Render disparou auto-deploy `dep-d7n01qt8nd3s73eb6hj0` que ficou `live` em ~1m30s. Smoke test em `https://api.faren.com.br/api/profile/upload?prefix=avatars` com JWT forjado (SESSION_SECRET de 44 bytes lido via Render API) e PNG real de 75 bytes: **HTTP 200**, devolveu `https://pub-49759bd8e09c4e0b89e475d23d273d2f.r2.dev/avatars/1/b201e2de7fd1a6ee.png`. HEAD na URL retornou 200 com `Content-Type: image/png` e `Cache-Control: public, max-age=31536000, immutable`. O caminho de erro "sem arquivo" continua devolvendo 400 com mensagem correta. Detalhes do diagnóstico em `CHANGES-2026-04-26-upload-fix.md`.
 - **🔴 Render suspendeu o `faren-api` — 2026-04-27 10:26 UTC**: a conta inteira do Render foi marcada com `suspenders: ["billing"]` e o evento do `faren-api` mostra `actor: "Free Tier Usage Exceeded"`. Todos os 23 serviços da conta (`faren-api` + 22 bots de Discord/Telegram do mesmo dono) estão suspensos. `api.faren.com.br/api/healthz` → **HTTP 503**. `POST /v1/services/.../resume` da Render API retorna 400 (`"only services suspended by a user can be resumed"`) — suspensão por usage só pode ser revertida pelo dono da conta no dashboard. Postgres `faren-db` continua `available` (dados intactos), mas continua expirando em 2026-05-16. **Para nunca mais suspender**: opção mais barata é upgrade do `faren-api` pra Starter ($7/mês) + Postgres Starter ($7/mês) = ~$14/mês. Alternativas (migrar pra Fly.io+Neon, ou pra Replit Deployments) detalhadas em `CHANGES-2026-04-27-render-suspended.md`. **Ação requerida pelo dono da conta** — não dá pra resolver do Replit.
+- **✅ Render resolvido + migração pra Neon — 2026-04-27 ~14:30 UTC** (feito pelo dono): `faren-api` foi upgrado pra plano Starter ($7/mês) e saiu da suspensão. Em vez de pagar pelo Postgres do Render, o dono criou um projeto **Neon** (`faren-prod`, plano `scale`, pg18, aws-us-west-2), restaurou o schema completo + dados (27 users, 27 profiles, 271 views) e trocou o `DATABASE_URL` do Render pra apontar pro Neon. Postgres antigo do Render (`dpg-d7gjd1tckfvc73ftjvr0-a`) foi descomissionado. Backend voltou a responder normalmente (`api.faren.com.br/api/discover/trending` retorna dados ao vivo). Deploys autom. continuam ligados (último: `dep-d7nnfbpj2pic738npom0` `live`). R2 keys também já estão presentes nos env vars de prod do Render.
 
 ### Local env vars saved (shared environment, this workspace)
 The non-sensitive metadata IDs above are now exposed as shared env vars so any local script can use them without hardcoding: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_PUBLIC_URL`, `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_ACCOUNT_ID`, `RENDER_SERVICE_ID`, `RENDER_DB_ID`, `RENDER_OWNER_ID`, `GITHUB_OWNER`, `GITHUB_REPO`, `VITE_TURNSTILE_SITE_KEY`, `CACHE_RULESET_ID`. Plus the existing dev defaults: `ADMIN_LOGIN`, `ADMIN_PASSWORD`, `ADMIN_SECRET`, `ENABLE_BOT_BLOCKING=false`, `NODE_ENV=development`, `BASE_PATH=/`, `VITE_API_URL=https://faren-api-wn1z.onrender.com`, `CORS_ALLOWED_ORIGINS=*`.
 
-Sensitive values that exist as Replit Secrets: `GITHUB_TOKEN`, `RENDER_API_KEY`, `CLOUDFLARE_GLOBAL_API_KEY` + `EMAIL_CLOUDFLARE` (used as the X-Auth-Email/X-Auth-Key pair — full-account access by design), `SESSION_SECRET`, `PROD_DATABASE`, `DATABASE_URL` (Replit-managed local Postgres), `PG*` (local Postgres connection split), **`R2_ACCESS_KEY_ID`**, **`R2_SECRET_ACCESS_KEY`**, **`CLOUDFLARE_R2_TOKEN`** (R2 S3 keys salvas em 2026-04-26 — também aplicadas no Render). **Not present locally** but used in production: `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`, `ADMIN_SECRET` (prod value), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_PURGE_TOKEN`.
+Sensitive values that exist as Replit Secrets (atualizado 2026-04-27): `GITHUB_TOKEN`, `RENDER_API_KEY`, `CLOUDFLARE_GLOBAL_API_KEY` + `EMAIL_CLOUDFLARE` (X-Auth-Email/X-Auth-Key pair — acesso total à conta), `NEON_API_KEY` (acesso total à conta Neon), `NEON_DATABASE_URL` (connection string do banco de produção `faren-prod`), `SESSION_SECRET`, `DATABASE_URL` (Replit-managed local Postgres — sandbox de dev, NÃO é prod), `PG*` (split do Postgres local), `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_R2_TOKEN`. **Obsoleto** (pode apagar pelo painel de Secrets): `PROD_DATABASE` (apontava pro Render Postgres descomissionado, agora retorna SSL error). **Not present locally** but used in production: `RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`, `ADMIN_SECRET` (valor de prod), `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_PURGE_TOKEN` — todos podem ser lidos do Render via API se necessário.
+
+### Workspace local (Replit Agent — atualizado 2026-04-27)
+- **Workflows**: `API Server` (`PORT=8080 pnpm --filter @workspace/api-server run dev`, console) + `Faren Web` (`PORT=5000 pnpm --filter @workspace/faren run dev`, webview). Os dois rodando contra o **Postgres local do Replit** (não a R2 nem o Neon de prod) — schema completo já aplicado via `pnpm --filter @workspace/db run push`. Pra ler/escrever no Neon de prod do api-server local, basta trocar o `DATABASE_URL` em `userenv.development` pelo valor de `NEON_DATABASE_URL`.
+- O proxy `dev-proxy.mjs` (que apontava pra `api.faren.com.br`) **não está mais em uso** como workflow — preview do Replit agora roda o api-server real local.
+
+## Faren Visual Redesign — DONE 2026-04-27 ~16:00 UTC
+
+**Problema**: o Faren era visualmente idêntico ao guns.lol — mesma estrutura de tabs, mesmos botões cinza-com-borda, mesma sidebar lotada de "Em breve". Faltava identidade própria e os usuários escolhiam efeitos (partículas, cliques, cursor, fundo) **às cegas**, sem ver a aparência antes.
+
+**Solução**: padrão "card visual com preview ao vivo" aplicado a TODA escolha do dashboard. Cada opção (efeito, fonte, cor, plataforma social, badge, conexão) renderiza uma miniatura animada do efeito real + título + descrição + bullets de "Bom para"/"Atenção" + chip "Em uso"/"Escolher". Inspirado no padrão da aba Layout, agora replicado em TODA aba.
+
+### Componentes novos
+- **`artifacts/faren/src/components/edit/VisualOptionCard.tsx`** — card universal `preview + label + tagline + bestFor + tradeoffs + chip selecionado`. Exporta também:
+  - `SectionHeader` — título + subtítulo + slot direito
+  - `SliderCard` — input range com label, valor formatado e descrição
+  - `FarenGlyph` — estrela de 6 pontas em SVG puro (marca de identidade Faren, substitui o raio roxo do guns.lol)
+- **`artifacts/faren/src/components/edit/Previews.tsx`** — biblioteca de previews animados (todos via framer-motion, GPU-cheap):
+  - `ParticlePreview` — neve, chuva, sakura, estrelas, vagalumes, bolhas, raio (cada um anima de verdade)
+  - `ClickPreview` — cursor simulado clicando, fazendo spawn de glyph (hearts/stars/sparkles/explosions)
+  - `CursorPreview` — passa o mouse para sentir o cursor (suporta `url:` para personalizado)
+  - `BackgroundTypePreview` — mídia (gradientes + grid) vs cor sólida (3 swatches)
+  - `ColorPreview` — swatch grande com glow opcional + HEX em mono
+  - `FontPreview` — texto de exemplo na fonte real
+  - `BadgePreview` — chip do emblema renderizado igual aparece no perfil público
+  - `SocialPlatformPreview` — ícone grande circular com glow da cor da plataforma
+  - `TogglePreview` — switch animado on/off (usado em "mostrar visitas")
+  - `ConnectionPreview` — chip de conexão (Discord/Last.fm/Spotify) idêntico ao do perfil
+
+### Sidebar (`DashboardLayout.tsx`) — limpa
+**Antes**: 9 itens em 2 seções (Conta + sem-título), incluindo 3 "Em breve" (Premium, Image Host, Modelos) e dois links duplicados pra `/dashboard/edit`.
+**Depois**: 4 itens em 1 seção "Painel": Visão geral, Personalizar perfil, Links & Redes, Comunidade. `FarenGlyph` aparece ao lado do logo no topo. Removidos: stats/badges anchors duplicados, Premium/Host/Modelos.
+
+### Dashboard `/dashboard` (`pages/dashboard/index.tsx`) — reescrito
+- Hero card grande à esquerda mostrando o **perfil real** do usuário (avatar + nome + bio + strip de estatísticas Views/Links/Badges/UID), pintado com radial gradient da `accentColor` do próprio perfil.
+- KPI sidebar à direita com 3 cards (Visualizações totais, Aliases, Posição) — cada card pintado com o accent color do usuário.
+- Barra de conclusão com gradient `white → accentColor` e 5 passos clicáveis (avatar, bio, Discord, redes, 10 views) que linkam direto pro `/dashboard/edit`.
+- Sparkline de visitas dos últimos 7 dias usa o accent color (gradient + linha + área).
+- Top países como barras horizontais coloridas.
+- **Removido**: a antiga seção "Manage account" (era duplicata do sidebar Configurações).
+
+### Aba Tema (`edit.tsx`) — refatorada
+- "Tipo de fundo" → 2 `VisualOptionCard` (Mídia vs Cor sólida) com `BackgroundTypePreview`, cada um com bullets "Bom para" e "Atenção".
+- "Identidade cromática" → 2 cards com `ColorPreview` (Cor de detalhe + Cor do brilho), color picker embutido em cada card.
+- 3 `SliderCard` em grid (Opacidade do fundo, Desfoque, Borda do nome) com descrição textual.
+
+### Aba Efeitos — refatorada
+- "Partículas" → grid de `VisualOptionCard` 2-4 colunas com `ParticlePreview` animado (cada miniatura mostra neve/chuva/etc rolando de verdade).
+- "Reação ao clique" → grid 2-5 colunas com `ClickPreview` (cursor automático clica e spawna glyph).
+- "Estilo do cursor" → grid 2-4 com `CursorPreview` (passe o mouse pra sentir). Botão de upload de cursor próprio em card separado abaixo.
+
+### Aba Avançado — refatorada
+- "Contador de visitas" → 2 cards (Mostrar/Esconder) com `TogglePreview` animado.
+- "Conexões em tempo real" → 3 cards lado a lado (Discord/Last.fm/Spotify) com `ConnectionPreview` mostrando o chip ao vivo. O Spotify fica `disabled` com badge "Em breve".
+- Painéis de configuração de Discord/Last.fm logo abaixo, mantendo conectar/desconectar/toggles de avatar+presence.
+
+### Aba Links — refatorada
+- Lista de links atuais virou cards arredondados com ícone colorido em quadrado glow.
+- "Adicionar uma rede" → grid responsivo 2-5 colunas com `VisualOptionCard` + `SocialPlatformPreview` (ícone grande circular pintado da cor da plataforma). Ao selecionar, abre painel inline pintado da cor da plataforma com URL + botão Adicionar.
+
+### Aba Básico — emblemas refatorados
+- Seletor de badges virou grid 2-4 colunas com `VisualOptionCard` + `BadgePreview` mostrando o chip exatamente como aparece no perfil público. Painel "Criar emblema personalizado" mantido (emoji + nome + cor) com lista de chips removíveis.
+
+### Identidade Faren (vs guns.lol)
+- **Marca**: estrela de 6 pontas (`FarenGlyph`) substitui o raio purple do guns.lol — aparece no sidebar, no header do dashboard e no glow accent dos previews.
+- **Cor**: branco + accent color do usuário (vs roxo/preto do guns.lol). Glow sutil em vez de neon agressivo.
+- **Tipografia**: `tracking-[0.2em]` em uppercase em todos os labels, font-bold pesado em títulos, `font-mono tabular-nums` em valores numéricos.
+- **Cards**: `rounded-2xl` border `white/10` + bg `white/[0.015]`, com hover `y: -2` e selected `border-white/55 + shadow-white/18`.
+- **Layout**: grids responsivos (2/3/4/5 cols) em vez de listas verticais — usa o espaço todo da tela.
+
+### Commits
+- `ed5c7c2` (feat: visual redesign — VisualOptionCard + Previews + sidebar/dashboard/edit refactor) — pushado via GitHub Git Database REST API.

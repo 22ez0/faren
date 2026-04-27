@@ -6,6 +6,19 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import ProfileView from "@/components/ProfileView";
 import { ArrowLeft, Save, Plus, Trash2, GripVertical, Upload, X, Link as LinkIcon, Music, Image, ExternalLink, Eye } from "lucide-react";
+import { VisualOptionCard, SectionHeader, SliderCard, FarenGlyph } from "@/components/edit/VisualOptionCard";
+import {
+  ParticlePreview,
+  ClickPreview,
+  CursorPreview,
+  BackgroundTypePreview,
+  ColorPreview,
+  FontPreview,
+  BadgePreview,
+  SocialPlatformPreview,
+  TogglePreview,
+  ConnectionPreview,
+} from "@/components/edit/Previews";
 import {
   SiDiscord, SiSpotify, SiLastdotfm, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram,
   SiTiktok, SiSteam, SiKick, SiPatreon, SiSnapchat, SiReddit, SiPinterest, SiThreads,
@@ -1210,28 +1223,38 @@ export default function EditProfile() {
 
                 <div className="glow-line" />
 
-                <FieldRow label="Emblemas">
-                  <p className="text-xs text-white/30 mb-3">Escolha até 6 emblemas ativos. O verificado fica só para o painel de administração.</p>
-                  <div className="grid grid-cols-2 gap-1.5">
+                <div id="badges">
+                  <SectionHeader
+                    title="Emblemas"
+                    subtitle="Até 6 emblemas aparecem como chips coloridos abaixo do seu nome. Os personalizados podem ter qualquer cor e emoji."
+                    right={
+                      <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white">
+                        {form.badges.length}/6
+                      </span>
+                    }
+                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {BADGE_OPTIONS.map(badge => {
                       const active = form.badges.includes(badge.value);
+                      // Parse "emoji name" (e.g. "🔥 Fire") if format allows
+                      const m = badge.label.match(/^(\p{Extended_Pictographic}+)\s*(.+)$/u);
+                      const emoji = m ? m[1] : '✦';
+                      const name = m ? m[2] : badge.label;
                       return (
-                        <button
+                        <VisualOptionCard
                           key={badge.value}
+                          selected={active}
                           onClick={() => toggleBadge(badge.value)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs rounded-xl border transition-all duration-150"
-                          style={{
-                            backgroundColor: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                            borderColor: active ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.08)',
-                            color: active ? '#fff' : 'rgba(255,255,255,0.5)',
-                          }}
-                        >
-                          <span>{badge.label}</span>
-                        </button>
+                          preview={<BadgePreview emoji={emoji} label={name} />}
+                          label={name}
+                          previewAspect="1/1"
+                          compact
+                          data-testid={`badge-${badge.value}`}
+                        />
                       );
                     })}
                   </div>
-                  <div className="mt-4 p-3 border border-white/10 bg-white/[0.02] rounded-xl space-y-3">
+                  <div className="mt-5 p-4 border border-white/10 bg-white/[0.02] rounded-2xl space-y-3">
                     <p className="label-caps">Criar emblema personalizado</p>
                     <div className="grid grid-cols-[64px_1fr_44px] gap-2">
                       <StyledInput
@@ -1283,57 +1306,66 @@ export default function EditProfile() {
                       </div>
                     )}
                   </div>
-                </FieldRow>
+                </div>
               </motion.div>
             )}
 
             {/* ── THEME TAB ─────────────────────────────── */}
             {activeTab === 'Tema' && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <FieldRow label="Cor dos detalhes">
-                    <div className="flex gap-2">
-                      <input type="color" value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="w-10 h-9 rounded-xl border border-white/10 bg-transparent cursor-pointer" />
-                      <StyledInput value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="flex-1" />
-                    </div>
-                  </FieldRow>
-                  <FieldRow label="Cor do brilho">
-                    <div className="flex gap-2">
-                      <input type="color" value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="w-10 h-9 rounded-xl border border-white/10 bg-transparent cursor-pointer" />
-                      <StyledInput value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="flex-1" />
-                    </div>
-                  </FieldRow>
-                </div>
-
-                <div className="glow-line" />
-
-                <FieldRow label="Tipo de fundo">
-                  <div className="grid grid-cols-2 gap-1">
-                    {[{ value: 'image', label: 'Imagem/GIF/Vídeo' }, { value: 'color', label: 'Fundo sólido' }].map(type => (
-                      <button
-                        key={type.value}
-                        onClick={() => selectBackgroundType(type.value)}
-                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-xl border"
-                        style={{
-                          backgroundColor: form.backgroundType === type.value ? 'rgba(255,255,255,0.1)' : 'transparent',
-                          borderColor: form.backgroundType === type.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
-                          color: form.backgroundType === type.value ? '#fff' : 'rgba(255,255,255,0.4)',
-                        }}
-                      >
-                        {type.label}
-                      </button>
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-7">
+                {/* Background type — visual cards */}
+                <div>
+                  <SectionHeader
+                    title="Tipo de fundo"
+                    subtitle="Escolha o que fica atrás do seu perfil. Imagens com glow combinam melhor com efeitos; cores sólidas garantem contraste e velocidade."
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      {
+                        value: 'image',
+                        label: 'Mídia',
+                        tagline: 'Imagem, GIF ou vídeo em loop atrás do perfil.',
+                        bestFor: ['Quem quer um vibe forte', 'Combina com efeitos de partícula', 'Vídeos curtos em loop'],
+                        tradeoffs: ['Aumenta o tempo de carregamento', 'Pode brigar com a leitura do texto'],
+                      },
+                      {
+                        value: 'color',
+                        label: 'Cor sólida',
+                        tagline: 'Um fundo limpo e estável — todo o foco vai pro conteúdo.',
+                        bestFor: ['Visual minimalista', 'Carregamento instantâneo', 'Tipografia nítida'],
+                        tradeoffs: ['Menos personalidade', 'Pode parecer vazio sem efeitos'],
+                      },
+                    ].map(opt => (
+                      <VisualOptionCard
+                        key={opt.value}
+                        selected={form.backgroundType === opt.value}
+                        onClick={() => selectBackgroundType(opt.value)}
+                        preview={<BackgroundTypePreview kind={opt.value as 'image' | 'color'} />}
+                        label={opt.label}
+                        tagline={opt.tagline}
+                        bestFor={opt.bestFor}
+                        tradeoffs={opt.tradeoffs}
+                        data-testid={`bg-type-${opt.value}`}
+                      />
                     ))}
                   </div>
-                </FieldRow>
+                </div>
 
-                <FieldRow label={form.backgroundType === 'color' ? "Cor do fundo" : "Fundo (arquivo)"}>
+                {/* Background source */}
+                <div>
+                  <SectionHeader
+                    title={form.backgroundType === 'color' ? 'Cor do fundo' : 'Arquivo de fundo'}
+                    subtitle={form.backgroundType === 'color'
+                      ? 'Use o seletor ou digite um HEX. Tons escuros mantêm o contraste com texto branco.'
+                      : 'Aceita imagem, GIF ou vídeo. Vídeos ficam em loop silencioso atrás do conteúdo.'}
+                  />
                   {form.backgroundType === 'color' ? (
                     <div className="flex gap-2">
                       <input
                         type="color"
                         value={form.backgroundUrl?.startsWith('#') ? form.backgroundUrl : '#000000'}
                         onChange={e => set('backgroundUrl', e.target.value)}
-                        className="w-10 h-10 rounded-xl border border-white/10 bg-transparent cursor-pointer"
+                        className="w-12 h-12 rounded-xl border border-white/10 bg-transparent cursor-pointer"
                       />
                       <StyledInput
                         value={form.backgroundUrl?.startsWith('#') ? form.backgroundUrl : '#000000'}
@@ -1356,34 +1388,93 @@ export default function EditProfile() {
                       onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                     />
                   )}
-                  <p className="text-xs text-white/25 mt-1">
-                    Aceita imagem, GIF ou vídeo como fundo do perfil.
-                  </p>
-                </FieldRow>
+                </div>
 
-                <FieldRow label={`Opacidade do Fundo — ${form.backgroundOpacity}%`}>
-                  <input type="range" min="0" max="100" step="1" value={form.backgroundOpacity} onChange={e => set('backgroundOpacity', Number(e.target.value))} className="w-full accent-white" />
-                </FieldRow>
+                <div className="glow-line" />
 
-                <FieldRow label={`Desfoque do Fundo — ${form.backgroundBlur}px`}>
-                  <input type="range" min="0" max="20" step="1" value={form.backgroundBlur} onChange={e => set('backgroundBlur', Number(e.target.value))} className="w-full accent-white" />
-                </FieldRow>
-
-                <FieldRow label={`Borda do Nome — ${form.nameBorderOpacity === 0 ? 'desligada' : `${form.nameBorderOpacity}%`}`}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={form.nameBorderOpacity}
-                    onChange={e => set('nameBorderOpacity', Number(e.target.value))}
-                    className="w-full accent-white"
+                {/* Color identity — accent + glow as preview cards */}
+                <div>
+                  <SectionHeader
+                    title="Identidade cromática"
+                    subtitle="A cor de detalhe pinta links, bordas e barras. A cor do brilho domina o halo ao redor do avatar e do nome."
                   />
-                  <p className="text-xs text-white/25 mt-1">
-                    Controla a intensidade da borda cinza ao redor do nome no perfil. 0% remove totalmente.
-                  </p>
-                </FieldRow>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/[0.015]">
+                      <div className="aspect-[4/3]">
+                        <ColorPreview color={form.accentColor} />
+                      </div>
+                      <div className="p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white">Cor de detalhe</p>
+                        <p className="mt-2 text-xs text-white/45 leading-relaxed">Aplica em links ativos, sparkline e barras.</p>
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            type="color"
+                            value={form.accentColor}
+                            onChange={e => set('accentColor', e.target.value)}
+                            className="w-12 h-10 rounded-xl border border-white/10 bg-transparent cursor-pointer"
+                            data-testid="input-accent-color"
+                          />
+                          <StyledInput value={form.accentColor} onChange={e => set('accentColor', e.target.value)} className="flex-1 font-mono text-xs" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/[0.015]">
+                      <div className="aspect-[4/3]">
+                        <ColorPreview color={form.glowColor} glow />
+                      </div>
+                      <div className="p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white">Cor do brilho</p>
+                        <p className="mt-2 text-xs text-white/45 leading-relaxed">Halo ao redor do avatar e do título do perfil.</p>
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            type="color"
+                            value={form.glowColor}
+                            onChange={e => set('glowColor', e.target.value)}
+                            className="w-12 h-10 rounded-xl border border-white/10 bg-transparent cursor-pointer"
+                            data-testid="input-glow-color"
+                          />
+                          <StyledInput value={form.glowColor} onChange={e => set('glowColor', e.target.value)} className="flex-1 font-mono text-xs" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
+                <div className="glow-line" />
+
+                {/* Sliders */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <SliderCard
+                    label="Opacidade do fundo"
+                    value={form.backgroundOpacity}
+                    suffix="%"
+                    min={0}
+                    max={100}
+                    onChange={(v) => set('backgroundOpacity', v)}
+                    description="0% deixa o fundo invisível; 100% mostra a mídia em sua intensidade total."
+                    data-testid="slider-bg-opacity"
+                  />
+                  <SliderCard
+                    label="Desfoque do fundo"
+                    value={form.backgroundBlur}
+                    suffix="px"
+                    min={0}
+                    max={20}
+                    onChange={(v) => set('backgroundBlur', v)}
+                    description="Suaviza o fundo para destacar o texto. 4–8px funciona bem em fotos."
+                    data-testid="slider-bg-blur"
+                  />
+                  <SliderCard
+                    label="Borda do nome"
+                    value={form.nameBorderOpacity}
+                    suffix={form.nameBorderOpacity === 0 ? ' • desligada' : '%'}
+                    min={0}
+                    max={100}
+                    onChange={(v) => set('nameBorderOpacity', v)}
+                    description="Anel ao redor do título do perfil. 0% remove totalmente."
+                    data-testid="slider-name-border"
+                  />
+                </div>
               </motion.div>
             )}
 
@@ -1394,67 +1485,101 @@ export default function EditProfile() {
 
             {/* ── EFFECTS TAB ───────────────────────────── */}
             {activeTab === 'Efeitos' && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <FieldRow label="Efeito de Partículas">
-                  <div className="grid grid-cols-2 gap-1.5">
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-7">
+                {/* Particle effects — live previews */}
+                <div>
+                  <SectionHeader
+                    title="Partículas no fundo"
+                    subtitle="Movimento ambiente que enche a página inteira. Cada miniatura mostra exatamente como vai ficar — passe o mouse e veja a animação."
+                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {PARTICLE_OPTIONS.map(opt => (
-                      <button
+                      <VisualOptionCard
                         key={opt.value}
+                        selected={form.particleEffect === opt.value}
                         onClick={() => set('particleEffect', opt.value)}
-                        className="py-2.5 px-3 text-xs text-left font-semibold uppercase tracking-wider transition-all rounded-xl border"
-                        style={{
-                          backgroundColor: form.particleEffect === opt.value ? 'rgba(255,255,255,0.1)' : 'transparent',
-                          borderColor: form.particleEffect === opt.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
-                          color: form.particleEffect === opt.value ? '#fff' : 'rgba(255,255,255,0.4)',
-                        }}
-                      >
-                        {opt.label}
-                      </button>
+                        preview={<ParticlePreview kind={opt.value} />}
+                        label={opt.label}
+                        previewAspect="1/1"
+                        compact
+                        data-testid={`particle-${opt.value}`}
+                      />
                     ))}
                   </div>
-                </FieldRow>
+                </div>
 
                 <div className="glow-line" />
 
-                <FieldRow label="Efeito de Clique">
-                  <div className="grid grid-cols-2 gap-1.5">
+                {/* Click effects */}
+                <div>
+                  <SectionHeader
+                    title="Reação ao clique"
+                    subtitle="O que aparece quando o visitante clica em qualquer lugar do seu perfil. As miniaturas simulam um clique automático."
+                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     {CLICK_OPTIONS.map(opt => (
-                      <button
+                      <VisualOptionCard
                         key={opt.value}
+                        selected={form.clickEffect === opt.value}
                         onClick={() => set('clickEffect', opt.value)}
-                        className="py-2.5 px-3 text-xs text-left font-semibold uppercase tracking-wider transition-all rounded-xl border"
-                        style={{
-                          backgroundColor: form.clickEffect === opt.value ? 'rgba(255,255,255,0.1)' : 'transparent',
-                          borderColor: form.clickEffect === opt.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
-                          color: form.clickEffect === opt.value ? '#fff' : 'rgba(255,255,255,0.4)',
-                        }}
-                      >
-                        {opt.label}
-                      </button>
+                        preview={<ClickPreview kind={opt.value} />}
+                        label={opt.label}
+                        previewAspect="1/1"
+                        compact
+                        data-testid={`click-${opt.value}`}
+                      />
                     ))}
                   </div>
-                </FieldRow>
+                </div>
 
                 <div className="glow-line" />
 
-                <FieldRow label="Estilo do Cursor">
-                  <div className="grid grid-cols-2 gap-1.5 mb-3">
+                {/* Cursor — hover the preview to feel it */}
+                <div>
+                  <SectionHeader
+                    title="Estilo do cursor"
+                    subtitle="Trocar o cursor é a forma mais imediata de personalizar a sensação do perfil. Passe o mouse sobre cada card para sentir."
+                    right={
+                      form.cursorStyle?.startsWith('url:') ? (
+                        <button
+                          onClick={() => { set('cursorStyle', 'auto'); setCustomCursorDataUrl(''); }}
+                          className="text-[10px] uppercase tracking-[0.2em] font-semibold text-red-400/80 hover:text-red-300 px-3 py-1.5 rounded-full border border-red-500/30"
+                        >
+                          Remover personalizado
+                        </button>
+                      ) : null
+                    }
+                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {CURSOR_OPTIONS.map(opt => (
-                      <button
+                      <VisualOptionCard
                         key={opt.value}
+                        selected={form.cursorStyle === opt.value}
                         onClick={() => set('cursorStyle', opt.value)}
-                        className="py-2 text-xs font-semibold uppercase tracking-wider transition-all rounded-xl border"
-                        style={{
-                          backgroundColor: form.cursorStyle === opt.value ? 'rgba(255,255,255,0.1)' : 'transparent',
-                          borderColor: form.cursorStyle === opt.value ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
-                          color: form.cursorStyle === opt.value ? '#fff' : 'rgba(255,255,255,0.4)',
-                        }}
-                      >
-                        {opt.label}
-                      </button>
+                        preview={<CursorPreview kind={opt.value} />}
+                        label={opt.label}
+                        previewAspect="1/1"
+                        compact
+                        data-testid={`cursor-${opt.value}`}
+                      />
                     ))}
+                    {form.cursorStyle?.startsWith('url:') && (
+                      <VisualOptionCard
+                        selected
+                        preview={<CursorPreview kind={form.cursorStyle} customUrl={form.cursorStyle.slice(4)} />}
+                        label="Personalizado"
+                        previewAspect="1/1"
+                        compact
+                        data-testid="cursor-custom-active"
+                      />
+                    )}
                   </div>
-                  <div className="flex gap-2 items-center">
+
+                  <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-2xl border border-white/10 bg-white/[0.02]">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white">Subir cursor próprio</p>
+                      <p className="mt-1 text-[11px] text-white/45">PNG transparente fica perfeito. Tamanho ideal: 32×32px.</p>
+                    </div>
                     <FileUploadButton
                       onFile={(url) => {
                         setCustomCursorDataUrl(url);
@@ -1464,45 +1589,54 @@ export default function EditProfile() {
                       prefix="icons"
                       onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
                     >
-                      Cursor Personalizado
+                      Selecionar arquivo
                     </FileUploadButton>
-                    {form.cursorStyle?.startsWith('url:') && (
-                      <button
-                        onClick={() => { set('cursorStyle', 'auto'); setCustomCursorDataUrl(''); }}
-                        className="text-white/30 hover:text-red-400 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
-                  {form.cursorStyle?.startsWith('url:') && (
-                    <p className="text-xs text-white/30 mt-1">✓ Cursor personalizado ativo</p>
-                  )}
-                </FieldRow>
+                </div>
               </motion.div>
             )}
 
             {/* ── LINKS TAB ──────────────────────────────── */}
             {activeTab === 'Links' && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+              <motion.div id="links" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-7">
                 {/* Current links */}
                 {(profile as any)?.links?.length > 0 && (
                   <div>
-                    <p className="label-caps mb-3">Links Atuais</p>
-                    <div className="space-y-2">
+                    <SectionHeader
+                      title="Suas redes ativas"
+                      subtitle="Aparecem como botões circulares no perfil. Arraste para reordenar (em breve)."
+                      right={
+                        <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white">
+                          {(profile as any).links.length}
+                        </span>
+                      }
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {(profile as any).links.map((link: any) => {
                         const plat = SOCIAL_PLATFORMS.find(p => p.value === link.platform);
                         const Icon = plat?.icon || LinkIcon;
+                        const color = plat?.color || '#fff';
                         return (
-                          <div key={link.id} className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/8 rounded-xl">
-                            <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${plat?.color || '#fff'}20`, color: plat?.color || '#fff' }}>
-                              <Icon className="w-3.5 h-3.5" />
+                          <div
+                            key={link.id}
+                            className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/10 rounded-2xl group"
+                            data-testid={`link-${link.platform}`}
+                          >
+                            <div
+                              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: `${color}22`, color, border: `1px solid ${color}55` }}
+                            >
+                              <Icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold truncate">{link.label}</p>
-                              <p className="text-xs text-white/30 truncate">{link.url}</p>
+                              <p className="text-xs font-bold uppercase tracking-[0.15em] text-white truncate">{link.label}</p>
+                              <p className="text-[10px] text-white/40 truncate font-mono">{link.url}</p>
                             </div>
-                            <button onClick={() => handleDeleteLink(link.id)} className="text-white/20 hover:text-red-400 transition-colors flex-shrink-0">
+                            <button
+                              onClick={() => handleDeleteLink(link.id)}
+                              className="text-white/30 hover:text-red-400 transition-colors p-2"
+                              data-testid={`button-remove-link-${link.id}`}
+                            >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -1514,31 +1648,38 @@ export default function EditProfile() {
 
                 <div className="glow-line" />
 
-                {/* Add new link */}
+                {/* Add new link — visual platform picker */}
                 <div>
-                  <p className="label-caps mb-3">Adicionar Rede Social</p>
-                  <div className="grid grid-cols-6 gap-1.5 mb-4">
+                  <SectionHeader
+                    title="Adicionar uma rede"
+                    subtitle="Cada plataforma tem cor própria. Selecione um cartão para abrir o formulário."
+                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                     {SOCIAL_PLATFORMS.map(plat => {
-                      const Icon = plat.icon;
                       const isSelected = selectedPlatform === plat.value;
                       return (
-                        <button
+                        <VisualOptionCard
                           key={plat.value}
+                          selected={isSelected}
                           onClick={() => {
                             setSelectedPlatform(isSelected ? null : plat.value);
                             setNewLinkUrl('');
                             setNewLinkLabel('');
                           }}
-                          title={plat.label}
-                          className="aspect-square flex items-center justify-center rounded-xl border transition-all duration-150"
-                          style={{
-                            backgroundColor: isSelected ? `${plat.color}22` : 'rgba(255,255,255,0.03)',
-                            borderColor: isSelected ? `${plat.color}80` : 'rgba(255,255,255,0.08)',
-                            color: isSelected ? plat.color : 'rgba(255,255,255,0.4)',
-                          }}
-                        >
-                          <Icon className="w-4 h-4" />
-                        </button>
+                          preview={
+                            <SocialPlatformPreview
+                              Icon={plat.icon}
+                              color={plat.color}
+                              label={plat.label}
+                            />
+                          }
+                          label={plat.label}
+                          previewAspect="1/1"
+                          compact
+                          selectedLabel="Aberto"
+                          idleLabel="+"
+                          data-testid={`platform-${plat.value}`}
+                        />
                       );
                     })}
                   </div>
@@ -1549,11 +1690,27 @@ export default function EditProfile() {
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
-                        className="space-y-3 p-4 border border-white/10 rounded-xl bg-white/[0.02]"
+                        className="mt-5 space-y-3 p-5 border rounded-2xl"
+                        style={{
+                          background: `${selectedPlatformInfo.color}0d`,
+                          borderColor: `${selectedPlatformInfo.color}55`,
+                        }}
                       >
-                        <div className="flex items-center gap-2 mb-3">
-                          <selectedPlatformInfo.icon className="w-4 h-4" style={{ color: selectedPlatformInfo.color }} />
-                          <span className="text-sm font-semibold">{selectedPlatformInfo.label}</span>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center"
+                            style={{
+                              background: `${selectedPlatformInfo.color}26`,
+                              color: selectedPlatformInfo.color,
+                              border: `1px solid ${selectedPlatformInfo.color}55`,
+                            }}
+                          >
+                            <selectedPlatformInfo.icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold uppercase tracking-[0.18em] text-white">{selectedPlatformInfo.label}</p>
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-semibold">Adicionar ao perfil</p>
+                          </div>
                         </div>
                         <div>
                           <label className="label-caps block mb-1.5">URL</label>
@@ -1561,12 +1718,14 @@ export default function EditProfile() {
                             value={newLinkUrl}
                             onChange={e => setNewLinkUrl(e.target.value)}
                             placeholder={selectedPlatformInfo.placeholder}
+                            data-testid="input-new-link-url"
                           />
                         </div>
                         <button
                           onClick={handleAddLink}
                           disabled={!newLinkUrl.trim() || addLink.isPending}
                           className="btn-solid-white w-full py-2.5 text-xs disabled:opacity-50"
+                          data-testid="button-add-link"
                         >
                           {addLink.isPending ? 'Adicionando...' : 'Adicionar Link'}
                         </button>
@@ -1579,42 +1738,41 @@ export default function EditProfile() {
 
             {/* ── ADVANCED TAB ──────────────────────────── */}
             {activeTab === 'Avançado' && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <FieldRow label="Exibir Contador de Visitas">
-                  <button
-                    onClick={() => set('showViews', !form.showViews)}
-                    className="flex items-center gap-3 px-4 py-3 border rounded-xl transition-all text-sm w-full"
-                    style={{
-                      backgroundColor: form.showViews ? 'rgba(255,255,255,0.08)' : 'transparent',
-                      borderColor: form.showViews ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
-                      color: form.showViews ? '#fff' : 'rgba(255,255,255,0.4)',
-                    }}
-                  >
-                    <div
-                      className="w-10 h-5 rounded-full border relative transition-all"
-                      style={{
-                        backgroundColor: form.showViews ? '#fff' : 'transparent',
-                        borderColor: form.showViews ? '#fff' : 'rgba(255,255,255,0.2)',
-                      }}
-                    >
-                      <div
-                        className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
-                        style={{
-                          backgroundColor: form.showViews ? '#000' : 'rgba(255,255,255,0.5)',
-                          left: form.showViews ? '1.25rem' : '0.125rem',
-                        }}
-                      />
-                    </div>
-                    <span className="font-semibold uppercase tracking-wider text-xs">
-                      {form.showViews ? 'Visível' : 'Oculto'}
-                    </span>
-                  </button>
-                </FieldRow>
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-7">
+                {/* View counter visual toggle */}
+                <div>
+                  <SectionHeader
+                    title="Contador de visitas"
+                    subtitle="Mostrar ou esconder o número de pessoas que viram seu perfil. Esconder dá um ar mais limpo; mostrar funciona como prova social."
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <VisualOptionCard
+                      selected={form.showViews}
+                      onClick={() => set('showViews', true)}
+                      preview={<TogglePreview on iconOn={<Eye className="w-4 h-4" />} />}
+                      label="Mostrar visitas"
+                      tagline="O contador aparece logo abaixo do nome no perfil público."
+                      data-testid="views-on"
+                    />
+                    <VisualOptionCard
+                      selected={!form.showViews}
+                      onClick={() => set('showViews', false)}
+                      preview={<TogglePreview on={false} />}
+                      label="Esconder visitas"
+                      tagline="O número fica privado — só você vê pelo painel."
+                      data-testid="views-off"
+                    />
+                  </div>
+                </div>
 
                 <div className="glow-line" />
 
                 <div>
-                  <p className="label-caps mb-3">Música no Perfil</p>
+                  <SectionHeader
+                    title="Música no perfil"
+                    subtitle="A faixa toca em loop quando alguém abre seu perfil. Pode ser um arquivo, link Spotify ou SoundCloud."
+                  />
+                  <p className="label-caps mb-3">Origem da música</p>
                   <div className="grid grid-cols-4 gap-1 mb-3">
                     {[
                       { value: 'url', label: 'URL' },
@@ -1705,24 +1863,82 @@ export default function EditProfile() {
 
                 <div className="glow-line" />
 
-                <div className="p-4 border border-white/8 rounded-xl bg-white/[0.02]">
-                  <p className="label-caps mb-2">Integração com Discord</p>
-                  <p className="text-xs text-white/30 mb-3">
-                    Conecte via Lanyard para exibir status ao vivo, atividade e avatar no seu perfil.
+                {/* Connections — Discord + Last.fm + Spotify (preview cards) */}
+                <div>
+                  <SectionHeader
+                    title="Conexões em tempo real"
+                    subtitle="Mostre o que você está fazendo agora — status do Discord, música tocando no Last.fm. Aparece como um chip animado no perfil."
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <VisualOptionCard
+                      selected={!!(profile as any)?.discordConnected}
+                      preview={
+                        <ConnectionPreview
+                          Icon={SiDiscord}
+                          color="#5865F2"
+                          title={(profile as any)?.discordUsername || 'Discord'}
+                          subtitle={(profile as any)?.discordConnected ? 'Status ao vivo via Lanyard' : 'Conecte para exibir status'}
+                          connected={!!(profile as any)?.discordConnected}
+                        />
+                      }
+                      label="Discord"
+                      tagline={(profile as any)?.discordConnected ? 'Conectado e exibindo presence.' : 'Não conectado — chip fica oculto.'}
+                      data-testid="conn-discord"
+                    />
+                    <VisualOptionCard
+                      selected={!!((profile as any)?.musicConnected && (profile as any)?.musicService === 'lastfm')}
+                      preview={
+                        <ConnectionPreview
+                          Icon={SiLastdotfm}
+                          color="#D51007"
+                          title={(profile as any)?.musicUsername || 'Last.fm'}
+                          subtitle={(profile as any)?.musicConnected ? 'Tocando agora' : 'Conecte sua conta'}
+                          connected={!!(profile as any)?.musicConnected}
+                        />
+                      }
+                      label="Last.fm"
+                      tagline={(profile as any)?.musicConnected ? 'Música atual com arte do álbum.' : 'Não conectado — sem chip de música.'}
+                      data-testid="conn-lastfm"
+                    />
+                    <VisualOptionCard
+                      selected={false}
+                      disabled
+                      preview={
+                        <ConnectionPreview
+                          Icon={SiSpotify}
+                          color="#1DB954"
+                          title="Spotify"
+                          subtitle="Em breve"
+                          connected={false}
+                        />
+                      }
+                      label="Spotify"
+                      tagline="Disponível em breve."
+                      disabledNote="Em breve"
+                      data-testid="conn-spotify"
+                    />
+                  </div>
+                </div>
+
+                {/* Discord settings panel — only shown when relevant */}
+                <div className="p-5 border border-white/10 rounded-2xl bg-white/[0.02]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white mb-3">
+                    Configurar Discord
                   </p>
                   {(profile as any)?.discordConnected ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 p-2 border border-white/10 rounded-xl">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 border border-white/10 rounded-xl bg-black/40">
                         {(profile as any)?.discordAvatarUrl && (
-                          <img src={(profile as any).discordAvatarUrl} alt="" className="w-7 h-7 rounded-full flex-shrink-0" />
+                          <img src={(profile as any).discordAvatarUrl} alt="" className="w-9 h-9 rounded-full" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate">{(profile as any)?.discordUsername || 'Conectado'}</p>
-                          <p className="text-[10px] text-white/40">Discord · via Lanyard</p>
+                          <p className="text-xs font-semibold truncate text-white">{(profile as any)?.discordUsername || 'Conectado'}</p>
+                          <p className="text-[10px] text-white/40">via Lanyard</p>
                         </div>
                         <button
                           onClick={disconnectDiscord}
-                          className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-xl uppercase tracking-wider flex-shrink-0"
+                          className="px-3 py-1.5 text-[10px] text-red-400 border border-red-500/30 rounded-xl uppercase tracking-[0.15em] font-semibold"
+                          data-testid="button-discord-disconnect"
                         >
                           Desconectar
                         </button>
@@ -1730,85 +1946,87 @@ export default function EditProfile() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => set('showDiscordAvatar', !form.showDiscordAvatar)}
-                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-xl text-white/60"
+                          className="px-3 py-2 border border-white/10 hover:border-white/30 transition-colors text-[11px] uppercase tracking-[0.15em] rounded-xl text-white/70 font-semibold"
+                          data-testid="toggle-discord-avatar"
                         >
                           Avatar: {form.showDiscordAvatar ? 'sim' : 'não'}
                         </button>
                         <button
                           onClick={() => set('showDiscordPresence', !form.showDiscordPresence)}
-                          className="px-3 py-2 border border-white/10 text-xs uppercase tracking-wider rounded-xl text-white/60"
+                          className="px-3 py-2 border border-white/10 hover:border-white/30 transition-colors text-[11px] uppercase tracking-[0.15em] rounded-xl text-white/70 font-semibold"
+                          data-testid="toggle-discord-presence"
                         >
                           Status: {form.showDiscordPresence ? 'sim' : 'não'}
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex gap-2">
                         <input
                           value={discordUserIdInput}
                           onChange={e => setDiscordUserIdInput(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && connectDiscord()}
-                          placeholder="Seu Discord User ID (ex: 123456789...)"
+                          placeholder="Seu Discord User ID"
                           className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-xl font-mono"
+                          data-testid="input-discord-userid"
                         />
                         <button
                           onClick={connectDiscord}
                           disabled={discordConnecting || !discordUserIdInput.trim()}
                           className="btn-outline-white text-xs px-4 py-2 disabled:opacity-40"
+                          data-testid="button-discord-connect"
                         >
                           {discordConnecting ? '...' : 'Conectar'}
                         </button>
                       </div>
-                      <p className="text-[10px] text-white/20 leading-relaxed">
-                        Como obter seu User ID: Discord → Configurações → Avançado → ativar Modo Desenvolvedor → clique direito no seu nome → Copiar User ID.<br />
-                        Você precisa entrar no servidor do Lanyard: <span className="text-white/40">discord.gg/lanyard</span>
+                      <p className="text-[10px] text-white/30 leading-relaxed">
+                        <strong className="text-white/55">Como pegar o User ID:</strong> Discord → Configurações → Avançado → ative Modo Desenvolvedor → clique direito no seu nome → Copiar User ID. Entre no servidor <span className="text-white/55">discord.gg/lanyard</span>.
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="p-4 border border-white/8 rounded-xl bg-white/[0.02]">
-                  <p className="label-caps mb-2">Integração de Música</p>
-                  <p className="text-xs text-white/30 mb-2">
-                    Last.fm exibe a música que você está ouvindo ao vivo com arte do álbum.
+                {/* Last.fm settings */}
+                <div className="p-5 border border-white/10 rounded-2xl bg-white/[0.02]">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white mb-3">
+                    Configurar Last.fm
                   </p>
                   {(profile as any)?.musicConnected && (profile as any)?.musicService === 'lastfm' ? (
-                    <div className="flex items-center gap-2 p-2 border border-white/10 rounded-xl mb-2">
-                      <SiLastdotfm className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <div className="flex items-center gap-3 p-3 border border-white/10 rounded-xl bg-black/40">
+                      <SiLastdotfm className="w-5 h-5 text-red-400" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold truncate">{(profile as any)?.musicUsername || 'Conectado'}</p>
-                        <p className="text-[10px] text-white/40">Last.fm · ao vivo</p>
+                        <p className="text-xs font-semibold truncate text-white">{(profile as any)?.musicUsername}</p>
+                        <p className="text-[10px] text-white/40">Tocando ao vivo</p>
                       </div>
                       <button
                         onClick={disconnectLastfm}
-                        className="px-2 py-1 text-[10px] text-red-400 border border-red-500/30 rounded-xl uppercase tracking-wider flex-shrink-0"
+                        className="px-3 py-1.5 text-[10px] text-red-400 border border-red-500/30 rounded-xl uppercase tracking-[0.15em] font-semibold"
+                        data-testid="button-lastfm-disconnect"
                       >
                         Desconectar
                       </button>
                     </div>
                   ) : (
-                    <div className="flex gap-2 mb-2">
+                    <div className="flex gap-2">
                       <input
                         value={lastfmInput}
                         onChange={e => setLastfmInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && connectLastfm()}
                         placeholder="Seu usuário no Last.fm"
                         className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-xl"
+                        data-testid="input-lastfm-username"
                       />
                       <button
                         onClick={connectLastfm}
                         disabled={lastfmConnecting || !lastfmInput.trim()}
                         className="btn-outline-white text-xs px-4 py-2 disabled:opacity-40"
+                        data-testid="button-lastfm-connect"
                       >
-                        {lastfmConnecting ? '...' : 'Last.fm'}
+                        {lastfmConnecting ? '...' : 'Conectar'}
                       </button>
                     </div>
                   )}
-                  <button disabled className="btn-outline-white text-xs w-full py-2.5 opacity-30 cursor-not-allowed">
-                    <SiSpotify className="inline w-3.5 h-3.5 mr-1.5 text-green-400" />
-                    Spotify — Em breve
-                  </button>
                 </div>
               </motion.div>
             )}

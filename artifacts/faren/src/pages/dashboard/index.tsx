@@ -4,24 +4,20 @@ import { Link, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Eye,
-  Pencil,
   AtSign,
   Hash,
   Check,
   Circle,
   ArrowRight,
-  UserPen,
   Sparkles,
-  Settings as SettingsIcon,
-  Smartphone,
-  Monitor,
-  Tablet,
   Globe2,
+  ExternalLink,
+  Pencil,
 } from "lucide-react";
-import { SiDiscord } from "react-icons/si";
 import { useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { FarenGlyph, SectionHeader } from "@/components/edit/VisualOptionCard";
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -38,10 +34,14 @@ export default function Dashboard() {
 
   if (authLoading || !isAuthenticated) return null;
 
-  const username = profile?.username || user?.username || "—";
+  const username = (profile as any)?.username || user?.username || "—";
+  const displayName = (profile as any)?.displayName || username;
   const uid = user?.id ?? "—";
   const totalViews = analytics?.totalViews ?? 0;
   const viewsThisWeek = analytics?.viewsThisWeek ?? 0;
+  const accentColor = (profile as any)?.accentColor || "#ffffff";
+  const avatarUrl = (profile as any)?.avatarUrl || "";
+  const bio = (profile as any)?.bio || "";
 
   /* ── Profile completion ─────────────────────────────────── */
   const steps = useMemo(() => {
@@ -79,170 +79,221 @@ export default function Dashboard() {
     return { w, h, path, area };
   }, [viewsByDay]);
 
+  const initials = (displayName || username || "?").slice(0, 2).toUpperCase();
+  const linksCount = Array.isArray((profile as any)?.links) ? (profile as any).links.length : 0;
+  const badgesCount = Array.isArray((profile as any)?.badges) ? (profile as any).badges.length : 0;
+
   return (
     <DashboardLayout active="overview">
       {/* ── Title ───────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-[0.04em] uppercase">Visão geral da conta</h1>
-          <p className="mt-1 text-[10px] tracking-[0.25em] uppercase text-white/40 font-semibold">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-[0.04em] uppercase flex items-center gap-3">
+            <FarenGlyph size={20} className="text-white" />
+            Visão geral
+          </h1>
+          <p className="mt-1.5 text-[10px] tracking-[0.25em] uppercase text-white/40 font-semibold">
             faren.com.br/{username}
           </p>
         </div>
+        <Link
+          href="/dashboard/edit"
+          className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-white/90 transition-colors"
+          data-testid="link-edit-profile"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+          Editar perfil
+        </Link>
       </div>
 
-      {/* ── Top cards ───────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-10">
-        <OverviewCard
-          icon={<UserPen className="w-3.5 h-3.5" />}
-          label="Nome de usuário"
-          value={username}
-          subtitle="Alteração disponível agora"
-        />
-        <OverviewCard
-          icon={<AtSign className="w-3.5 h-3.5" />}
-          label="Aliases"
-          value={<span className="text-white/40">0 Aliases</span>}
-          subtitle="0 slots de alias restantes"
-        />
-        <OverviewCard
-          icon={<Hash className="w-3.5 h-3.5" />}
-          label="UID"
-          value={String(uid)}
-          subtitle="Entre os primeiros usuários"
-        />
-        <OverviewCard
-          icon={<Eye className="w-3.5 h-3.5" />}
-          label="Visualizações do perfil"
-          value={analyticsLoading ? <Skeleton className="h-7 w-16 bg-white/5" /> : totalViews.toLocaleString()}
-          subtitle={`+${viewsThisWeek} visualizações nos últimos 7 dias`}
-        />
-      </div>
-
-      {/* ── Middle: completion + manage account ─────────────── */}
+      {/* ── HERO: real profile preview + KPI sidebar ─────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
-        <div className="lg:col-span-2 border border-white/10 p-5 bg-white/[0.02] rounded-2xl">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">Conclusão do perfil</h2>
-            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white">{completionPct}% concluído</span>
-          </div>
-          <div className="h-2 bg-white/5 overflow-hidden rounded-full">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${completionPct}%` }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="h-full bg-white rounded-full"
-            />
+        {/* Live profile card */}
+        <div
+          className="lg:col-span-2 relative rounded-2xl border border-white/10 overflow-hidden min-h-[320px] bg-gradient-to-br from-zinc-900 via-black to-zinc-950"
+          data-testid="hero-profile-preview"
+        >
+          {/* Soft accent glow keyed off the user's accent color */}
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-50"
+            style={{
+              background: `radial-gradient(circle at 25% 20%, ${accentColor}33 0%, transparent 55%), radial-gradient(circle at 80% 90%, ${accentColor}1f 0%, transparent 55%)`,
+            }}
+          />
+          {/* Header strip */}
+          <div className="relative flex items-center justify-between px-5 py-3 border-b border-white/8 bg-black/30 backdrop-blur-sm">
+            <span className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-semibold">
+              Sua página pública
+            </span>
+            <a
+              href={`/${username}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors"
+              data-testid="link-open-profile"
+            >
+              Abrir <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
 
-          {completionPct < 100 && (
-            <p className="mt-4 text-[11px] tracking-[0.18em] uppercase text-white/50 font-semibold">
-              Seu perfil ainda não está completo
+          <div className="relative p-6 md:p-8 flex flex-col items-center text-center min-h-[260px] justify-center">
+            <div
+              className="w-24 h-24 rounded-full overflow-hidden border-2 flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-black/60"
+              style={{
+                borderColor: `${accentColor}66`,
+                background: `${accentColor}10`,
+                boxShadow: `0 0 36px ${accentColor}33`,
+              }}
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <p className="mt-4 text-xl md:text-2xl font-bold text-white">{displayName}</p>
+            <p className="mt-1 text-[11px] tracking-[0.2em] uppercase text-white/40 font-semibold">
+              @{username}
             </p>
-          )}
-          <p className="text-[11px] text-white/40 mt-1">
-            Complete seu perfil para deixá-lo mais visível e atrativo.
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {steps.map((s) => (
+            {bio && (
+              <p className="mt-4 text-sm text-white/70 max-w-md leading-relaxed">{bio}</p>
+            )}
+            {!bio && (
               <Link
-                key={s.key}
                 href="/dashboard/edit"
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors ${
-                  s.done
-                    ? "border-white/15 bg-white/[0.04] text-white"
-                    : "border-white/10 hover:border-white/30 hover:bg-white/[0.03] text-white/70 hover:text-white"
-                }`}
+                className="mt-4 text-[11px] tracking-[0.2em] uppercase text-white/40 hover:text-white transition-colors"
               >
-                {s.done ? (
-                  <Check className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-                ) : (
-                  <Circle className="w-3.5 h-3.5 text-white/40" />
-                )}
-                <span className="text-[12px] font-semibold tracking-[0.08em] uppercase">{s.label}</span>
-                <ArrowRight className="w-3 h-3 ml-auto text-white/30" />
+                + Adicionar uma bio
               </Link>
-            ))}
+            )}
+
+            {/* Stat strip */}
+            <div className="mt-6 flex items-center gap-6 text-center">
+              <Stat label="Views" value={totalViews.toLocaleString()} />
+              <Divider />
+              <Stat label="Links" value={String(linksCount)} />
+              <Divider />
+              <Stat label="Badges" value={String(badgesCount)} />
+              <Divider />
+              <Stat label="UID" value={String(uid)} />
+            </div>
           </div>
         </div>
 
-        {/* Manage account */}
-        <div className="border border-white/10 p-5 bg-white/[0.02] flex flex-col rounded-2xl">
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">Gerencie sua conta</h2>
-          <p className="text-[11px] text-white/40 mt-1">Altere seu e-mail, nome de usuário e mais.</p>
-          <div className="mt-4 flex flex-col gap-2">
-            <ManageButton href="/dashboard/edit" icon={<UserPen className="w-3.5 h-3.5" />} label="Alterar nome de usuário" />
-            <ManageButton href="/dashboard/edit" icon={<Pencil className="w-3.5 h-3.5" />} label="Alterar nome exibido" />
-            <ManageButton href="/dashboard/edit" icon={<Sparkles className="w-3.5 h-3.5" />} label="Gerenciar aliases" />
-            <ManageButton href="/dashboard/edit" icon={<SettingsIcon className="w-3.5 h-3.5" />} label="Configurações da conta" />
-          </div>
+        {/* KPI compact stack */}
+        <div className="flex flex-col gap-4">
+          <KpiCard
+            icon={<Eye className="w-3.5 h-3.5" />}
+            label="Visualizações totais"
+            value={analyticsLoading ? <Skeleton className="h-7 w-16 bg-white/5" /> : totalViews.toLocaleString()}
+            sub={`+${viewsThisWeek} nos últimos 7 dias`}
+            accent={accentColor}
+          />
+          <KpiCard
+            icon={<AtSign className="w-3.5 h-3.5" />}
+            label="Aliases livres"
+            value={<span className="text-white/45">0 / 0</span>}
+            sub="Disponível em planos futuros"
+            accent={accentColor}
+          />
+          <KpiCard
+            icon={<Hash className="w-3.5 h-3.5" />}
+            label="Sua posição"
+            value={`#${uid}`}
+            sub="Entre os primeiros usuários"
+            accent={accentColor}
+          />
+        </div>
+      </div>
 
-          <div className="mt-6">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">Conexões</h3>
-            <p className="text-[11px] text-white/40 mt-1">Vincule sua conta do Discord à Faren.</p>
-            <div className="mt-3">
-              {profile?.discordConnected ? (
-                <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-white/15 bg-white/[0.04]">
-                  <span className="flex items-center gap-2 text-[12px] font-semibold tracking-[0.08em] uppercase">
-                    <SiDiscord className="w-4 h-4" />
-                    Discord conectado
-                  </span>
-                  <Check className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-                </div>
+      {/* ── Completion ───────────────────────────────────────── */}
+      <div className="border border-white/10 p-5 md:p-6 bg-white/[0.02] rounded-2xl mb-10">
+        <SectionHeader
+          title="Conclusão do perfil"
+          subtitle="Cada item completo aumenta o quanto seu perfil aparece e converte visitantes."
+          right={
+            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white">
+              {completionPct}%
+            </span>
+          }
+        />
+        <div className="h-1.5 bg-white/5 overflow-hidden rounded-full">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${completionPct}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="h-full rounded-full"
+            style={{ background: `linear-gradient(90deg, #fff, ${accentColor})` }}
+          />
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {steps.map((s) => (
+            <Link
+              key={s.key}
+              href="/dashboard/edit"
+              data-testid={`step-${s.key}`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors ${
+                s.done
+                  ? "border-white/15 bg-white/[0.04] text-white"
+                  : "border-white/10 hover:border-white/30 hover:bg-white/[0.03] text-white/70 hover:text-white"
+              }`}
+            >
+              {s.done ? (
+                <Check className="w-3.5 h-3.5 text-white shrink-0" strokeWidth={2.5} />
               ) : (
-                <Link
-                  href="/dashboard/edit"
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/15 hover:border-white/40 hover:bg-white/[0.03] text-[12px] font-semibold tracking-[0.08em] uppercase transition-colors"
-                >
-                  <SiDiscord className="w-4 h-4" />
-                  Vincular Discord
-                  <ArrowRight className="w-3 h-3 ml-auto" />
-                </Link>
+                <Circle className="w-3.5 h-3.5 text-white/40 shrink-0" />
               )}
-            </div>
-          </div>
+              <span className="text-[12px] font-semibold tracking-[0.08em] uppercase">{s.label}</span>
+              <ArrowRight className="w-3 h-3 ml-auto text-white/30" />
+            </Link>
+          ))}
         </div>
       </div>
 
       {/* ── Stats: views chart + top countries ──────────────── */}
       <div id="stats" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 border border-white/10 p-5 bg-white/[0.02] rounded-2xl">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">
-              Visualizações nos últimos 7 dias
-            </h2>
-            <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white">
-              {viewsThisWeek.toLocaleString()}
-            </span>
-          </div>
+        <div className="lg:col-span-2 border border-white/10 p-5 md:p-6 bg-white/[0.02] rounded-2xl">
+          <SectionHeader
+            title="Visitas nos últimos 7 dias"
+            right={
+              <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-white">
+                {viewsThisWeek.toLocaleString()}
+              </span>
+            }
+          />
           {analyticsLoading ? (
             <Skeleton className="h-32 w-full bg-white/5" />
           ) : spark && viewsByDay.length > 0 ? (
             <svg viewBox={`0 0 ${spark.w} ${spark.h}`} className="w-full h-32" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="vSpark" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.25)" />
-                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                  <stop offset="0%" stopColor={`${accentColor}55`} />
+                  <stop offset="100%" stopColor={`${accentColor}00`} />
                 </linearGradient>
               </defs>
               <path d={spark.area} fill="url(#vSpark)" />
-              <path d={spark.path} fill="none" stroke="white" strokeWidth={1.4} />
+              <path d={spark.path} fill="none" stroke={accentColor} strokeWidth={1.4} />
             </svg>
           ) : (
-            <div className="h-32 flex items-center justify-center text-[11px] tracking-[0.2em] uppercase text-white/30">
-              Sem dados ainda
+            <div className="h-32 flex flex-col items-center justify-center text-center gap-2">
+              <Sparkles className="w-5 h-5 text-white/20" />
+              <p className="text-[11px] tracking-[0.2em] uppercase text-white/30 font-semibold">
+                Sem visitas ainda
+              </p>
+              <Link
+                href="/dashboard/edit"
+                className="text-[11px] text-white/55 hover:text-white underline underline-offset-4"
+              >
+                Compartilhe seu link para começar
+              </Link>
             </div>
           )}
-          <div className="mt-3 flex items-center justify-between text-[10px] tracking-[0.2em] uppercase text-white/30 font-semibold">
-            <span className="flex items-center gap-1.5"><Smartphone className="w-3 h-3" /> Mobile</span>
-            <span className="flex items-center gap-1.5"><Tablet className="w-3 h-3" /> Tablet</span>
-            <span className="flex items-center gap-1.5"><Monitor className="w-3 h-3" /> Desktop</span>
-          </div>
         </div>
 
-        <div className="border border-white/10 p-5 bg-white/[0.02] rounded-2xl">
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/70 mb-3">Principais países</h2>
+        <div className="border border-white/10 p-5 md:p-6 bg-white/[0.02] rounded-2xl">
+          <SectionHeader title="Principais países" />
           {analyticsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
@@ -265,7 +316,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="h-px bg-white/5">
-                      <div className="h-full bg-white/60" style={{ width: `${pct}%` }} />
+                      <div className="h-full" style={{ width: `${pct}%`, background: accentColor }} />
                     </div>
                   </div>
                 );
@@ -273,10 +324,10 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="py-10 text-center">
-              <p className="text-[10px] tracking-[0.22em] uppercase text-white/30 font-semibold">
-                Sem dados de localização
+              <Globe2 className="w-5 h-5 text-white/20 mx-auto" />
+              <p className="mt-2 text-[10px] tracking-[0.22em] uppercase text-white/30 font-semibold">
+                Sem dados ainda
               </p>
-              <p className="text-[11px] text-white/40 mt-2">Compartilhe seu perfil para começar a coletar dados.</p>
             </div>
           )}
         </div>
@@ -287,38 +338,47 @@ export default function Dashboard() {
 
 /* ── Sub-components ─────────────────────────────────────── */
 
-function OverviewCard({
-  icon,
-  label,
-  value,
-  subtitle,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: React.ReactNode;
-  subtitle: string;
-}) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-white/10 p-5 bg-white/[0.02] flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/50">{label}</p>
-        <span className="text-white/30">{icon}</span>
-      </div>
-      <div className="text-2xl md:text-3xl font-bold tracking-tight text-white">{value}</div>
-      <p className="text-[10px] tracking-[0.18em] uppercase text-white/30 font-semibold">{subtitle}</p>
+    <div>
+      <p className="text-lg md:text-xl font-bold text-white leading-none">{value}</p>
+      <p className="mt-1.5 text-[9px] tracking-[0.25em] uppercase text-white/40 font-semibold">
+        {label}
+      </p>
     </div>
   );
 }
 
-function ManageButton({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+function Divider() {
+  return <span aria-hidden className="w-px h-6 bg-white/10" />;
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  sub: string;
+  accent: string;
+}) {
   return (
-    <Link
-      href={href}
-      className="group flex items-center gap-3 px-3 py-2 border border-white/10 hover:border-white/30 hover:bg-white/[0.04] text-[12px] font-semibold tracking-[0.08em] uppercase text-white/80 hover:text-white transition-colors"
-    >
-      <span className="text-white/40 group-hover:text-white">{icon}</span>
-      {label}
-      <ArrowRight className="w-3 h-3 ml-auto text-white/30 group-hover:text-white" />
-    </Link>
+    <div className="relative border border-white/10 p-5 bg-white/[0.02] flex flex-col gap-2 rounded-2xl overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-30 pointer-events-none"
+        style={{ background: `radial-gradient(circle at 100% 0%, ${accent}1f 0%, transparent 60%)` }}
+      />
+      <div className="relative flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">{label}</p>
+        <span className="text-white/35">{icon}</span>
+      </div>
+      <div className="relative text-2xl font-bold tracking-tight text-white">{value}</div>
+      <p className="relative text-[10px] tracking-[0.18em] uppercase text-white/35 font-semibold">{sub}</p>
+    </div>
   );
 }

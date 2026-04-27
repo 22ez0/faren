@@ -2,14 +2,9 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutGrid,
-  BarChart3,
-  ShieldCheck,
-  Settings,
-  Palette,
+  Sparkles,
   Link2,
-  Crown,
-  Image as ImageIcon,
-  LayoutTemplate,
+  Users,
   HelpCircle,
   ExternalLink,
   Share2,
@@ -20,6 +15,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { FarenGlyph } from "@/components/edit/VisualOptionCard";
 
 type Item = {
   label: string;
@@ -33,7 +29,7 @@ type Item = {
 
 interface Props {
   children: ReactNode;
-  /** Active key like "overview" / "stats" / "badges" / "settings" / "personalize" / "links" / "premium" / "host" / "templates" */
+  /** Active key — "overview" / "personalize" / "links" / "comunidade" */
   active?: string;
 }
 
@@ -47,24 +43,16 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
   const initials = (user?.displayName || username || "?").slice(0, 2).toUpperCase();
   const profileUrl = username ? `https://faren.com.br/${username}` : "";
 
+  // Single-section sidebar — only what actually exists. No "soon" placeholders,
+  // no duplicate links to the same edit page.
   const sections: { title: string; items: (Item & { key: string })[] }[] = [
     {
-      title: "Conta",
+      title: "Painel",
       items: [
         { key: "overview", label: "Visão geral", icon: LayoutGrid, href: "/dashboard" },
-        { key: "stats", label: "Estatísticas", icon: BarChart3, href: "/dashboard#stats" },
-        { key: "badges", label: "Badges", icon: ShieldCheck, href: "/dashboard/edit#badges" },
-        { key: "settings", label: "Configurações", icon: Settings, href: "/dashboard/edit" },
-      ],
-    },
-    {
-      title: "",
-      items: [
-        { key: "personalize", label: "Personalizar", icon: Palette, href: "/dashboard/edit" },
-        { key: "links", label: "Links", icon: Link2, href: "/dashboard/edit#links" },
-        { key: "premium", label: "Premium", icon: Crown, href: "#", soon: true },
-        { key: "host", label: "Image Host", icon: ImageIcon, href: "#", soon: true },
-        { key: "templates", label: "Modelos", icon: LayoutTemplate, href: "#", soon: true },
+        { key: "personalize", label: "Personalizar perfil", icon: Sparkles, href: "/dashboard/edit" },
+        { key: "links", label: "Links & Redes", icon: Link2, href: "/dashboard/edit#links" },
+        { key: "comunidade", label: "Comunidade", icon: Users, href: "/dashboard/comunidade" },
       ],
     },
   ];
@@ -121,7 +109,8 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
         } md:translate-x-0 fixed md:sticky top-0 left-0 z-40 h-screen w-[260px] shrink-0 bg-zinc-950 md:bg-black border-r border-white/10 flex flex-col transition-transform`}
       >
         {/* Brand */}
-        <Link href="/" className="px-5 h-14 border-b border-white/10 flex items-center">
+        <Link href="/" className="px-5 h-14 border-b border-white/10 flex items-center gap-2.5">
+          <FarenGlyph size={14} className="text-white" />
           <span className="text-sm font-bold tracking-[0.28em] uppercase text-white">FAREN</span>
         </Link>
 
