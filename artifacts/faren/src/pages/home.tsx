@@ -3,15 +3,25 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles, getUserByUsername, getGetUserByUsernameQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Users, Heart, Volume2, VolumeX, Check, X, Loader2 } from "lucide-react";
+import { ArrowRight, Users, Heart, Volume2, VolumeX, Check, X, Loader2, LayoutDashboard, LogOut, User as UserIcon } from "lucide-react";
 import { ProfileCardMedia } from "@/components/ProfileCardMedia";
+import { useAuth } from "@/lib/auth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const RESERVED_USERNAMES = new Set(['keefaren','admin','administrator','api','dashboard','login','register','profile','settings','support','root','faren','keef','null','comunidade','community','explore','feed']);
 import heroVideo from "@assets/pinterest_884112970592536960_1776809417801.mp4";
 import heroAudioSrc from "@assets/Download_1776810133370.mp4";
 
 const PT = {
-  nav: { dashboard: "Dashboard", discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link" },
+  nav: { dashboard: "Dashboard", discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link", myProfile: "Meu perfil", logout: "Sair" },
   hero: { tag: "Plataforma de Perfil Personalizado", h1a: "SEU", h1b: "PERFIL", h1c: "EM TODO LUGAR", sub: "A plataforma de link na bio mais poderosa e personalizada. Status do Discord, música ao vivo, efeitos de partículas, fontes customizadas — totalmente seu.", btn1: "Criar seu perfil", btn2: "Explorar perfis" },
   features: [
     { title: "Discord ao Vivo", sub: "Status, atividade e avatar — tudo sincronizado em tempo real.", stat: "Rich Presence" },
@@ -27,7 +37,7 @@ const PT = {
 };
 
 const EN = {
-  nav: { dashboard: "Dashboard", discover: "Discover", login: "Login", cta: "Create Your Link" },
+  nav: { dashboard: "Dashboard", discover: "Discover", login: "Login", cta: "Create Your Link", myProfile: "My profile", logout: "Log out" },
   hero: { tag: "Custom Profile Platform", h1a: "YOUR", h1b: "PROFILE", h1c: "EVERYWHERE", sub: "The most powerful and customizable link-in-bio platform. Discord status, live music, particle effects, custom fonts — totally yours.", btn1: "Create your profile", btn2: "Explore profiles" },
   features: [
     { title: "Live Discord", sub: "Status, activity, and avatar — everything synced in real time.", stat: "Rich Presence" },
@@ -204,6 +214,8 @@ export default function Home() {
   };
 
   const t = lang === 'PT' ? PT : EN;
+  const { isAuthenticated, user, logout } = useAuth();
+  const initials = (user?.displayName || user?.username || '?').slice(0, 2).toUpperCase();
 
   const toggleLang = () => {
     const next = lang === 'PT' ? 'EN' : 'PT';
@@ -224,7 +236,9 @@ export default function Home() {
         <div className="flex items-center gap-4 md:gap-8 flex-wrap justify-end">
           <Link href="/dashboard" className="nav-link">{t.nav.dashboard}</Link>
           <Link href="/discover" className="nav-link">{t.nav.discover}</Link>
-          <Link href="/login" className="nav-link">{t.nav.login}</Link>
+          {!isAuthenticated && (
+            <Link href="/login" className="nav-link">{t.nav.login}</Link>
+          )}
           <button
             onClick={toggleLang}
             className="nav-link flex items-center gap-1.5 text-white/40 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-sm text-xs transition-all"
@@ -238,9 +252,58 @@ export default function Home() {
             />
             {lang === 'PT' ? 'PT' : 'EN'}
           </button>
-          <Link href="/register">
-            <span className="btn-outline-white text-xs">{t.nav.cta}</span>
-          </Link>
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-2 rounded-full border border-white/15 hover:border-white/40 pl-1 pr-3 py-1 transition-colors"
+                  aria-label={user?.username || 'Account'}
+                >
+                  <Avatar className="w-7 h-7">
+                    {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.username} /> : null}
+                    <AvatarFallback className="bg-white/10 text-white text-[10px] font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-[11px] font-semibold tracking-[0.15em] uppercase text-white/80">
+                    {user?.username}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-black/90 border-white/10 text-white backdrop-blur-md">
+                <DropdownMenuLabel className="text-white/50 text-[10px] tracking-[0.2em] uppercase font-semibold">
+                  @{user?.username}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    {t.nav.dashboard}
+                  </Link>
+                </DropdownMenuItem>
+                {user?.username && (
+                  <DropdownMenuItem asChild className="cursor-pointer focus:bg-white/10 focus:text-white">
+                    <Link href={`/${user.username}`}>
+                      <UserIcon className="w-4 h-4 mr-2" />
+                      {t.nav.myProfile}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem
+                  onSelect={() => logout()}
+                  className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {t.nav.logout}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link href="/register">
+              <span className="btn-outline-white text-xs">{t.nav.cta}</span>
+            </Link>
+          )}
         </div>
       </nav>
 
