@@ -11,7 +11,7 @@ import heroVideo from "@assets/pinterest_884112970592536960_1776809417801.mp4";
 import heroAudioSrc from "@assets/Download_1776810133370.mp4";
 
 const PT = {
-  nav: { discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link" },
+  nav: { dashboard: "Dashboard", discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link" },
   hero: { tag: "Plataforma de Perfil Personalizado", h1a: "SEU", h1b: "PERFIL", h1c: "EM TODO LUGAR", sub: "A plataforma de link na bio mais poderosa e personalizada. Status do Discord, música ao vivo, efeitos de partículas, fontes customizadas — totalmente seu.", btn1: "Criar seu perfil", btn2: "Explorar perfis" },
   features: [
     { title: "Discord ao Vivo", sub: "Status, atividade e avatar — tudo sincronizado em tempo real.", stat: "Rich Presence" },
@@ -27,7 +27,7 @@ const PT = {
 };
 
 const EN = {
-  nav: { discover: "Discover", login: "Login", cta: "Create Your Link" },
+  nav: { dashboard: "Dashboard", discover: "Discover", login: "Login", cta: "Create Your Link" },
   hero: { tag: "Custom Profile Platform", h1a: "YOUR", h1b: "PROFILE", h1c: "EVERYWHERE", sub: "The most powerful and customizable link-in-bio platform. Discord status, live music, particle effects, custom fonts — totally yours.", btn1: "Create your profile", btn2: "Explore profiles" },
   features: [
     { title: "Live Discord", sub: "Status, activity, and avatar — everything synced in real time.", stat: "Rich Presence" },
@@ -222,6 +222,7 @@ export default function Home() {
           </span>
         </Link>
         <div className="flex items-center gap-4 md:gap-8 flex-wrap justify-end">
+          <Link href="/dashboard" className="nav-link">{t.nav.dashboard}</Link>
           <Link href="/discover" className="nav-link">{t.nav.discover}</Link>
           <Link href="/login" className="nav-link">{t.nav.login}</Link>
           <button
