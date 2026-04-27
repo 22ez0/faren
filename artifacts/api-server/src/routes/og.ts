@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable, profilesTable } from "@workspace/db";
-import { eq, ilike } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -31,9 +31,14 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
 
   try {
     const [user] = await db
-      .select({ id: usersTable.id, username: usersTable.username, displayName: usersTable.displayName })
+      .select({
+        id: usersTable.id,
+        username: usersTable.username,
+        displayName: usersTable.displayName,
+        avatarUrl: usersTable.avatarUrl,
+      })
       .from(usersTable)
-      .where(ilike(usersTable.username, rawUsername))
+      .where(eq(usersTable.username, rawUsername))
       .limit(1);
 
     if (!user) {
@@ -42,15 +47,23 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
     }
 
     const [profile] = await db
-      .select({ avatarUrl: profilesTable.avatarUrl, backgroundUrl: profilesTable.backgroundUrl, bio: profilesTable.bio, accentColor: profilesTable.accentColor, badges: profilesTable.badges })
+      .select({
+        backgroundUrl: profilesTable.backgroundUrl,
+        bio: profilesTable.bio,
+        accentColor: profilesTable.accentColor,
+        badges: profilesTable.badges,
+      })
       .from(profilesTable)
       .where(eq(profilesTable.userId, user.id))
       .limit(1);
 
     const displayName = user.displayName || user.username;
     const bio = (profile?.bio || `Veja o perfil de @${user.username} na Faren`).slice(0, 200);
-    const avatarUrl = profile?.avatarUrl && !profile.avatarUrl.startsWith("data:") ? profile.avatarUrl : DEFAULT_IMAGE;
-    const backgroundUrl = profile?.backgroundUrl && !profile.backgroundUrl.startsWith("data:") ? profile.backgroundUrl : null;
+    const avatarUrl = user.avatarUrl && !user.avatarUrl.startsWith("data:") ? user.avatarUrl : DEFAULT_IMAGE;
+    const rawBg = profile?.backgroundUrl;
+    const isUsableImage = (u: string | null | undefined) =>
+      !!u && !u.startsWith("data:") && !/\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
+    const backgroundUrl = isUsableImage(rawBg) ? rawBg! : null;
     const profileUrl = `${SITE_URL}/${user.username}`;
     const accentColor = profile?.accentColor || "#ffffff";
     const ogImageUrl = backgroundUrl || avatarUrl || DEFAULT_IMAGE;
@@ -111,7 +124,8 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
   </div>
 </body>
 </html>`);
-  } catch {
+  } catch (err) {
+    console.error("[og] failed to render profile page:", err instanceof Error ? err.message : err);
     res.redirect(302, SITE_URL);
   }
 }
