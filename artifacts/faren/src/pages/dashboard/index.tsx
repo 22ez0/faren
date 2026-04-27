@@ -17,7 +17,7 @@ import {
 import { useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { FarenGlyph, SectionHeader } from "@/components/edit/VisualOptionCard";
+import { SectionHeader } from "@/components/edit/VisualOptionCard";
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -88,8 +88,7 @@ export default function Dashboard() {
       {/* ── Title ───────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-[0.04em] uppercase flex items-center gap-3">
-            <FarenGlyph size={20} className="text-white" />
+          <h1 className="text-2xl md:text-3xl font-bold tracking-[0.04em] uppercase">
             Visão geral
           </h1>
           <p className="mt-1.5 text-[10px] tracking-[0.25em] uppercase text-white/40 font-semibold">
