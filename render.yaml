@@ -1,10 +1,33 @@
+# Faren API — Render Blueprint (multi-account ready)
+#
+# This blueprint is deployed to MULTIPLE Render accounts (rotation strategy).
+# All accounts run the SAME service backed by a SHARED Neon Postgres.
+# The Cloudflare Worker rotates between the resulting URLs (failover on 5xx).
+#
+# IMPORTANT: When applying this blueprint to a new Render account, the
+# following env vars must be set manually in the Render dashboard
+# (Service → Environment) — they are intentionally not committed because
+# (a) they are secrets, and (b) they MUST be identical across ALL accounts
+# so that JWT/session tokens issued by backend A can be verified by backend B.
+#
+#   DATABASE_URL          → Neon pooled connection string (same for all accounts)
+#   SESSION_SECRET        → 44-byte secret (same for all accounts)
+#   ADMIN_SECRET          → 44-byte secret (same for all accounts)
+#   ADMIN_PASSWORD        → bcrypt of admin password
+#   RESEND_API_KEY        → Resend.com API key
+#   TURNSTILE_SECRET_KEY  → Cloudflare Turnstile secret
+#   R2_ACCESS_KEY_ID      → Cloudflare R2 access key
+#   R2_SECRET_ACCESS_KEY  → Cloudflare R2 secret
+#
+# Use scripts/render-fanout.mjs to bulk-set these across all 10 accounts.
+
 services:
   - type: web
     name: faren-api
     runtime: node
     region: oregon
     plan: free
-    buildCommand: npm install -g pnpm@10 && pnpm install --frozen-lockfile && pnpm --filter @workspace/db run push && pnpm --filter @workspace/api-server run build
+    buildCommand: npm install -g pnpm@10 && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
     startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
     healthCheckPath: /api/healthz
     autoDeploy: true
@@ -13,20 +36,22 @@ services:
         value: production
       - key: PORT
         value: 10000
+      # Database — Neon Postgres (shared across all Render accounts)
       - key: DATABASE_URL
-        fromDatabase:
-          name: faren-db
-          property: connectionString
+        sync: false
+      # Session & admin (must be SAME across all accounts for token compatibility)
       - key: SESSION_SECRET
-        generateValue: true
+        sync: false
       - key: ADMIN_SECRET
-        generateValue: true
+        sync: false
       - key: ADMIN_LOGIN
         value: keefaren
       - key: ADMIN_PASSWORD
         sync: false
+      # CORS
       - key: CORS_ALLOWED_ORIGINS
         value: https://faren.com.br,https://www.faren.com.br
+      # Rate limiting
       - key: RATE_LIMIT_WINDOW_MS
         value: "60000"
       - key: RATE_LIMIT_MAX
@@ -38,14 +63,10 @@ services:
         value: Faren <no-reply@faren.com.br>
       - key: RESEND_API_KEY
         sync: false
-      # Cloudflare Turnstile (anti-bot challenge on signup/login)
+      # Cloudflare Turnstile
       - key: TURNSTILE_SECRET_KEY
         sync: false
-      # Cloudflare R2 (media uploads)
-      # NOTE: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY must be created manually
-      # in the Cloudflare dashboard (R2 → Manage API Tokens → Create Token,
-      # permission "Object Read and Write" scoped to the faren-media bucket).
-      # Set them as Render env vars (sync:false).
+      # Cloudflare R2 (shared bucket — same for all accounts)
       - key: R2_ACCOUNT_ID
         value: 5a9a17dc69ada45f32c4aa36d4e8fdd9
       - key: R2_BUCKET
@@ -56,10 +77,3 @@ services:
         sync: false
       - key: R2_SECRET_ACCESS_KEY
         sync: false
-
-databases:
-  - name: faren-db
-    region: oregon
-    plan: free
-    databaseName: faren
-    user: faren
