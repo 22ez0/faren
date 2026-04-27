@@ -50,8 +50,6 @@ export function DashboardLayout({ children, active = "overview" }: Props) {
       title: "Painel",
       items: [
         { key: "overview", label: "Visão geral", icon: LayoutGrid, href: "/dashboard" },
-        { key: "personalize", label: "Personalizar perfil", icon: Sparkles, href: "/dashboard/edit" },
-        { key: "links", label: "Links & Redes", icon: Link2, href: "/dashboard/edit#links" },
         { key: "comunidade", label: "Comunidade", icon: Users, href: "/dashboard/comunidade" },
       ],
     },
