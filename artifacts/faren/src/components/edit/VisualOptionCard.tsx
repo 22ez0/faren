@@ -167,6 +167,101 @@ export function VisualOptionCard({
 }
 
 /**
+ * OptionChip — compact, no-preview selectable chip used everywhere
+ * outside the Layout tab. Single source of truth for "pick one of N"
+ * controls (badges, particles, click effects, cursors, social platforms,
+ * binary toggles, connections). Keeps the dashboard calm: only Layout
+ * keeps the big visual previews.
+ */
+export interface OptionChipProps {
+  selected?: boolean;
+  onClick?: () => void;
+  /** Small leading element: emoji, lucide icon, brand icon, color dot. */
+  icon?: ReactNode;
+  /** Main label (rendered uppercase). */
+  label: string;
+  /** Optional small text on the right (status, count, hint). */
+  sub?: string;
+  /** Optional accent color used for the selected border / icon tint. */
+  color?: string;
+  disabled?: boolean;
+  disabledNote?: string;
+  /** Render as a wider row (label + sub on second line). */
+  row?: boolean;
+  /** Optional second-line description (only shown when row=true). */
+  description?: ReactNode;
+  "data-testid"?: string;
+}
+
+export function OptionChip({
+  selected = false,
+  onClick,
+  icon,
+  label,
+  sub,
+  color,
+  disabled = false,
+  disabledNote = "Em breve",
+  row = false,
+  description,
+  ...rest
+}: OptionChipProps) {
+  const accent = color || "rgba(255,255,255,0.55)";
+  const tintBg = color ? `${color}1f` : "rgba(255,255,255,0.06)";
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      data-testid={rest["data-testid"]}
+      className={`group relative flex w-full text-left rounded-xl border transition-colors disabled:cursor-not-allowed ${
+        row ? "items-start gap-3 px-3.5 py-3" : "items-center gap-2.5 px-3 py-2.5"
+      }`}
+      style={{
+        backgroundColor: selected ? tintBg : "rgba(255,255,255,0.02)",
+        borderColor: selected ? accent : "rgba(255,255,255,0.08)",
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      {icon && (
+        <span
+          className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg"
+          style={{
+            backgroundColor: color ? `${color}26` : "rgba(255,255,255,0.06)",
+            color: color || "rgba(255,255,255,0.85)",
+          }}
+        >
+          {icon}
+        </span>
+      )}
+      <span className={`min-w-0 flex-1 ${row ? "" : "flex items-center gap-2"}`}>
+        <span
+          className="block truncate text-[11px] font-bold uppercase tracking-[0.16em]"
+          style={{ color: selected ? "#fff" : "rgba(255,255,255,0.7)" }}
+        >
+          {label}
+        </span>
+        {row && description && (
+          <span className="mt-1 block text-[11px] text-white/40 leading-snug">
+            {description}
+          </span>
+        )}
+      </span>
+      {sub && !row && (
+        <span className="shrink-0 text-[10px] font-mono text-white/35">{sub}</span>
+      )}
+      {disabled ? (
+        <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.22em] text-white/45 border border-white/15 rounded-full px-2 py-0.5">
+          {disabledNote}
+        </span>
+      ) : selected ? (
+        <Check className="w-3.5 h-3.5 shrink-0 text-white" strokeWidth={3} />
+      ) : null}
+    </button>
+  );
+}
+
+/**
  * Tiny shared section header used everywhere in the dashboard.
  */
 export function SectionHeader({

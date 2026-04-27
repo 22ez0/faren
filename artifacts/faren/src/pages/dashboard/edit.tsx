@@ -6,19 +6,8 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import ProfileView from "@/components/ProfileView";
 import { ArrowLeft, Save, Plus, Trash2, GripVertical, Upload, X, Link as LinkIcon, Music, Image, ExternalLink, Eye } from "lucide-react";
-import { VisualOptionCard, SectionHeader, SliderCard, FarenGlyph } from "@/components/edit/VisualOptionCard";
-import {
-  ParticlePreview,
-  ClickPreview,
-  CursorPreview,
-  BackgroundTypePreview,
-  ColorPreview,
-  FontPreview,
-  BadgePreview,
-  SocialPlatformPreview,
-  TogglePreview,
-  ConnectionPreview,
-} from "@/components/edit/Previews";
+import { SectionHeader, SliderCard, OptionChip } from "@/components/edit/VisualOptionCard";
+import { ColorPreview } from "@/components/edit/Previews";
 import {
   SiDiscord, SiSpotify, SiLastdotfm, SiGithub, SiX, SiYoutube, SiTwitch, SiInstagram,
   SiTiktok, SiSteam, SiKick, SiPatreon, SiSnapchat, SiReddit, SiPinterest, SiThreads,
@@ -1233,22 +1222,19 @@ export default function EditProfile() {
                       </span>
                     }
                   />
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {BADGE_OPTIONS.map(badge => {
                       const active = form.badges.includes(badge.value);
-                      // Parse "emoji name" (e.g. "🔥 Fire") if format allows
                       const m = badge.label.match(/^(\p{Extended_Pictographic}+)\s*(.+)$/u);
                       const emoji = m ? m[1] : '✦';
                       const name = m ? m[2] : badge.label;
                       return (
-                        <VisualOptionCard
+                        <OptionChip
                           key={badge.value}
                           selected={active}
                           onClick={() => toggleBadge(badge.value)}
-                          preview={<BadgePreview emoji={emoji} label={name} />}
+                          icon={<span className="text-base leading-none">{emoji}</span>}
                           label={name}
-                          previewAspect="1/1"
-                          compact
                           data-testid={`badge-${badge.value}`}
                         />
                       );
@@ -1319,32 +1305,29 @@ export default function EditProfile() {
                     title="Tipo de fundo"
                     subtitle="Escolha o que fica atrás do seu perfil. Imagens com glow combinam melhor com efeitos; cores sólidas garantem contraste e velocidade."
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
                       {
                         value: 'image',
                         label: 'Mídia',
-                        tagline: 'Imagem, GIF ou vídeo em loop atrás do perfil.',
-                        bestFor: ['Quem quer um vibe forte', 'Combina com efeitos de partícula', 'Vídeos curtos em loop'],
-                        tradeoffs: ['Aumenta o tempo de carregamento', 'Pode brigar com a leitura do texto'],
+                        icon: <Image className="w-3.5 h-3.5" />,
+                        description: 'Imagem, GIF ou vídeo em loop atrás do perfil.',
                       },
                       {
                         value: 'color',
                         label: 'Cor sólida',
-                        tagline: 'Um fundo limpo e estável — todo o foco vai pro conteúdo.',
-                        bestFor: ['Visual minimalista', 'Carregamento instantâneo', 'Tipografia nítida'],
-                        tradeoffs: ['Menos personalidade', 'Pode parecer vazio sem efeitos'],
+                        icon: <span className="block w-3 h-3 rounded-sm bg-white" />,
+                        description: 'Fundo limpo e estável — todo o foco vai pro conteúdo.',
                       },
                     ].map(opt => (
-                      <VisualOptionCard
+                      <OptionChip
                         key={opt.value}
                         selected={form.backgroundType === opt.value}
                         onClick={() => selectBackgroundType(opt.value)}
-                        preview={<BackgroundTypePreview kind={opt.value as 'image' | 'color'} />}
+                        icon={opt.icon}
                         label={opt.label}
-                        tagline={opt.tagline}
-                        bestFor={opt.bestFor}
-                        tradeoffs={opt.tradeoffs}
+                        row
+                        description={opt.description}
                         data-testid={`bg-type-${opt.value}`}
                       />
                     ))}
@@ -1490,18 +1473,15 @@ export default function EditProfile() {
                 <div>
                   <SectionHeader
                     title="Partículas no fundo"
-                    subtitle="Movimento ambiente que enche a página inteira. Cada miniatura mostra exatamente como vai ficar — passe o mouse e veja a animação."
+                    subtitle="Movimento ambiente que enche a página inteira. Selecione e veja o efeito aplicado direto no perfil."
                   />
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {PARTICLE_OPTIONS.map(opt => (
-                      <VisualOptionCard
+                      <OptionChip
                         key={opt.value}
                         selected={form.particleEffect === opt.value}
                         onClick={() => set('particleEffect', opt.value)}
-                        preview={<ParticlePreview kind={opt.value} />}
                         label={opt.label}
-                        previewAspect="1/1"
-                        compact
                         data-testid={`particle-${opt.value}`}
                       />
                     ))}
@@ -1514,18 +1494,15 @@ export default function EditProfile() {
                 <div>
                   <SectionHeader
                     title="Reação ao clique"
-                    subtitle="O que aparece quando o visitante clica em qualquer lugar do seu perfil. As miniaturas simulam um clique automático."
+                    subtitle="O que aparece quando o visitante clica em qualquer lugar do seu perfil."
                   />
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {CLICK_OPTIONS.map(opt => (
-                      <VisualOptionCard
+                      <OptionChip
                         key={opt.value}
                         selected={form.clickEffect === opt.value}
                         onClick={() => set('clickEffect', opt.value)}
-                        preview={<ClickPreview kind={opt.value} />}
                         label={opt.label}
-                        previewAspect="1/1"
-                        compact
                         data-testid={`click-${opt.value}`}
                       />
                     ))}
@@ -1538,7 +1515,7 @@ export default function EditProfile() {
                 <div>
                   <SectionHeader
                     title="Estilo do cursor"
-                    subtitle="Trocar o cursor é a forma mais imediata de personalizar a sensação do perfil. Passe o mouse sobre cada card para sentir."
+                    subtitle="Trocar o cursor é a forma mais imediata de personalizar a sensação do perfil."
                     right={
                       form.cursorStyle?.startsWith('url:') ? (
                         <button
@@ -1550,26 +1527,20 @@ export default function EditProfile() {
                       ) : null
                     }
                   />
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {CURSOR_OPTIONS.map(opt => (
-                      <VisualOptionCard
+                      <OptionChip
                         key={opt.value}
                         selected={form.cursorStyle === opt.value}
                         onClick={() => set('cursorStyle', opt.value)}
-                        preview={<CursorPreview kind={opt.value} />}
                         label={opt.label}
-                        previewAspect="1/1"
-                        compact
                         data-testid={`cursor-${opt.value}`}
                       />
                     ))}
                     {form.cursorStyle?.startsWith('url:') && (
-                      <VisualOptionCard
+                      <OptionChip
                         selected
-                        preview={<CursorPreview kind={form.cursorStyle} customUrl={form.cursorStyle.slice(4)} />}
                         label="Personalizado"
-                        previewAspect="1/1"
-                        compact
                         data-testid="cursor-custom-active"
                       />
                     )}
@@ -1652,13 +1623,14 @@ export default function EditProfile() {
                 <div>
                   <SectionHeader
                     title="Adicionar uma rede"
-                    subtitle="Cada plataforma tem cor própria. Selecione um cartão para abrir o formulário."
+                    subtitle="Selecione uma rede para abrir o formulário de cadastro."
                   />
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                     {SOCIAL_PLATFORMS.map(plat => {
                       const isSelected = selectedPlatform === plat.value;
+                      const Icon = plat.icon;
                       return (
-                        <VisualOptionCard
+                        <OptionChip
                           key={plat.value}
                           selected={isSelected}
                           onClick={() => {
@@ -1666,18 +1638,9 @@ export default function EditProfile() {
                             setNewLinkUrl('');
                             setNewLinkLabel('');
                           }}
-                          preview={
-                            <SocialPlatformPreview
-                              Icon={plat.icon}
-                              color={plat.color}
-                              label={plat.label}
-                            />
-                          }
+                          icon={<Icon className="w-3.5 h-3.5" />}
+                          color={plat.color}
                           label={plat.label}
-                          previewAspect="1/1"
-                          compact
-                          selectedLabel="Aberto"
-                          idleLabel="+"
                           data-testid={`platform-${plat.value}`}
                         />
                       );
@@ -1745,21 +1708,23 @@ export default function EditProfile() {
                     title="Contador de visitas"
                     subtitle="Mostrar ou esconder o número de pessoas que viram seu perfil. Esconder dá um ar mais limpo; mostrar funciona como prova social."
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <VisualOptionCard
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <OptionChip
                       selected={form.showViews}
                       onClick={() => set('showViews', true)}
-                      preview={<TogglePreview on iconOn={<Eye className="w-4 h-4" />} />}
+                      icon={<Eye className="w-3.5 h-3.5" />}
                       label="Mostrar visitas"
-                      tagline="O contador aparece logo abaixo do nome no perfil público."
+                      row
+                      description="O contador aparece logo abaixo do nome no perfil público."
                       data-testid="views-on"
                     />
-                    <VisualOptionCard
+                    <OptionChip
                       selected={!form.showViews}
                       onClick={() => set('showViews', false)}
-                      preview={<TogglePreview on={false} />}
+                      icon={<X className="w-3.5 h-3.5" />}
                       label="Esconder visitas"
-                      tagline="O número fica privado — só você vê pelo painel."
+                      row
+                      description="O número fica privado — só você vê pelo painel."
                       data-testid="views-off"
                     />
                   </div>
@@ -1869,51 +1834,33 @@ export default function EditProfile() {
                     title="Conexões em tempo real"
                     subtitle="Mostre o que você está fazendo agora — status do Discord, música tocando no Last.fm. Aparece como um chip animado no perfil."
                   />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <VisualOptionCard
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <OptionChip
                       selected={!!(profile as any)?.discordConnected}
-                      preview={
-                        <ConnectionPreview
-                          Icon={SiDiscord}
-                          color="#5865F2"
-                          title={(profile as any)?.discordUsername || 'Discord'}
-                          subtitle={(profile as any)?.discordConnected ? 'Status ao vivo via Lanyard' : 'Conecte para exibir status'}
-                          connected={!!(profile as any)?.discordConnected}
-                        />
-                      }
+                      icon={<SiDiscord className="w-3.5 h-3.5" />}
+                      color="#5865F2"
                       label="Discord"
-                      tagline={(profile as any)?.discordConnected ? 'Conectado e exibindo presence.' : 'Não conectado — chip fica oculto.'}
+                      row
+                      description={(profile as any)?.discordConnected ? `Conectado como ${(profile as any)?.discordUsername || 'usuário'}` : 'Não conectado — chip fica oculto.'}
                       data-testid="conn-discord"
                     />
-                    <VisualOptionCard
+                    <OptionChip
                       selected={!!((profile as any)?.musicConnected && (profile as any)?.musicService === 'lastfm')}
-                      preview={
-                        <ConnectionPreview
-                          Icon={SiLastdotfm}
-                          color="#D51007"
-                          title={(profile as any)?.musicUsername || 'Last.fm'}
-                          subtitle={(profile as any)?.musicConnected ? 'Tocando agora' : 'Conecte sua conta'}
-                          connected={!!(profile as any)?.musicConnected}
-                        />
-                      }
+                      icon={<SiLastdotfm className="w-3.5 h-3.5" />}
+                      color="#D51007"
                       label="Last.fm"
-                      tagline={(profile as any)?.musicConnected ? 'Música atual com arte do álbum.' : 'Não conectado — sem chip de música.'}
+                      row
+                      description={(profile as any)?.musicConnected ? `Tocando agora como ${(profile as any)?.musicUsername || 'usuário'}` : 'Não conectado — sem chip de música.'}
                       data-testid="conn-lastfm"
                     />
-                    <VisualOptionCard
+                    <OptionChip
                       selected={false}
                       disabled
-                      preview={
-                        <ConnectionPreview
-                          Icon={SiSpotify}
-                          color="#1DB954"
-                          title="Spotify"
-                          subtitle="Em breve"
-                          connected={false}
-                        />
-                      }
+                      icon={<SiSpotify className="w-3.5 h-3.5" />}
+                      color="#1DB954"
                       label="Spotify"
-                      tagline="Disponível em breve."
+                      row
+                      description="Disponível em breve."
                       disabledNote="Em breve"
                       data-testid="conn-spotify"
                     />
