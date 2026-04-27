@@ -420,18 +420,27 @@ export function BadgePreview({
   const c = color || "#ffffff";
   return (
     <PreviewFrame>
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex items-center justify-center px-3">
         <div
-          className="flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-semibold"
+          className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border"
           style={{
-            color: c,
-            borderColor: `${c}66`,
-            backgroundColor: `${c}18`,
-            boxShadow: `0 0 24px ${c}33`,
+            borderColor: "rgba(255,255,255,0.10)",
+            backgroundColor: "rgba(255,255,255,0.035)",
           }}
         >
-          <span className="text-base leading-none">{emoji}</span>
-          <span className="uppercase tracking-[0.12em] text-[11px]">{label}</span>
+          <span
+            className="w-7 h-7 rounded-full flex items-center justify-center text-sm leading-none shrink-0"
+            style={{
+              backgroundColor: `${c}1f`,
+              color: c,
+              border: `1px solid ${c}33`,
+            }}
+          >
+            {emoji}
+          </span>
+          <span className="uppercase tracking-[0.14em] text-[10px] font-bold text-white/85 truncate">
+            {label}
+          </span>
         </div>
       </div>
     </PreviewFrame>
