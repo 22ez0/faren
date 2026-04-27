@@ -1,13 +1,14 @@
 #!/bin/bash
 # Faren — production database backup
-# Usage: PROD_DATABASE_URL=postgres://... ./scripts/db-backup.sh [output_dir]
+# Usage: NEON_DATABASE_URL=postgres://... ./scripts/db-backup.sh [output_dir]
 # Requires: pg_dump 18+ (must match server major version)
+# Accepts (in order of precedence): NEON_DATABASE_URL, PROD_DATABASE_URL, PROD_DATABASE
 
 set -euo pipefail
 
-DB_URL="${PROD_DATABASE_URL:-${PROD_DATABASE:-}}"
+DB_URL="${NEON_DATABASE_URL:-${PROD_DATABASE_URL:-${PROD_DATABASE:-}}}"
 if [ -z "$DB_URL" ]; then
-  echo "ERROR: set PROD_DATABASE_URL or PROD_DATABASE env var"
+  echo "ERROR: set NEON_DATABASE_URL (preferred), PROD_DATABASE_URL, or PROD_DATABASE env var"
   exit 1
 fi
 

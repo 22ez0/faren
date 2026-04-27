@@ -29,8 +29,12 @@ jobs:
 
       - name: Run backup
         env:
-          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
         run: |
+          if [ -z "${NEON_DATABASE_URL:-}" ]; then
+            echo "ERROR: NEON_DATABASE_URL repo secret is not set"
+            exit 1
+          fi
           chmod +x scripts/db-backup.sh
           ./scripts/db-backup.sh backups
 
