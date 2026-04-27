@@ -85,12 +85,15 @@ const FONT_OPTIONS = [
   { value: 'pixel', label: 'Pixel 8-Bit' },
 ];
 
-const LAYOUT_OPTIONS: { value: string; label: string; description: string; preview: 'centered' | 'left' }[] = [
+type LayoutVariant = 'centered' | 'left' | 'floating' | 'wide';
+const LAYOUT_OPTIONS: { value: LayoutVariant; label: string; description: string; preview: LayoutVariant }[] = [
   { value: 'centered', label: 'Centralizado', description: 'Avatar e textos no centro, ideal para destaque.', preview: 'centered' },
   { value: 'left', label: 'Alinhado à Esquerda', description: 'Avatar e infos à esquerda, estilo card lateral.', preview: 'left' },
+  { value: 'floating', label: 'Flutuante', description: 'Card de vidro pequeno no meio da tela, com o fundo dominando.', preview: 'floating' },
+  { value: 'wide', label: 'Mural', description: 'Layout largo, conteúdo espalhado lado a lado em telas grandes.', preview: 'wide' },
 ];
 
-function LayoutPreview({ variant, selected }: { variant: 'centered' | 'left'; selected: boolean }) {
+function LayoutPreview({ variant, selected }: { variant: LayoutVariant; selected: boolean }) {
   const stroke = selected ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)';
   const fill = selected ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)';
   if (variant === 'centered') {
@@ -108,18 +111,54 @@ function LayoutPreview({ variant, selected }: { variant: 'centered' | 'left'; se
       </svg>
     );
   }
+  if (variant === 'left') {
+    return (
+      <svg viewBox="0 0 120 80" className="w-full h-20" aria-hidden="true">
+        <rect x="2" y="2" width="116" height="76" rx="6" fill="none" stroke={stroke} strokeWidth="1" />
+        <rect x="6" y="6" width="108" height="18" rx="4" fill={fill} />
+        <circle cx="20" cy="36" r="8" fill={fill} stroke={stroke} strokeWidth="0.5" />
+        <rect x="32" y="32" width="40" height="4" rx="2" fill={stroke} />
+        <rect x="32" y="40" width="60" height="2.5" rx="1" fill={fill} />
+        <rect x="32" y="46" width="48" height="2.5" rx="1" fill={fill} />
+        <rect x="6" y="58" width="8" height="8" rx="2" fill={fill} />
+        <rect x="16" y="58" width="8" height="8" rx="2" fill={fill} />
+        <rect x="26" y="58" width="8" height="8" rx="2" fill={fill} />
+        <rect x="36" y="58" width="8" height="8" rx="2" fill={fill} />
+      </svg>
+    );
+  }
+  if (variant === 'floating') {
+    return (
+      <svg viewBox="0 0 120 80" className="w-full h-20" aria-hidden="true">
+        {/* Wallpaper background hint */}
+        <rect x="2" y="2" width="116" height="76" rx="6" fill="none" stroke={stroke} strokeWidth="1" />
+        <rect x="6" y="6" width="108" height="68" rx="4" fill={fill} opacity="0.4" />
+        {/* Floating glass card centered */}
+        <rect x="36" y="26" width="48" height="28" rx="4" fill="rgba(0,0,0,0.45)" stroke={stroke} strokeWidth="0.6" />
+        <circle cx="46" cy="40" r="4" fill={fill} stroke={stroke} strokeWidth="0.4" />
+        <rect x="54" y="36" width="22" height="3" rx="1.5" fill={stroke} />
+        <rect x="54" y="42" width="16" height="2" rx="1" fill={fill} />
+        <rect x="40" y="48" width="40" height="3" rx="1.5" fill={fill} />
+      </svg>
+    );
+  }
+  // wide
   return (
     <svg viewBox="0 0 120 80" className="w-full h-20" aria-hidden="true">
       <rect x="2" y="2" width="116" height="76" rx="6" fill="none" stroke={stroke} strokeWidth="1" />
-      <rect x="6" y="6" width="108" height="18" rx="4" fill={fill} />
-      <circle cx="20" cy="36" r="8" fill={fill} stroke={stroke} strokeWidth="0.5" />
-      <rect x="32" y="32" width="40" height="4" rx="2" fill={stroke} />
-      <rect x="32" y="40" width="60" height="2.5" rx="1" fill={fill} />
-      <rect x="32" y="46" width="48" height="2.5" rx="1" fill={fill} />
-      <rect x="6" y="58" width="8" height="8" rx="2" fill={fill} />
-      <rect x="16" y="58" width="8" height="8" rx="2" fill={fill} />
-      <rect x="26" y="58" width="8" height="8" rx="2" fill={fill} />
-      <rect x="36" y="58" width="8" height="8" rx="2" fill={fill} />
+      <rect x="6" y="6" width="108" height="14" rx="3" fill={fill} />
+      {/* Left column: avatar + name */}
+      <circle cx="18" cy="38" r="7" fill={fill} stroke={stroke} strokeWidth="0.5" />
+      <rect x="28" y="34" width="28" height="3" rx="1.5" fill={stroke} />
+      <rect x="28" y="40" width="34" height="2" rx="1" fill={fill} />
+      <rect x="28" y="45" width="22" height="2" rx="1" fill={fill} />
+      {/* Right column: link tiles in a 2x2 grid */}
+      <rect x="68" y="30" width="22" height="9" rx="2" fill={fill} />
+      <rect x="92" y="30" width="22" height="9" rx="2" fill={fill} />
+      <rect x="68" y="42" width="22" height="9" rx="2" fill={fill} />
+      <rect x="92" y="42" width="22" height="9" rx="2" fill={fill} />
+      {/* Bottom strip */}
+      <rect x="6" y="58" width="108" height="14" rx="3" fill={fill} opacity="0.5" />
     </svg>
   );
 }
@@ -151,6 +190,32 @@ const LAYOUT_DETAILS: Record<string, { tagline: string; bestFor: string[]; trade
       'Pode parecer pesado se a bio for curta',
     ],
   },
+  floating: {
+    tagline: 'Card pequeno e flutuante no centro — o fundo (foto/vídeo) é o protagonista.',
+    bestFor: [
+      'Quem tem uma foto ou vídeo de fundo marcante',
+      'Estética minimalista, "só o essencial"',
+      'Bio curtinha e poucos links',
+      'Sensação de wallpaper imersivo',
+    ],
+    tradeoffs: [
+      'Espaço apertado para muita informação',
+      'Sem fundo bonito perde graça',
+    ],
+  },
+  wide: {
+    tagline: 'Layout largo estilo mural — conteúdo espalhado lado a lado em telas grandes.',
+    bestFor: [
+      'Muitos links e redes sociais',
+      'Quem quer um visual de página inicial / portfólio',
+      'Aproveita ao máximo monitores grandes',
+      'Vibe "moodboard" / página espalhada',
+    ],
+    tradeoffs: [
+      'No celular vira coluna única, perde o efeito',
+      'Pode parecer vazio se você tem pouco conteúdo',
+    ],
+  },
 };
 
 /* ── Real, data-driven layout previews ─────────────────────── */
@@ -174,7 +239,7 @@ function RealLayoutPreview({
   variant,
   data,
 }: {
-  variant: 'centered' | 'left';
+  variant: LayoutVariant;
   data: { avatarUrl: string; displayName: string; username: string; bio: string; links: any[]; accentColor: string };
 }) {
   const initials = (data.displayName || data.username || '?').slice(0, 2).toUpperCase();
@@ -187,7 +252,7 @@ function RealLayoutPreview({
       <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
       <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_75%_85%,rgba(255,255,255,0.12),transparent_55%)]" />
       <div className="relative h-full p-4 flex flex-col">
-        {variant === 'centered' ? (
+        {variant === 'centered' && (
           <>
             {/* Avatar centered */}
             <div className="flex flex-col items-center text-center mt-4">
@@ -223,7 +288,9 @@ function RealLayoutPreview({
               ))}
             </div>
           </>
-        ) : (
+        )}
+
+        {variant === 'left' && (
           <>
             {/* Avatar + name on the left */}
             <div className="flex items-start gap-3">
@@ -257,6 +324,82 @@ function RealLayoutPreview({
                 >
                   <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
                   <div className="h-1.5 rounded-full bg-white/15" style={{ width: `${40 + i * 12}%` }} />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {variant === 'floating' && (
+          <div className="flex-1 flex items-center justify-center">
+            {/* Compact glass panel floating in the middle */}
+            <div className="w-[78%] rounded-2xl border border-white/15 bg-black/40 backdrop-blur-md shadow-xl shadow-black/40 px-3 py-3 flex flex-col items-center">
+              <div className="flex items-center gap-2 w-full">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-white/20 bg-white/10 flex items-center justify-center text-white font-bold text-[10px] shrink-0">
+                  {data.avatarUrl ? (
+                    <img src={data.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                </div>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <p className="text-white text-[11px] font-bold tracking-wide truncate">
+                    {data.displayName || data.username}
+                  </p>
+                  <p className="text-white/40 text-[9px] truncate">
+                    {data.bio || 'sua bio aqui'}
+                  </p>
+                </div>
+              </div>
+              {socialLinks.length > 0 && (
+                <div className="mt-2 flex items-center justify-center gap-1 flex-wrap">
+                  {socialLinks.slice(0, 4).map((l, i) => <MiniPlatformIcon key={i} platform={l.platform} />)}
+                </div>
+              )}
+              {/* mini music bar */}
+              <div className="mt-2 w-full h-5 rounded-md bg-white/[0.06] border border-white/10 flex items-center px-1.5 gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-white/20" />
+                <div className="h-1 flex-1 rounded-full bg-white/10" />
+                <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {variant === 'wide' && (
+          <>
+            {/* Two-column wide layout */}
+            <div className="flex items-start gap-3">
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/20 bg-white/10 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg shadow-black/50">
+                {data.avatarUrl ? (
+                  <img src={data.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-[13px] font-bold tracking-wide truncate">
+                  {data.displayName || data.username}
+                </p>
+                <p className="mt-0.5 text-white/40 text-[10px] line-clamp-2 leading-tight">
+                  {data.bio || 'sua bio aqui'}
+                </p>
+              </div>
+            </div>
+            {socialLinks.length > 0 && (
+              <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                {socialLinks.map((l, i) => <MiniPlatformIcon key={i} platform={l.platform} />)}
+              </div>
+            )}
+            {/* Link cards spread in 2-col grid */}
+            <div className="mt-auto grid grid-cols-2 gap-1.5">
+              {[0, 1, 2, 3].map(i => (
+                <div
+                  key={i}
+                  className="h-7 rounded-xl bg-white/[0.06] border border-white/10 flex items-center px-2 gap-2"
+                >
+                  <div className="w-2.5 h-2.5 rounded-full bg-white/30" />
+                  <div className="h-1.5 rounded-full bg-white/15 flex-1" />
                 </div>
               ))}
             </div>

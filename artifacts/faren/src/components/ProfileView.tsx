@@ -442,7 +442,9 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   }, [isCustomCursor, cursorDataUrl, cursorStyle]);
 
   const isLeft = layout === "left";
-  const alignClass = isLeft ? "items-start text-left" : "items-center text-center";
+  const isFloating = layout === "floating";
+  const isWide = layout === "wide";
+  const alignClass = (isLeft || isWide) ? "items-start text-left" : "items-center text-center";
 
   const handleLike = () => {
     setLikePulse(true);
@@ -491,7 +493,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
         )}
       </AnimatePresence>
 
-    <div className={`min-h-screen relative overflow-x-hidden ${fontClass} ${cursorClass}`}>
+    <div className={`min-h-screen relative overflow-x-hidden ${isFloating ? 'flex flex-col justify-center' : ''} ${fontClass} ${cursorClass}`}>
       {/* Particle Effects */}
       <ParticleCanvas effect={particleEffect} accentColor={accent} />
 
@@ -533,7 +535,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
       />
 
       {/* Content */}
-      <div className={`relative z-10 max-w-md mx-auto px-5 py-14 md:py-20 flex flex-col ${alignClass} gap-0`}>
+      <div className={`relative z-10 ${isWide ? 'max-w-3xl' : isFloating ? 'max-w-sm' : 'max-w-md'} mx-auto px-5 ${isFloating ? 'py-8' : 'py-14 md:py-20'} flex flex-col ${alignClass} gap-0`}>
 
         {/* Banner */}
         {profile.bannerUrl && (
@@ -620,7 +622,7 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           )}
 
           {profile.bio && (
-            <p className="max-w-sm text-sm leading-relaxed opacity-70 mb-4 whitespace-pre-wrap break-words">
+            <p className={`${isWide ? 'max-w-2xl' : 'max-w-sm'} text-sm leading-relaxed opacity-70 mb-4 whitespace-pre-wrap break-words`}>
               {renderBio(profile.bio, accent)}
             </p>
           )}
