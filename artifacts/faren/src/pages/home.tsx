@@ -3,16 +3,15 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetTrendingProfiles, getUserByUsername, getGetUserByUsernameQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Users, Heart, Volume2, VolumeX, Check, X, Loader2, Zap } from "lucide-react";
+import { ArrowRight, Users, Heart, Volume2, VolumeX, Check, X, Loader2 } from "lucide-react";
 import { ProfileCardMedia } from "@/components/ProfileCardMedia";
-import { useAuth } from "@/lib/auth";
 
 const RESERVED_USERNAMES = new Set(['keefaren','admin','administrator','api','dashboard','login','register','profile','settings','support','root','faren','keef','null','comunidade','community','explore','feed']);
 import heroVideo from "@assets/pinterest_884112970592536960_1776809417801.mp4";
 import heroAudioSrc from "@assets/Download_1776810133370.mp4";
 
 const PT = {
-  nav: { help: "Central de Ajuda", discord: "Discord", ranking: "Ranking", pricing: "Preços", dashboard: "Dashboard", login: "Entrar", discover: "Descobrir", cta: "Criar Seu Link" },
+  nav: { discover: "Descobrir", login: "Entrar", cta: "Criar Seu Link" },
   hero: { tag: "Plataforma de Perfil Personalizado", h1a: "SEU", h1b: "PERFIL", h1c: "EM TODO LUGAR", sub: "A plataforma de link na bio mais poderosa e personalizada. Status do Discord, música ao vivo, efeitos de partículas, fontes customizadas — totalmente seu.", btn1: "Criar seu perfil", btn2: "Explorar perfis" },
   features: [
     { title: "Discord ao Vivo", sub: "Status, atividade e avatar — tudo sincronizado em tempo real.", stat: "Rich Presence" },
@@ -28,7 +27,7 @@ const PT = {
 };
 
 const EN = {
-  nav: { help: "Help Center", discord: "Discord", ranking: "Ranking", pricing: "Pricing", dashboard: "Dashboard", login: "Login", discover: "Discover", cta: "Create Your Link" },
+  nav: { discover: "Discover", login: "Login", cta: "Create Your Link" },
   hero: { tag: "Custom Profile Platform", h1a: "YOUR", h1b: "PROFILE", h1c: "EVERYWHERE", sub: "The most powerful and customizable link-in-bio platform. Discord status, live music, particle effects, custom fonts — totally yours.", btn1: "Create your profile", btn2: "Explore profiles" },
   features: [
     { title: "Live Discord", sub: "Status, activity, and avatar — everything synced in real time.", stat: "Rich Presence" },
@@ -205,7 +204,6 @@ export default function Home() {
   };
 
   const t = lang === 'PT' ? PT : EN;
-  const { isAuthenticated } = useAuth();
 
   const toggleLang = () => {
     const next = lang === 'PT' ? 'EN' : 'PT';
@@ -216,55 +214,32 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
 
-      {/* ── NAV (guns.lol-style) ──────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-4">
-        <div className="mx-auto max-w-7xl flex items-center justify-between gap-4 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 px-4 md:px-6 py-2.5">
-          {/* Left: logo */}
-          <Link href="/">
-            <span className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
-              <span className="grid place-items-center w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-[0_0_18px_rgba(168,85,247,0.45)]">
-                <Zap className="w-4 h-4 text-white" fill="white" strokeWidth={0} />
-              </span>
-              <span className="text-sm font-bold tracking-[0.18em] uppercase">faren</span>
-            </span>
+      {/* ── NAV ───────────────────────────────────────────────── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-12 py-5">
+        <Link href="/">
+          <span className="text-sm font-bold tracking-[0.25em] uppercase text-white hover:opacity-70 transition-opacity">
+            FAREN
+          </span>
+        </Link>
+        <div className="flex items-center gap-4 md:gap-8 flex-wrap justify-end">
+          <Link href="/discover" className="nav-link">{t.nav.discover}</Link>
+          <Link href="/login" className="nav-link">{t.nav.login}</Link>
+          <button
+            onClick={toggleLang}
+            className="nav-link flex items-center gap-1.5 text-white/40 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-sm text-xs transition-all"
+            title="Mudar idioma / Change language"
+          >
+            <img
+              src={lang === 'PT' ? 'https://flagcdn.com/20x15/br.png' : 'https://flagcdn.com/20x15/us.png'}
+              alt={lang === 'PT' ? 'Brasil' : 'USA'}
+              width={20} height={15}
+              className="rounded-[2px] flex-shrink-0"
+            />
+            {lang === 'PT' ? 'PT' : 'EN'}
+          </button>
+          <Link href="/register">
+            <span className="btn-outline-white text-xs">{t.nav.cta}</span>
           </Link>
-
-          {/* Center/Right: links */}
-          <div className="hidden md:flex items-center gap-7 text-[13px] text-white/60">
-            <Link href="/suporte" className="hover:text-white transition-colors">{t.nav.help}</Link>
-            <a
-              href="https://discord.gg/faren"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-white transition-colors"
-            >
-              {t.nav.discord}
-            </a>
-            <Link href="/discover" className="hover:text-white transition-colors">{t.nav.ranking}</Link>
-            <Link href="/register" className="hover:text-white transition-colors">{t.nav.pricing}</Link>
-          </div>
-
-          {/* Right: lang + dashboard pill */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleLang}
-              className="hidden sm:flex items-center gap-1.5 text-white/50 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-md text-[11px] transition-all"
-              title="Mudar idioma / Change language"
-            >
-              <img
-                src={lang === 'PT' ? 'https://flagcdn.com/20x15/br.png' : 'https://flagcdn.com/20x15/us.png'}
-                alt={lang === 'PT' ? 'Brasil' : 'USA'}
-                width={18} height={13}
-                className="rounded-[2px] flex-shrink-0"
-              />
-              {lang === 'PT' ? 'PT' : 'EN'}
-            </button>
-            <Link href={isAuthenticated ? '/dashboard' : '/login'}>
-              <span className="inline-flex items-center justify-center px-5 py-2 text-[13px] font-semibold text-white rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-[0_0_24px_rgba(168,85,247,0.35)] hover:shadow-[0_0_28px_rgba(168,85,247,0.55)] transition-all">
-                {isAuthenticated ? t.nav.dashboard : t.nav.login}
-              </span>
-            </Link>
-          </div>
         </div>
       </nav>
 
