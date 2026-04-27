@@ -100,22 +100,29 @@ export function VisualOptionCard({
 
       {/* meta */}
       <div className={compact ? "px-3 py-3" : "px-4 py-4"}>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-start justify-between gap-2">
           <h3
-            className={`font-bold uppercase tracking-[0.18em] text-white ${
+            className={`min-w-0 flex-1 font-bold uppercase tracking-[0.16em] text-white leading-tight ${
               compact ? "text-[11px]" : "text-sm"
             }`}
           >
             {label}
           </h3>
           {selected ? (
-            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded-full bg-white text-black shrink-0">
+            <span
+              className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-black shrink-0 mt-0.5"
+              aria-label={selectedLabel}
+              title={selectedLabel}
+            >
               <Check className="w-3 h-3" strokeWidth={3} />
-              {selectedLabel}
             </span>
           ) : (
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-1 rounded-full border border-white/15 text-white/40 group-hover:text-white group-hover:border-white/40 transition-colors shrink-0">
-              {idleLabel}
+            <span
+              className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-white/15 text-white/40 group-hover:text-white group-hover:border-white/40 transition-colors shrink-0 mt-0.5 text-[10px] font-bold leading-none"
+              aria-label={idleLabel}
+              title={idleLabel}
+            >
+              +
             </span>
           )}
         </div>
@@ -214,8 +221,9 @@ export function OptionChip({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       data-testid={rest["data-testid"]}
-      className={`group relative flex w-full text-left rounded-xl border transition-colors disabled:cursor-not-allowed ${
-        row ? "items-start gap-3 px-3.5 py-3" : "items-center gap-2.5 px-3 py-2.5"
+      title={label}
+      className={`group relative flex w-full text-left rounded-xl border transition-colors disabled:cursor-not-allowed min-w-0 ${
+        row ? "items-start gap-3 px-3.5 py-3" : "items-center gap-2 px-2.5 py-2"
       }`}
       style={{
         backgroundColor: selected ? tintBg : "rgba(255,255,255,0.02)",
@@ -225,7 +233,9 @@ export function OptionChip({
     >
       {icon && (
         <span
-          className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg"
+          className={`shrink-0 inline-flex items-center justify-center rounded-lg ${
+            row ? "w-7 h-7" : "w-6 h-6"
+          }`}
           style={{
             backgroundColor: color ? `${color}26` : "rgba(255,255,255,0.06)",
             color: color || "rgba(255,255,255,0.85)",
@@ -234,15 +244,15 @@ export function OptionChip({
           {icon}
         </span>
       )}
-      <span className={`min-w-0 flex-1 ${row ? "" : "flex items-center gap-2"}`}>
+      <span className="min-w-0 flex-1 flex flex-col gap-0.5">
         <span
-          className="block truncate text-[11px] font-bold uppercase tracking-[0.16em]"
+          className="block text-[10.5px] font-bold uppercase tracking-[0.12em] leading-tight break-words"
           style={{ color: selected ? "#fff" : "rgba(255,255,255,0.7)" }}
         >
           {label}
         </span>
         {row && description && (
-          <span className="mt-1 block text-[11px] text-white/40 leading-snug">
+          <span className="block text-[11px] text-white/40 leading-snug">
             {description}
           </span>
         )}
@@ -316,9 +326,11 @@ export function SliderCard({
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.015] p-4">
-      <div className="flex items-baseline justify-between">
-        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white">{label}</p>
-        <span className="text-[11px] font-mono text-white/70 tabular-nums">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white leading-tight">
+          {label}
+        </p>
+        <span className="shrink-0 text-[11px] font-mono text-white/70 tabular-nums leading-tight">
           {value}
           {suffix}
         </span>
