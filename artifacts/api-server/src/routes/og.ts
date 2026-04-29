@@ -71,6 +71,7 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
 
     const [profile] = await db
       .select({
+        bannerUrl: profilesTable.bannerUrl,
         backgroundUrl: profilesTable.backgroundUrl,
         bio: profilesTable.bio,
         accentColor: profilesTable.accentColor,
@@ -82,14 +83,31 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
 
     const displayName = user.displayName || user.username;
     const bio = (profile?.bio || `Veja o perfil de @${user.username} na Faren`).slice(0, 200);
-    const avatarUrl = user.avatarUrl && !user.avatarUrl.startsWith("data:") ? user.avatarUrl : DEFAULT_IMAGE;
-    const rawBg = profile?.backgroundUrl;
-    const isUsableImage = (u: string | null | undefined) =>
+    const isUsableImage = (u: string | null | undefined): u is string =>
       !!u && !u.startsWith("data:") && !/\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
-    const backgroundUrl = isUsableImage(rawBg) ? rawBg! : null;
+    const isGif = (u: string | null | undefined): u is string =>
+      isUsableImage(u) && /\.gif(\?|$)/i.test(u);
+
+    const rawBg = profile?.backgroundUrl;
+    const rawBanner = profile?.bannerUrl;
+    const rawAvatar = user.avatarUrl;
+
+    const backgroundUrl = isUsableImage(rawBg) ? rawBg : null;
+    const bannerUrl = isUsableImage(rawBanner) ? rawBanner : null;
+    const avatarUrl = isUsableImage(rawAvatar) ? rawAvatar : DEFAULT_IMAGE;
+
+    // Priority: any GIF (background > banner > avatar) wins over static images.
+    // Without a GIF, fall back to banner first since it tends to be landscape
+    // (matches the "@mataremos" preview style); then background, then avatar.
+    const gifPick =
+      (isGif(rawBg) && rawBg) ||
+      (isGif(rawBanner) && rawBanner) ||
+      (isGif(rawAvatar) && rawAvatar) ||
+      null;
+    const ogImageUrl = gifPick || bannerUrl || backgroundUrl || avatarUrl || DEFAULT_IMAGE;
+
     const profileUrl = `${SITE_URL}/${user.username}`;
     const accentColor = profile?.accentColor || "#ffffff";
-    const ogImageUrl = backgroundUrl || avatarUrl || DEFAULT_IMAGE;
 
     const badges = profile?.badges ?? [];
     const isVerifiedGold = badges.includes("verified_gold");
