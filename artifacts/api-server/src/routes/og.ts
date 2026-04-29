@@ -159,7 +159,7 @@ router.get("/og/:username", async (req, res): Promise<void> => {
 
 router.get("/:username", async (req, res): Promise<void> => {
   const username = req.params.username || "";
-  if (!username || !/^[a-zA-Z0-9_.]{2,30}$/.test(username)) {
+  if (!username || !/^[a-zA-Z0-9_.]{1,30}$/.test(username)) {
     res.redirect(302, SITE_URL);
     return;
   }
