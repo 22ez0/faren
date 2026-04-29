@@ -252,7 +252,7 @@ export default function DevKeefnow() {
   };
 
   const renameUser = async (user: AdminUser) => {
-    const next = window.prompt(`Novo @ para @${user.username}\n(3-15 chars, [a-z 0-9 _], sem _ no início/fim/duplo)`, user.username);
+    const next = window.prompt(`Novo @ para @${user.username}\n(1-15 chars, [a-z 0-9 _], sem _ no início/fim/duplo)`, user.username);
     if (next == null) return;
     const cleaned = next.trim().replace(/^@/, "").toLowerCase();
     if (!cleaned || cleaned === user.username) return;

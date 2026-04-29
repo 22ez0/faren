@@ -72,7 +72,8 @@ router.post("/admin/users/:userId/username", requireAdmin, async (req, res): Pro
   const userId = Number(req.params.userId);
   const newUsername = String(req.body?.username ?? "").trim().toLowerCase();
   if (!newUsername) { res.status(400).json({ error: "Username obrigatório" }); return; }
-  if (newUsername.length < 3 || newUsername.length > 15) { res.status(400).json({ error: "Username deve ter 3 a 15 caracteres." }); return; }
+  // Admin pode definir usernames curtos (1, 2, 3+ caracteres). Usuário comum tem mínimo 3 no cadastro.
+  if (newUsername.length > 15) { res.status(400).json({ error: "Username deve ter no máximo 15 caracteres." }); return; }
   if (!/^[a-z0-9_]+$/.test(newUsername)) { res.status(400).json({ error: "Apenas letras minúsculas, números e _" }); return; }
   if (newUsername.startsWith("_") || newUsername.endsWith("_") || /__/.test(newUsername)) { res.status(400).json({ error: "Formato inválido (_ no início/fim ou duplo)" }); return; }
   if (RESERVED_USERNAMES_ADMIN.has(newUsername)) { res.status(400).json({ error: "Username reservado." }); return; }
