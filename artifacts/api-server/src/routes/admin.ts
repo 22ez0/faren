@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import jwt from "jsonwebtoken";
-import { db, usersTable, profilesTable, profileReportsTable, supportTicketsTable, postReportsTable, postsTable } from "@workspace/db";
+import { db, usersTable, profilesTable, profileReportsTable, supportTicketsTable, postReportsTable, postsTable, usernameRedirectsTable } from "@workspace/db";
 import { eq, ilike, or, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -72,8 +72,7 @@ router.post("/admin/users/:userId/username", requireAdmin, async (req, res): Pro
   const userId = Number(req.params.userId);
   const newUsername = String(req.body?.username ?? "").trim().toLowerCase();
   if (!newUsername) { res.status(400).json({ error: "Username obrigatório" }); return; }
-  // Admin pode definir usernames curtos (1, 2, 3+ caracteres). Usuário comum tem mínimo 3 no cadastro.
-  if (newUsername.length > 15) { res.status(400).json({ error: "Username deve ter no máximo 15 caracteres." }); return; }
+  if (newUsername.length < 3 || newUsername.length > 15) { res.status(400).json({ error: "Username deve ter 3 a 15 caracteres." }); return; }
   if (!/^[a-z0-9_]+$/.test(newUsername)) { res.status(400).json({ error: "Apenas letras minúsculas, números e _" }); return; }
   if (newUsername.startsWith("_") || newUsername.endsWith("_") || /__/.test(newUsername)) { res.status(400).json({ error: "Formato inválido (_ no início/fim ou duplo)" }); return; }
   if (RESERVED_USERNAMES_ADMIN.has(newUsername)) { res.status(400).json({ error: "Username reservado." }); return; }
@@ -81,28 +80,31 @@ router.post("/admin/users/:userId/username", requireAdmin, async (req, res): Pro
   const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, newUsername)).limit(1);
   if (existing && existing.id !== userId) { res.status(409).json({ error: "Username já em uso." }); return; }
 
-  // Pega o username atual antes de trocar, pra adicionar no histórico do usuário.
-  const [current] = await db
-    .select({ username: usersTable.username, previousUsernames: usersTable.previousUsernames })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
+  const [currentUser] = await db.select({ id: usersTable.id, username: usersTable.username }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!currentUser) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
 
-  let nextHistory: string[] | undefined;
-  if (current && current.username && current.username !== newUsername) {
-    const prev = Array.isArray(current.previousUsernames) ? current.previousUsernames : [];
-    // Mantém ordem (mais recente primeiro), sem duplicatas, sem o novo username,
-    // e limita a 10 entradas pra não inflar o registro.
-    const merged = [current.username, ...prev.filter(u => u && u !== current.username && u !== newUsername)];
-    nextHistory = Array.from(new Set(merged)).slice(0, 10);
+  const oldUsername = currentUser.username;
+  if (oldUsername === newUsername) {
+    res.json({ success: true, username: newUsername });
+    return;
   }
 
-  await db.update(usersTable).set({
-    username: newUsername,
-    ...(nextHistory ? { previousUsernames: nextHistory } : {}),
-  }).where(eq(usersTable.id, userId));
+  await db.transaction(async (tx) => {
+    await tx.update(usersTable).set({ username: newUsername }).where(eq(usersTable.id, userId));
+    // Free the new username from any old redirect that pointed to it.
+    await tx.delete(usernameRedirectsTable).where(eq(usernameRedirectsTable.oldUsername, newUsername));
+    // Record the old username so /oldUsername still resolves to this user
+    // (until someone else registers the old username, which clears the entry).
+    await tx
+      .insert(usernameRedirectsTable)
+      .values({ oldUsername, targetUserId: userId })
+      .onConflictDoUpdate({
+        target: usernameRedirectsTable.oldUsername,
+        set: { targetUserId: userId, createdAt: new Date() },
+      });
+  });
 
-  res.json({ success: true, username: newUsername, previousUsernames: nextHistory ?? [] });
+  res.json({ success: true, username: newUsername });
 });
 
 router.post("/admin/users/:userId/ban", requireAdmin, async (req, res): Promise<void> => {

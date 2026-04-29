@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { db, usersTable, profilesTable } from "@workspace/db";
+import { db, usersTable, profilesTable, usernameRedirectsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 import { signToken, requireAuth } from "../lib/auth";
@@ -158,6 +158,10 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     userId: user.id,
     badges: [],
   });
+
+  // If this username had a previous redirect entry (someone else used to own
+  // it and was renamed), claim it: the new registration owns the username now.
+  await db.delete(usernameRedirectsTable).where(eq(usernameRedirectsTable.oldUsername, username));
 
   // Count only successful account creations per IP.
   if (!attempt || attempt.resetAt <= now) {

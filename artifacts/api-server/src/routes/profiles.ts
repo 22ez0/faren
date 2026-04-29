@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import Busboy from "busboy";
-import { db, usersTable, profilesTable, profileLinksTable, profileViewsTable, profileLikesTable, followersTable, profileReportsTable } from "@workspace/db";
+import { db, usersTable, profilesTable, profileLinksTable, profileViewsTable, profileLikesTable, followersTable, profileReportsTable, usernameRedirectsTable } from "@workspace/db";
 import { eq, and, sql, gt } from "drizzle-orm";
 import { UpdateProfileBody, ConnectDiscordBody, ConnectMusicBody, AddProfileLinkBody, UpdateProfileLinkBody, UpdateProfileLinkParams, DeleteProfileLinkParams } from "@workspace/api-zod";
 import { requireAuth, optionalAuth } from "../lib/auth";
@@ -114,7 +114,7 @@ async function persistDeprecatedDashboardBg(userId: number, profile: any) {
 }
 
 function formatProfile(
-  user: { id: number; username: string; displayName: string | null; avatarUrl: string | null; previousUsernames?: string[] | null },
+  user: { id: number; username: string; displayName: string | null; avatarUrl: string | null },
   profile: any,
   links: Array<{ id: number; platform: string; label: string; url: string; iconUrl: string | null; sortOrder: number }>
 ) {
@@ -123,7 +123,6 @@ function formatProfile(
     userId: profile.userId,
     username: user.username,
     displayName: user.displayName,
-    previousUsernames: Array.isArray(user.previousUsernames) ? user.previousUsernames : [],
     bio: profile.bio,
     avatarUrl: user.avatarUrl,
     bannerUrl: profile.bannerUrl,
@@ -582,7 +581,7 @@ router.get("/profile/discord/status", requireAuth, async (req, res): Promise<voi
 });
 
 router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => {
-  const rawUsername = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
+  const rawUsername = (Array.isArray(req.params.username) ? req.params.username[0] : req.params.username).toLowerCase();
   const currentUserId = req.user?.userId;
   const cacheKey = `profile:${rawUsername}`;
 
@@ -596,7 +595,29 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
   if (cachedBase) {
     baseData = cachedBase;
   } else {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.username, rawUsername)).limit(1);
+    let [user] = await db.select().from(usersTable).where(eq(usersTable.username, rawUsername)).limit(1);
+
+    // Old username fallback: if no live user holds this handle, look up the
+    // username_redirects table and 301 to the current canonical URL.
+    if (!user) {
+      const [redirect] = await db
+        .select({ targetUserId: usernameRedirectsTable.targetUserId })
+        .from(usernameRedirectsTable)
+        .where(eq(usernameRedirectsTable.oldUsername, rawUsername))
+        .limit(1);
+      if (redirect) {
+        const [target] = await db.select().from(usersTable).where(eq(usersTable.id, redirect.targetUserId)).limit(1);
+        if (target && !target.banned) {
+          res.status(301).json({
+            error: "username_renamed",
+            redirectTo: target.username,
+            username: target.username,
+          });
+          return;
+        }
+      }
+    }
+
     if (!user || user.banned) {
       res.status(404).json({ error: "User not found" });
       return;

@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, usersTable, profilesTable } from "@workspace/db";
+import { db, usersTable, profilesTable, usernameRedirectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -30,7 +30,7 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
   }
 
   try {
-    const [user] = await db
+    let [user] = await db
       .select({
         id: usersTable.id,
         username: usersTable.username,
@@ -40,6 +40,29 @@ async function serveOgPage(username: string, res: Response): Promise<void> {
       .from(usersTable)
       .where(eq(usersTable.username, rawUsername))
       .limit(1);
+
+    // Old username fallback: render the OG card for the current owner so that
+    // shared links keep their preview after a rename.
+    if (!user) {
+      const [redirect] = await db
+        .select({ targetUserId: usernameRedirectsTable.targetUserId })
+        .from(usernameRedirectsTable)
+        .where(eq(usernameRedirectsTable.oldUsername, rawUsername))
+        .limit(1);
+      if (redirect) {
+        const [target] = await db
+          .select({
+            id: usersTable.id,
+            username: usersTable.username,
+            displayName: usersTable.displayName,
+            avatarUrl: usersTable.avatarUrl,
+          })
+          .from(usersTable)
+          .where(eq(usersTable.id, redirect.targetUserId))
+          .limit(1);
+        if (target) user = target;
+      }
+    }
 
     if (!user) {
       res.redirect(302, SITE_URL);

@@ -1,5 +1,6 @@
 export * from "./users";
 export * from "./profiles";
+export * from "./username_redirects";
 export * from "./profile_links";
 export * from "./followers";
 export * from "./profile_likes";

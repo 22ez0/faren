@@ -25,13 +25,27 @@ export default function ProfilePage() {
     query: {
       queryKey: getGetUserByUsernameQueryKey(username || ""),
       enabled: !!username,
-      retry: 1,
+      retry: (failureCount: number, err: unknown) => {
+        // Don't retry rename redirects — handle them in the effect below.
+        if ((err as any)?.status === 301) return false;
+        return failureCount < 1;
+      },
       // Show cached profile instantly, refetch in background
       staleTime: 30_000,
       gcTime: 5 * 60_000,
       refetchOnMount: "always",
     }
   });
+
+  // If the backend reports the username was renamed, follow the redirect.
+  useEffect(() => {
+    const e = error as any;
+    if (!e || e.status !== 301) return;
+    const target = e?.data?.redirectTo;
+    if (typeof target === "string" && target && target !== username) {
+      setLocation(`/${target}`, { replace: true });
+    }
+  }, [error, username, setLocation]);
 
   useEffect(() => {
     if (!username) return;
