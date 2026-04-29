@@ -196,7 +196,7 @@ export default {
 
     // 2. OG preview for social bots on profile paths
     const pathParts = pathname.split("/").filter(Boolean);
-    const isProfilePath = pathParts.length === 1 && /^[a-zA-Z0-9_.]{2,30}$/.test(pathParts[0]) && !RESERVED.has(pathParts[0]);
+    const isProfilePath = pathParts.length === 1 && /^[a-zA-Z0-9_.]{1,30}$/.test(pathParts[0]) && !RESERVED.has(pathParts[0]);
     const isBot = SOCIAL_BOTS.test(ua);
 
     if (isBot && isProfilePath) {
