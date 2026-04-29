@@ -683,6 +683,9 @@ export default function DevKeefnow() {
                       onChange={e => updateEditingField("displayName", e.target.value)}
                       className="w-full bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-white/30 rounded-sm"
                     />
+                    <p className="mt-1.5 text-[10px] text-white/35">
+                      Sem mínimo de caracteres aqui — admin pode definir nomes de 1, 2 ou mais letras.
+                    </p>
                   </div>
                   <div>
                     <label className="label-caps mb-1.5 block">E-mail</label>

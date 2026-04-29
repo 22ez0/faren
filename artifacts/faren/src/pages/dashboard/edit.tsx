@@ -1095,6 +1095,18 @@ export default function EditProfile() {
   };
 
   const save = async () => {
+    // Nome de exibição precisa estar vazio (cai pro @username) ou ter 3+ caracteres.
+    // Nomes de 1–2 letras são reservados (admins liberam isso pelo painel keefaren).
+    const trimmedName = (form.displayName || '').trim();
+    if (trimmedName.length > 0 && trimmedName.length < 3) {
+      toast({
+        title: "Nome muito curto",
+        description: "Use um nome com pelo menos 3 caracteres, ou deixe em branco para usar @" + ((profile as any)?.username || 'seuuser') + ".",
+        variant: "destructive",
+        duration: 3500,
+      });
+      return;
+    }
     const verifiedTypes = ['verified', 'verified_gold', 'verified_white'];
     const currentVerifiedBadge = (profile as any)?.badges?.find((b: string) => verifiedTypes.includes(b));
     const otherBadges = form.badges.filter((b: string) => !verifiedTypes.includes(b)).slice(0, 6);
@@ -1281,6 +1293,12 @@ export default function EditProfile() {
                     onChange={e => set('displayName', e.target.value)}
                     placeholder="Seu nome"
                   />
+                  <p className="mt-1.5 text-[11px] text-white/35 leading-relaxed">
+                    Mínimo 3 caracteres, ou deixe em branco para usar @{(profile as any)?.username || 'seuuser'}.
+                    {(form.displayName || '').trim().length > 0 && (form.displayName || '').trim().length < 3 && (
+                      <span className="text-red-400/90 ml-1">Muito curto.</span>
+                    )}
+                  </p>
                 </FieldRow>
 
                 <FieldRow label="Bio">
