@@ -81,8 +81,28 @@ router.post("/admin/users/:userId/username", requireAdmin, async (req, res): Pro
   const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.username, newUsername)).limit(1);
   if (existing && existing.id !== userId) { res.status(409).json({ error: "Username já em uso." }); return; }
 
-  await db.update(usersTable).set({ username: newUsername }).where(eq(usersTable.id, userId));
-  res.json({ success: true, username: newUsername });
+  // Pega o username atual antes de trocar, pra adicionar no histórico do usuário.
+  const [current] = await db
+    .select({ username: usersTable.username, previousUsernames: usersTable.previousUsernames })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  let nextHistory: string[] | undefined;
+  if (current && current.username && current.username !== newUsername) {
+    const prev = Array.isArray(current.previousUsernames) ? current.previousUsernames : [];
+    // Mantém ordem (mais recente primeiro), sem duplicatas, sem o novo username,
+    // e limita a 10 entradas pra não inflar o registro.
+    const merged = [current.username, ...prev.filter(u => u && u !== current.username && u !== newUsername)];
+    nextHistory = Array.from(new Set(merged)).slice(0, 10);
+  }
+
+  await db.update(usersTable).set({
+    username: newUsername,
+    ...(nextHistory ? { previousUsernames: nextHistory } : {}),
+  }).where(eq(usersTable.id, userId));
+
+  res.json({ success: true, username: newUsername, previousUsernames: nextHistory ?? [] });
 });
 
 router.post("/admin/users/:userId/ban", requireAdmin, async (req, res): Promise<void> => {

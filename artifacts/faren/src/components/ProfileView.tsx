@@ -13,7 +13,7 @@ import { FaPlaystation, FaLinkedin } from "react-icons/fa";
 import {
   Link as LinkIcon, Music, BadgeCheck, Code, Gamepad2,
   Mic, Palette, Headphones, Star, Zap, Crown, Globe, Heart, Eye,
-  Users, Mail, Gem, Play, Pause, SkipBack, SkipForward,
+  Users, Mail, Gem, Play, Pause, SkipBack, SkipForward, Clock,
 } from "lucide-react";
 import ParticleCanvas from "./ParticleCanvas";
 import ClickEffect from "./ClickEffect";
@@ -625,6 +625,42 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             <p className={`${isWide ? 'max-w-2xl' : 'max-w-sm'} text-sm leading-relaxed opacity-70 mb-4 whitespace-pre-wrap break-words`}>
               {renderBio(profile.bio, accent)}
             </p>
+          )}
+
+          {/* "Anteriormente conhecido como" — históricos de @ deste usuário (preenchido pelo painel admin) */}
+          {Array.isArray((profile as any).previousUsernames) && (profile as any).previousUsernames.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className={`flex flex-wrap items-center gap-1.5 mb-5 ${isLeft || isWide ? '' : 'justify-center'}`}
+            >
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.15em] font-semibold"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'rgba(255,255,255,0.55)',
+                }}
+              >
+                <Clock className="w-3 h-3" />
+                <span>Antes</span>
+              </div>
+              {((profile as any).previousUsernames as string[]).slice(0, 5).map((u) => (
+                <span
+                  key={u}
+                  className="px-2 py-1 rounded-full text-[11px] font-medium tracking-tight"
+                  style={{
+                    background: `${accent}10`,
+                    border: `1px solid ${accent}28`,
+                    color: accent,
+                  }}
+                  title={`Esse usuário já foi @${u}`}
+                >
+                  @{u}
+                </span>
+              ))}
+            </motion.div>
           )}
 
           {/* Badges (exclude verified types — shown inline next to name) */}

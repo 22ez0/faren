@@ -114,7 +114,7 @@ async function persistDeprecatedDashboardBg(userId: number, profile: any) {
 }
 
 function formatProfile(
-  user: { id: number; username: string; displayName: string | null; avatarUrl: string | null },
+  user: { id: number; username: string; displayName: string | null; avatarUrl: string | null; previousUsernames?: string[] | null },
   profile: any,
   links: Array<{ id: number; platform: string; label: string; url: string; iconUrl: string | null; sortOrder: number }>
 ) {
@@ -123,6 +123,7 @@ function formatProfile(
     userId: profile.userId,
     username: user.username,
     displayName: user.displayName,
+    previousUsernames: Array.isArray(user.previousUsernames) ? user.previousUsernames : [],
     bio: profile.bio,
     avatarUrl: user.avatarUrl,
     bannerUrl: profile.bannerUrl,

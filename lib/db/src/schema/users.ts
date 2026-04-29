@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   displayName: text("display_name"),
   avatarUrl: text("avatar_url"),
+  previousUsernames: text("previous_usernames").array().notNull().default([]),
   emailVerified: boolean("email_verified").default(false).notNull(),
   banned: boolean("banned").default(false).notNull(),
   registrationIp: text("registration_ip"),
