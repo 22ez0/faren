@@ -7,6 +7,8 @@ export const storiesTable = pgTable("stories", {
   mediaUrl: text("media_url").notNull(),
   mediaType: text("media_type").notNull(),
   caption: text("caption"),
+  musicSpotifyUrl: text("music_spotify_url"),
+  viewsCount: integer("views_count").notNull().default(0),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -19,6 +19,7 @@ import ParticleCanvas from "./ParticleCanvas";
 import ClickEffect from "./ClickEffect";
 import TypewriterText from "./TypewriterText";
 import { StoriesViewer, type StoryItem } from "./StoriesViewer";
+import { PublicationCarousel, type PublicationItem } from "./PublicationCarousel";
 
 interface GalleryItemPublic {
   id: number;
@@ -350,6 +351,8 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const [storiesOpen, setStoriesOpen] = useState(false);
   const [galleryItems, setGalleryItems] = useState<GalleryItemPublic[]>([]);
   const [galleryLightbox, setGalleryLightbox] = useState<GalleryItemPublic | null>(null);
+  const [publications, setPublications] = useState<PublicationItem[]>([]);
+  const [publicationOpen, setPublicationOpen] = useState<PublicationItem | null>(null);
 
   // Fetch active stories for this profile
   useEffect(() => {
@@ -375,7 +378,31 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
     return () => { cancelled = true; };
   }, [username, profile.username]);
 
+  // Fetch publications for this profile
+  useEffect(() => {
+    const target = (username || profile.username || "").toLowerCase();
+    if (!target) return;
+    let cancelled = false;
+    fetch(`${apiBase()}/api/users/${encodeURIComponent(target)}/publications`)
+      .then(r => r.ok ? r.json() : { publications: [] })
+      .then(data => { if (!cancelled) setPublications(Array.isArray(data?.publications) ? data.publications : []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [username, profile.username]);
+
   const hasActiveStories = stories.length > 0;
+
+  // Fire-and-forget view counter ping when a story is opened.
+  const onStoryOpened = (storyId: number) => {
+    fetch(`${apiBase()}/api/stories/${storyId}/view`, { method: "POST" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && typeof data.viewsCount === "number") {
+          setStories(prev => prev.map(s => s.id === storyId ? { ...s, viewsCount: data.viewsCount } : s));
+        }
+      })
+      .catch(() => {});
+  };
 
   const handleReport = async () => {
     if (!reportReason || reportLoading) return;
@@ -621,6 +648,51 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           }
         >
           <div className="relative flex-shrink-0">
+            {/* Instagram Notes style status bubble */}
+            {(() => {
+              const statusText = (profile as any).statusText as string | null | undefined;
+              const statusEmoji = (profile as any).statusEmoji as string | null | undefined;
+              const statusColor = ((profile as any).statusColor as string | null | undefined) || accent;
+              const statusExpiresAt = (profile as any).statusExpiresAt as string | null | undefined;
+              if (!statusText) return null;
+              if (statusExpiresAt) {
+                const exp = new Date(statusExpiresAt).getTime();
+                if (!Number.isNaN(exp) && exp <= Date.now()) return null;
+              }
+              return (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 220, damping: 18 }}
+                  className="absolute -top-7 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap"
+                  title={statusText}
+                >
+                  <div
+                    className="relative px-2.5 py-1 rounded-full text-[11px] font-medium leading-none flex items-center gap-1 max-w-[180px]"
+                    style={{
+                      background: 'rgba(20,20,22,0.92)',
+                      color: 'rgba(255,255,255,0.92)',
+                      border: `1px solid ${statusColor}55`,
+                      boxShadow: `0 4px 16px rgba(0,0,0,0.45), 0 0 10px ${statusColor}33`,
+                      backdropFilter: 'blur(10px)',
+                    }}
+                  >
+                    {statusEmoji && <span className="emoji text-sm leading-none">{statusEmoji}</span>}
+                    <span className="truncate">{statusText}</span>
+                    {/* Note tail (two dots) */}
+                    <span
+                      className="absolute -bottom-1 left-1/2 -translate-x-2 w-1.5 h-1.5 rounded-full"
+                      style={{ background: 'rgba(20,20,22,0.92)', border: `1px solid ${statusColor}55` }}
+                    />
+                    <span
+                      className="absolute -bottom-2.5 left-1/2 translate-x-0.5 w-1 h-1 rounded-full"
+                      style={{ background: 'rgba(20,20,22,0.92)', border: `1px solid ${statusColor}55` }}
+                    />
+                  </div>
+                </motion.div>
+              );
+            })()}
+
             {/* Edge-style blue/gray gradient ring when there are active stories.
                Acts as a button that opens the Stories viewer. */}
             <button
@@ -942,6 +1014,60 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           </div>
         )}
 
+        {/* Publications (Instagram-style square grid, max 3) */}
+        {publications.length > 0 && (
+          <div className="w-full mt-8">
+            <p className="label-caps mb-3 opacity-50 text-center md:text-left">Publicações</p>
+            <div className={`grid grid-cols-3 gap-1 md:gap-1.5 ${publications.length < 3 ? 'max-w-md mx-auto md:mx-0' : ''}`}>
+              {publications.map((pub, i) => {
+                const cover = pub.media[0];
+                if (!cover) return null;
+                const coverIsVideo = cover.mediaType === 'video' || isVideoMedia(cover.mediaUrl);
+                return (
+                  <motion.button
+                    key={pub.id}
+                    type="button"
+                    onClick={() => setPublicationOpen(pub)}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 + i * 0.04 }}
+                    className="relative aspect-square overflow-hidden bg-white/5 group"
+                    aria-label={pub.caption || `Publicação ${i + 1}`}
+                  >
+                    {coverIsVideo ? (
+                      <video
+                        src={cover.mediaUrl}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <MediaFill src={cover.mediaUrl} alt={pub.caption || ''} className="transition-transform duration-300 group-hover:scale-105" />
+                    )}
+                    {/* Carousel indicator if multiple medias */}
+                    {pub.media.length > 1 && (
+                      <div className="absolute top-1.5 right-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] text-white font-medium">
+                        {pub.media.length}
+                      </div>
+                    )}
+                    {coverIsVideo && (
+                      <div className="absolute bottom-1.5 right-1.5 rounded-full bg-black/55 p-1">
+                        <Play className="w-3 h-3 text-white fill-white" />
+                      </div>
+                    )}
+                    {pub.musicSpotifyUrl && (
+                      <div className="absolute bottom-1.5 left-1.5 rounded-full bg-[#1DB954] p-1" title="Com música">
+                        <Music className="w-2.5 h-2.5 text-white" />
+                      </div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Gallery (wide layout only — Instagram-style 3-col grid) */}
         {isWide && galleryItems.length > 0 && (
           <div className="w-full mt-10">
@@ -1005,6 +1131,8 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           username={username || profile.username || ''}
           avatarUrl={profile.avatarUrl}
           onClose={() => setStoriesOpen(false)}
+          onOpen={onStoryOpened}
+          showViewsCounter={!!isOwner}
           onDelete={isOwner ? async (id) => {
             const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
             try {
@@ -1017,6 +1145,15 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
               if (remaining.length === 0) setStoriesOpen(false);
             } catch {}
           } : undefined}
+        />
+
+        {/* Publication carousel */}
+        <PublicationCarousel
+          open={!!publicationOpen}
+          publication={publicationOpen}
+          username={username || profile.username || ''}
+          avatarUrl={profile.avatarUrl}
+          onClose={() => setPublicationOpen(null)}
         />
 
         {/* Footer */}

@@ -11,3 +11,5 @@ export * from "./posts";
 export * from "./support_tickets";
 export * from "./stories";
 export * from "./media_gallery";
+export * from "./profile_publications";
+export * from "./publication_media";

@@ -11,6 +11,7 @@ import supportRouter from "./support";
 import ogRouter from "./og";
 import storiesRouter from "./stories";
 import galleryRouter from "./gallery";
+import publicationsRouter from "./publications";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(supportRouter);
 router.use(ogRouter);
 router.use(storiesRouter);
 router.use(galleryRouter);
+router.use(publicationsRouter);
 
 export default router;

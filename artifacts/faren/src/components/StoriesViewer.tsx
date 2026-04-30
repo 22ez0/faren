@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 export interface StoryItem {
   id: number;
   mediaUrl: string;
   mediaType: string;
   caption?: string | null;
+  musicSpotifyUrl?: string | null;
+  viewsCount?: number;
   expiresAt?: string;
   createdAt?: string;
 }
@@ -21,6 +23,25 @@ interface StoriesViewerProps {
   onViewed?: (storyId: number) => void;
   /** Optional: only present for owner — lets them delete their own story. */
   onDelete?: (storyId: number) => void;
+  /** Optional: called when a story opens (each open = +1 view). */
+  onOpen?: (storyId: number) => void;
+  /** Show view counter (owner only). */
+  showViewsCounter?: boolean;
+}
+
+function spotifyEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)spotify\.com$/i.test(u.hostname)) return null;
+    const parts = u.pathname.split("/").filter(Boolean);
+    // expect [type, id]
+    if (parts.length < 2) return null;
+    const [type, id] = parts;
+    if (!["track", "album", "playlist", "episode"].includes(type)) return null;
+    return `https://open.spotify.com/embed/${type}/${id}`;
+  } catch {
+    return null;
+  }
 }
 
 const IMAGE_DURATION_MS = 4500;
@@ -38,12 +59,15 @@ export function StoriesViewer({
   onClose,
   onViewed,
   onDelete,
+  onOpen,
+  showViewsCounter,
 }: StoriesViewerProps) {
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0); // 0..1 for current story
   const [paused, setPaused] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const tickRef = useRef<number | null>(null);
+  const openedRef = useRef<Set<number>>(new Set());
 
   // reset when opening
   useEffect(() => {
@@ -51,11 +75,22 @@ export function StoriesViewer({
       setIndex(0);
       setProgress(0);
       setPaused(false);
+      openedRef.current = new Set();
     }
   }, [open]);
 
   const current = stories[index];
   const isVideo = current ? current.mediaType === "video" || isVideoMedia(current.mediaUrl) : false;
+  const spotifyUrl = current?.musicSpotifyUrl ? spotifyEmbedUrl(current.musicSpotifyUrl) : null;
+
+  // Fire onOpen each time a story becomes visible (every open = +1 view).
+  useEffect(() => {
+    if (!open || !current || !onOpen) return;
+    if (openedRef.current.has(current.id)) return;
+    openedRef.current.add(current.id);
+    onOpen(current.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, current?.id]);
 
   // progress ticker for image stories
   useEffect(() => {
@@ -239,10 +274,38 @@ export function StoriesViewer({
             )}
 
             {current.caption && (
-              <div className="absolute bottom-20 left-0 right-0 px-6 text-center">
+              <div className={`absolute ${spotifyUrl ? "bottom-32" : "bottom-20"} left-0 right-0 px-6 text-center pointer-events-none`}>
                 <p className="inline-block max-w-full px-3 py-1.5 rounded-lg bg-black/55 backdrop-blur text-sm text-white">
                   {current.caption}
                 </p>
+              </div>
+            )}
+
+            {/* Spotify embed (Instagram-style chip at bottom) */}
+            {spotifyUrl && (
+              <div className="absolute bottom-4 left-3 right-3 z-20 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="rounded-xl overflow-hidden shadow-2xl bg-black/60 backdrop-blur-md border border-white/10">
+                  <iframe
+                    title="Spotify"
+                    src={spotifyUrl}
+                    width="100%"
+                    height="80"
+                    frameBorder={0}
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                    loading="lazy"
+                    style={{ display: "block" }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Views counter (owner only) */}
+            {showViewsCounter && typeof current.viewsCount === "number" && (
+              <div className={`absolute ${spotifyUrl ? "bottom-28" : "bottom-4"} left-1/2 -translate-x-1/2 z-20 pointer-events-none`}>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white text-xs">
+                  <Eye className="w-3.5 h-3.5" />
+                  <span className="font-medium">{current.viewsCount.toLocaleString("pt-BR")}</span>
+                </div>
               </div>
             )}
 

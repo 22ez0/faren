@@ -146,6 +146,11 @@ function formatProfile(
     typewriterTexts: profile.typewriterTexts ?? [],
     profileTitle: profile.profileTitle,
     showViews: profile.showViews,
+    statusText: profile.statusText ?? null,
+    statusEmoji: profile.statusEmoji ?? null,
+    statusColor: profile.statusColor ?? null,
+    statusUpdatedAt: profile.statusUpdatedAt ? profile.statusUpdatedAt.toISOString() : null,
+    statusExpiresAt: profile.statusExpiresAt ? profile.statusExpiresAt.toISOString() : null,
     links: links.map(l => ({
       id: l.id,
       platform: l.platform,
@@ -270,6 +275,67 @@ router.patch("/profile", requireAuth, async (req, res): Promise<void> => {
   profileCache.delete(`profile:${user.username}`);
 
   res.json(formatProfile(user, updated, links));
+});
+
+// PATCH /profile/status — Instagram-Notes-style status bubble
+// body: { statusText?: string|null, statusEmoji?: string|null, statusColor?: string|null, statusExpiresAt?: string|null }
+// To clear: send statusText: null or empty string.
+router.patch("/profile/status", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const body: any = req.body || {};
+
+  const rawText = body.statusText;
+  const text = rawText == null ? null : String(rawText).trim().slice(0, 60);
+  const emoji = body.statusEmoji == null ? null : String(body.statusEmoji).trim().slice(0, 8) || null;
+  const color = body.statusColor == null ? null : String(body.statusColor).trim().slice(0, 32) || null;
+
+  let expiresAt: Date | null = null;
+  if (body.statusExpiresAt) {
+    const d = new Date(body.statusExpiresAt);
+    if (!Number.isNaN(d.getTime())) expiresAt = d;
+  }
+
+  const clearing = !text;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
+  if (!profile) {
+    res.status(404).json({ error: "Profile not found" });
+    return;
+  }
+
+  const [updated] = await db.update(profilesTable).set(
+    clearing
+      ? {
+          statusText: null,
+          statusEmoji: null,
+          statusColor: null,
+          statusUpdatedAt: null,
+          statusExpiresAt: null,
+        }
+      : {
+          statusText: text,
+          statusEmoji: emoji,
+          statusColor: color,
+          statusUpdatedAt: new Date(),
+          statusExpiresAt: expiresAt,
+        },
+  ).where(eq(profilesTable.userId, userId)).returning();
+
+  profileCache.delete(`profile:${user.username}`);
+
+  res.json({
+    statusText: updated.statusText,
+    statusEmoji: updated.statusEmoji,
+    statusColor: updated.statusColor,
+    statusUpdatedAt: updated.statusUpdatedAt ? updated.statusUpdatedAt.toISOString() : null,
+    statusExpiresAt: updated.statusExpiresAt ? updated.statusExpiresAt.toISOString() : null,
+  });
 });
 
 router.post("/profile/upload", requireAuth, async (req, res): Promise<void> => {

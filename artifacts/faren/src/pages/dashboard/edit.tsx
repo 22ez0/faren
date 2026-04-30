@@ -625,6 +625,8 @@ interface OwnStory {
   mediaUrl: string;
   mediaType: string;
   caption?: string | null;
+  musicSpotifyUrl?: string | null;
+  viewsCount?: number;
   expiresAt: string;
   createdAt: string;
 }
@@ -636,6 +638,27 @@ interface OwnGalleryItem {
   caption?: string | null;
   sortOrder: number;
   createdAt: string;
+}
+
+interface OwnPublicationMedia {
+  id: number;
+  mediaUrl: string;
+  mediaType: string;
+  sortOrder: number;
+}
+
+interface OwnPublication {
+  id: number;
+  caption?: string | null;
+  musicSpotifyUrl?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  media: OwnPublicationMedia[];
+}
+
+const SPOTIFY_URL_RE = /^https?:\/\/open\.spotify\.com\/(track|album|playlist|episode)\/[A-Za-z0-9]+/i;
+function isValidSpotify(url: string): boolean {
+  return !!url && SPOTIFY_URL_RE.test(url.trim());
 }
 
 function isAttachedFile(value?: string) {
@@ -928,6 +951,16 @@ export default function EditProfile() {
   const [ownGallery, setOwnGallery] = useState<OwnGalleryItem[]>([]);
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [storyUploading, setStoryUploading] = useState(false);
+  const [storyMusicUrl, setStoryMusicUrl] = useState('');
+  const [ownPublications, setOwnPublications] = useState<OwnPublication[]>([]);
+  const [pubDraftMedia, setPubDraftMedia] = useState<{ url: string; type: string }[]>([]);
+  const [pubDraftCaption, setPubDraftCaption] = useState('');
+  const [pubDraftMusic, setPubDraftMusic] = useState('');
+  const [pubMediaUploading, setPubMediaUploading] = useState(false);
+  const [pubPublishing, setPubPublishing] = useState(false);
+  const [statusText, setStatusText] = useState('');
+  const [statusEmoji, setStatusEmoji] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useGetMyProfile({
     query: { enabled: isAuthenticated },
@@ -990,6 +1023,8 @@ export default function EditProfile() {
       if (isAttachedFile(profile.musicUrl || '')) {
         setMusicType('file');
       }
+      setStatusText(((profile as any).statusText as string | null) || '');
+      setStatusEmoji(((profile as any).statusEmoji as string | null) || '');
     }
   }, [profile]);
 
@@ -1010,6 +1045,10 @@ export default function EditProfile() {
       .then(r => r.ok ? r.json() : { items: [] })
       .then(d => setOwnGallery(Array.isArray(d?.items) ? d.items : []))
       .catch(() => {});
+    fetch(`${apiBase()}/api/me/publications`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { publications: [] })
+      .then(d => setOwnPublications(Array.isArray(d?.publications) ? d.publications : []))
+      .catch(() => {});
   }, [isAuthenticated]);
 
   function detectMediaType(fileType: string, url: string): 'image' | 'video' | 'gif' {
@@ -1019,6 +1058,11 @@ export default function EditProfile() {
   }
 
   async function postStoryFromFile(file: File) {
+    const trimmedMusic = storyMusicUrl.trim();
+    if (trimmedMusic && !isValidSpotify(trimmedMusic)) {
+      toast({ title: 'URL inválida', description: 'A música precisa ser um link do Spotify.', variant: 'destructive' });
+      return;
+    }
     setStoryUploading(true);
     try {
       const url = await uploadFileToR2(file, 'stories');
@@ -1026,16 +1070,124 @@ export default function EditProfile() {
       const res = await fetch(`${apiBase()}/api/stories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ mediaUrl: url, mediaType }),
+        body: JSON.stringify({
+          mediaUrl: url,
+          mediaType,
+          ...(trimmedMusic ? { musicSpotifyUrl: trimmedMusic } : {}),
+        }),
       });
       if (!res.ok) throw new Error('Falha ao publicar story');
       const data = await res.json();
       if (data?.story) setOwnStories(prev => [data.story, ...prev]);
+      setStoryMusicUrl('');
       toast({ title: 'Story publicado!', description: 'Visível por 24h.' });
     } catch (err: any) {
       toast({ title: 'Erro', description: String(err?.message || err), variant: 'destructive' });
     } finally {
       setStoryUploading(false);
+    }
+  }
+
+  // ----- Publications (max 3 per profile) -----
+  const PUB_MAX = 3;
+  const PUB_MEDIA_MAX = 3;
+
+  async function addMediaToPubDraft(file: File) {
+    if (pubDraftMedia.length >= PUB_MEDIA_MAX) {
+      toast({ title: 'Limite atingido', description: `Máximo de ${PUB_MEDIA_MAX} mídias por publicação.`, variant: 'destructive' });
+      return;
+    }
+    if (file.type.startsWith('video/') && file.size > 80 * 1024 * 1024) {
+      toast({ title: 'Vídeo muito grande', description: 'Máximo de 80MB por vídeo.', variant: 'destructive' });
+      return;
+    }
+    setPubMediaUploading(true);
+    try {
+      const url = await uploadFileToR2(file, 'publications');
+      const type = detectMediaType(file.type, url);
+      setPubDraftMedia(prev => [...prev, { url, type }]);
+    } catch (err: any) {
+      toast({ title: 'Erro no upload', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setPubMediaUploading(false);
+    }
+  }
+
+  function removePubDraftMedia(index: number) {
+    setPubDraftMedia(prev => prev.filter((_, i) => i !== index));
+  }
+
+  async function publishDraft() {
+    if (pubDraftMedia.length === 0) {
+      toast({ title: 'Adicione pelo menos uma mídia', variant: 'destructive' });
+      return;
+    }
+    if (ownPublications.length >= PUB_MAX) {
+      toast({ title: 'Limite atingido', description: `Máximo de ${PUB_MAX} publicações.`, variant: 'destructive' });
+      return;
+    }
+    const trimmedMusic = pubDraftMusic.trim();
+    if (trimmedMusic && !isValidSpotify(trimmedMusic)) {
+      toast({ title: 'URL inválida', description: 'A música precisa ser um link do Spotify.', variant: 'destructive' });
+      return;
+    }
+    setPubPublishing(true);
+    try {
+      const res = await fetch(`${apiBase()}/api/profile/publications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({
+          caption: pubDraftCaption.trim() || undefined,
+          ...(trimmedMusic ? { musicSpotifyUrl: trimmedMusic } : {}),
+          media: pubDraftMedia,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || 'Falha ao publicar');
+      }
+      const data = await res.json();
+      if (data?.publication) setOwnPublications(prev => [...prev, data.publication]);
+      setPubDraftMedia([]);
+      setPubDraftCaption('');
+      setPubDraftMusic('');
+      toast({ title: 'Publicação criada!' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setPubPublishing(false);
+    }
+  }
+
+  async function deletePublication(id: number) {
+    try {
+      await fetch(`${apiBase()}/api/profile/publications/${id}`, { method: 'DELETE', headers: authHeader() });
+      setOwnPublications(prev => prev.filter(p => p.id !== id));
+    } catch (err: any) {
+      toast({ title: 'Erro ao apagar', description: String(err?.message || err), variant: 'destructive' });
+    }
+  }
+
+  // ----- Status (Instagram Notes style) -----
+  async function saveStatus() {
+    setStatusSaving(true);
+    try {
+      const trimmed = statusText.trim();
+      const body: any = trimmed
+        ? { statusText: trimmed, statusEmoji: statusEmoji.trim() || null }
+        : { statusText: null };
+      const res = await fetch(`${apiBase()}/api/profile/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Falha ao salvar status');
+      toast({ title: trimmed ? 'Status atualizado!' : 'Status removido' });
+      refetchProfile();
+    } catch (err: any) {
+      toast({ title: 'Erro', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setStatusSaving(false);
     }
   }
 
@@ -1397,6 +1549,53 @@ export default function EditProfile() {
             {/* ── BASIC TAB ─────────────────────────────── */}
             {activeTab === 'Básico' && (
               <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+                <FieldRow label="Status (Notes)">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[11px] text-white/40 -mt-1 mb-1">
+                      Bolha estilo Instagram Notes — fica visível para qualquer pessoa que abrir seu perfil.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={statusEmoji}
+                        onChange={e => setStatusEmoji(e.target.value.slice(0, 4))}
+                        placeholder="🌙"
+                        maxLength={4}
+                        className="w-14 text-center bg-white/[0.04] border border-white/10 px-2 py-2.5 text-base text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-xl"
+                      />
+                      <input
+                        value={statusText}
+                        onChange={e => setStatusText(e.target.value.slice(0, 60))}
+                        placeholder="No que você está pensando agora?"
+                        maxLength={60}
+                        className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-xl"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-white/40">{statusText.length}/60</span>
+                      <div className="flex items-center gap-2">
+                        {(((profile as any)?.statusText) || '') && (
+                          <button
+                            type="button"
+                            onClick={() => { setStatusText(''); setStatusEmoji(''); saveStatus(); }}
+                            disabled={statusSaving}
+                            className="text-[11px] uppercase tracking-wider text-white/50 hover:text-white border border-white/15 rounded-full px-3 py-1.5 disabled:opacity-50"
+                          >
+                            Remover
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={saveStatus}
+                          disabled={statusSaving}
+                          className="text-[11px] uppercase tracking-wider text-black bg-white hover:bg-white/90 rounded-full px-3 py-1.5 font-semibold disabled:opacity-50"
+                        >
+                          {statusSaving ? 'Salvando…' : 'Salvar status'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </FieldRow>
+
                 <FieldRow label="Nome de Exibição">
                   <StyledInput
                     value={form.displayName}
@@ -1974,18 +2173,32 @@ export default function EditProfile() {
                     title="Stories"
                     subtitle="Publique fotos, GIFs ou vídeos curtos. Aparecem por 24 horas com a borda azul brilhante no seu avatar."
                   />
-                  <div className="flex items-center gap-3 mb-4">
-                    <FileUploadButton
-                      onFile={(_url, file) => postStoryFromFile(file)}
-                      accept="image/*,video/*,image/gif"
-                      prefix="stories"
-                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
-                    >
-                      {storyUploading ? 'Publicando...' : 'Publicar story'}
-                    </FileUploadButton>
-                    <p className="text-[11px] text-white/40">
-                      {ownStories.length === 0 ? 'Nenhum story ativo.' : `${ownStories.length} ${ownStories.length === 1 ? 'story ativo' : 'stories ativos'}`}
-                    </p>
+                  <div className="flex flex-col gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Music className="w-4 h-4 text-[#1DB954] shrink-0" />
+                      <input
+                        value={storyMusicUrl}
+                        onChange={e => setStoryMusicUrl(e.target.value)}
+                        placeholder="Cole um link do Spotify (opcional) — track, album ou playlist"
+                        className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-lg"
+                      />
+                      {storyMusicUrl && !isValidSpotify(storyMusicUrl) && (
+                        <span className="text-[10px] text-red-400">URL inválida</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <FileUploadButton
+                        onFile={(_url, file) => postStoryFromFile(file)}
+                        accept="image/*,video/*,image/gif"
+                        prefix="stories"
+                        onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
+                      >
+                        {storyUploading ? 'Publicando...' : 'Publicar story'}
+                      </FileUploadButton>
+                      <p className="text-[11px] text-white/40">
+                        {ownStories.length === 0 ? 'Nenhum story ativo.' : `${ownStories.length} ${ownStories.length === 1 ? 'story ativo' : 'stories ativos'}`}
+                      </p>
+                    </div>
                   </div>
                   {ownStories.length > 0 && (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
@@ -1999,9 +2212,18 @@ export default function EditProfile() {
                             ) : (
                               <img src={s.mediaUrl} alt="" className="w-full h-full object-cover" />
                             )}
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2">
-                              <p className="text-[10px] text-white/80 font-semibold uppercase tracking-wider">{expHours}h restantes</p>
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2 flex items-center justify-between gap-1">
+                              <p className="text-[10px] text-white/80 font-semibold uppercase tracking-wider">{expHours}h</p>
+                              <span className="flex items-center gap-1 text-[10px] text-white/80 font-semibold">
+                                <Eye className="w-3 h-3" />
+                                {(s.viewsCount ?? 0).toLocaleString('pt-BR')}
+                              </span>
                             </div>
+                            {s.musicSpotifyUrl && (
+                              <div className="absolute top-1.5 left-1.5 rounded-full bg-[#1DB954]/90 p-1" title="Com música">
+                                <Music className="w-3 h-3 text-white" />
+                              </div>
+                            )}
                             <button
                               type="button"
                               onClick={() => deleteStory(s.id)}
@@ -2014,6 +2236,155 @@ export default function EditProfile() {
                         );
                       })}
                     </div>
+                  )}
+                </div>
+
+                <div className="glow-line" />
+
+                {/* PUBLICATIONS SECTION */}
+                <div>
+                  <SectionHeader
+                    title="Publicações"
+                    subtitle={`Até ${PUB_MAX} publicações no perfil. Cada publicação pode ter até ${PUB_MEDIA_MAX} mídias (foto, GIF ou vídeo) e uma música do Spotify.`}
+                  />
+
+                  {/* Existing publications */}
+                  {ownPublications.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                      {ownPublications.map((p) => {
+                        const cover = p.media[0];
+                        const isVid = cover ? (cover.mediaType === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(cover.mediaUrl)) : false;
+                        return (
+                          <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-black/40 group">
+                            {cover && (isVid ? (
+                              <video src={cover.mediaUrl} muted className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={cover.mediaUrl} alt="" className="w-full h-full object-cover" />
+                            ))}
+                            {p.media.length > 1 && (
+                              <div className="absolute top-1.5 right-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] text-white font-medium">
+                                {p.media.length}/{PUB_MEDIA_MAX}
+                              </div>
+                            )}
+                            {p.musicSpotifyUrl && (
+                              <div className="absolute top-1.5 left-1.5 rounded-full bg-[#1DB954]/90 p-1" title="Com música">
+                                <Music className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                            {p.caption && (
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2">
+                                <p className="text-[10px] text-white/85 line-clamp-2">{p.caption}</p>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => deletePublication(p.id)}
+                              className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-black/65 hover:bg-red-500 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              aria-label="Apagar publicação"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Draft / new publication form */}
+                  {ownPublications.length < PUB_MAX ? (
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+                      <p className="text-[11px] uppercase tracking-wider text-white/50 font-semibold">
+                        Nova publicação ({ownPublications.length}/{PUB_MAX})
+                      </p>
+
+                      {pubDraftMedia.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {pubDraftMedia.map((m, i) => {
+                            const isVid = m.type === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(m.url);
+                            return (
+                              <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                                {isVid ? (
+                                  <video src={m.url} muted className="w-full h-full object-cover" />
+                                ) : (
+                                  <img src={m.url} alt="" className="w-full h-full object-cover" />
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => removePubDraftMedia(i)}
+                                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/65 hover:bg-red-500 flex items-center justify-center text-white"
+                                  aria-label="Remover mídia"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                                <div className="absolute bottom-1 left-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] text-white">
+                                  {i + 1}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {pubDraftMedia.length < PUB_MEDIA_MAX && (
+                          <FileUploadButton
+                            onFile={(_url, file) => addMediaToPubDraft(file)}
+                            accept="image/*,video/*,image/gif"
+                            prefix="publications"
+                            onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
+                          >
+                            {pubMediaUploading ? 'Enviando...' : `Adicionar mídia (${pubDraftMedia.length}/${PUB_MEDIA_MAX})`}
+                          </FileUploadButton>
+                        )}
+                        <span className="text-[11px] text-white/40">
+                          Foto, GIF ou vídeo (máx. 80MB)
+                        </span>
+                      </div>
+
+                      <textarea
+                        value={pubDraftCaption}
+                        onChange={e => setPubDraftCaption(e.target.value.slice(0, 300))}
+                        placeholder="Legenda (opcional)"
+                        rows={2}
+                        className="w-full bg-white/[0.04] border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-lg resize-none"
+                      />
+
+                      <div className="flex items-center gap-2">
+                        <Music className="w-4 h-4 text-[#1DB954] shrink-0" />
+                        <input
+                          value={pubDraftMusic}
+                          onChange={e => setPubDraftMusic(e.target.value)}
+                          placeholder="Link do Spotify (opcional)"
+                          className="flex-1 bg-white/[0.04] border border-white/10 px-3 py-2 text-xs text-white placeholder:text-white/25 focus:outline-none focus:border-white/25 transition-colors rounded-lg"
+                        />
+                        {pubDraftMusic && !isValidSpotify(pubDraftMusic) && (
+                          <span className="text-[10px] text-red-400">URL inválida</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setPubDraftMedia([]); setPubDraftCaption(''); setPubDraftMusic(''); }}
+                          disabled={pubPublishing || (pubDraftMedia.length === 0 && !pubDraftCaption && !pubDraftMusic)}
+                          className="text-[11px] uppercase tracking-wider text-white/50 hover:text-white border border-white/15 rounded-full px-3 py-1.5 disabled:opacity-30"
+                        >
+                          Limpar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={publishDraft}
+                          disabled={pubPublishing || pubDraftMedia.length === 0}
+                          className="text-[11px] uppercase tracking-wider text-black bg-white hover:bg-white/90 rounded-full px-4 py-1.5 font-semibold disabled:opacity-40"
+                        >
+                          {pubPublishing ? 'Publicando…' : 'Publicar'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-white/40">
+                      Limite de {PUB_MAX} publicações atingido. Apague uma para criar uma nova.
+                    </p>
                   )}
                 </div>
 
