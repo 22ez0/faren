@@ -26,8 +26,8 @@ export default function ProfilePage() {
       queryKey: getGetUserByUsernameQueryKey(username || ""),
       enabled: !!username,
       retry: (failureCount: number, err: unknown) => {
-        // Don't retry rename redirects — handle them in the effect below.
-        if ((err as any)?.status === 301) return false;
+        // Don't retry rename signals — handle them in the effect below.
+        if ((err as any)?.data?.error === "username_renamed") return false;
         return failureCount < 1;
       },
       // Show cached profile instantly, refetch in background
@@ -40,7 +40,7 @@ export default function ProfilePage() {
   // If the backend reports the username was renamed, follow the redirect.
   useEffect(() => {
     const e = error as any;
-    if (!e || e.status !== 301) return;
+    if (!e || e?.data?.error !== "username_renamed") return;
     const target = e?.data?.redirectTo;
     if (typeof target === "string" && target && target !== username) {
       setLocation(`/${target}`, { replace: true });

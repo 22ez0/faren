@@ -598,7 +598,14 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.username, rawUsername)).limit(1);
 
     // Old username fallback: if no live user holds this handle, look up the
-    // username_redirects table and 301 to the current canonical URL.
+    // username_redirects table and signal the rename to the client.
+    //
+    // We respond with 410 Gone (not 301) on purpose: browsers automatically
+    // try to follow 3xx responses in fetch(), and when the response has no
+    // Location header the request fails with a network error — the JSON body
+    // never reaches the SPA, so the client-side redirect can't run. 410 is
+    // returned untouched and lets the SPA inspect `data.error === "username_renamed"`
+    // and route to `data.redirectTo`.
     if (!user) {
       const [redirect] = await db
         .select({ targetUserId: usernameRedirectsTable.targetUserId })
@@ -608,7 +615,7 @@ router.get("/users/:username", optionalAuth, async (req, res): Promise<void> => 
       if (redirect) {
         const [target] = await db.select().from(usersTable).where(eq(usersTable.id, redirect.targetUserId)).limit(1);
         if (target && !target.banned) {
-          res.status(301).json({
+          res.status(410).json({
             error: "username_renamed",
             redirectTo: target.username,
             username: target.username,
