@@ -9,6 +9,8 @@ import adminRouter from "./admin";
 import postsRouter from "./posts";
 import supportRouter from "./support";
 import ogRouter from "./og";
+import storiesRouter from "./stories";
+import galleryRouter from "./gallery";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,7 @@ router.use(adminRouter);
 router.use(postsRouter);
 router.use(supportRouter);
 router.use(ogRouter);
+router.use(storiesRouter);
+router.use(galleryRouter);
 
 export default router;

@@ -197,6 +197,8 @@ export interface OptionChipProps {
   row?: boolean;
   /** Optional second-line description (only shown when row=true). */
   description?: ReactNode;
+  /** Truncate label to a single line with ellipsis (good for picker grids with many tight cells). */
+  truncate?: boolean;
   "data-testid"?: string;
 }
 
@@ -211,6 +213,7 @@ export function OptionChip({
   disabledNote = "Em breve",
   row = false,
   description,
+  truncate = false,
   ...rest
 }: OptionChipProps) {
   const accent = color || "rgba(255,255,255,0.55)";
@@ -246,7 +249,9 @@ export function OptionChip({
       )}
       <span className="min-w-0 flex-1 flex flex-col gap-0.5">
         <span
-          className="block text-[10.5px] font-bold uppercase tracking-[0.12em] leading-tight break-words"
+          className={`block text-[10.5px] font-bold uppercase tracking-[0.1em] leading-tight ${
+            truncate ? "truncate" : "[overflow-wrap:normal] break-normal whitespace-normal"
+          }`}
           style={{ color: selected ? "#fff" : "rgba(255,255,255,0.7)" }}
         >
           {label}

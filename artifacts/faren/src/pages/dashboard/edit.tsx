@@ -618,7 +618,25 @@ const SOCIAL_PLATFORMS = [
   { value: 'website', label: 'Website', icon: Globe, color: '#fff', placeholder: 'https://meusite.com' },
 ];
 
-const TABS = ['Básico', 'Tema', 'Layout', 'Efeitos', 'Links', 'Avançado'];
+const TABS = ['Básico', 'Tema', 'Layout', 'Efeitos', 'Links', 'Mídia', 'Avançado'];
+
+interface OwnStory {
+  id: number;
+  mediaUrl: string;
+  mediaType: string;
+  caption?: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
+interface OwnGalleryItem {
+  id: number;
+  mediaUrl: string;
+  mediaType: string;
+  caption?: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
 
 function isAttachedFile(value?: string) {
   return !!value && value.startsWith('data:');
@@ -906,6 +924,10 @@ export default function EditProfile() {
   const [lastfmConnecting, setLastfmConnecting] = useState(false);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [ownStories, setOwnStories] = useState<OwnStory[]>([]);
+  const [ownGallery, setOwnGallery] = useState<OwnGalleryItem[]>([]);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [storyUploading, setStoryUploading] = useState(false);
 
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useGetMyProfile({
     query: { enabled: isAuthenticated },
@@ -974,6 +996,106 @@ export default function EditProfile() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) setLocation("/login");
   }, [authLoading, isAuthenticated]);
+
+  // Load own stories + own gallery once authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
+    if (!token) return;
+    fetch(`${apiBase()}/api/me/stories`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { stories: [] })
+      .then(d => setOwnStories(Array.isArray(d?.stories) ? d.stories : []))
+      .catch(() => {});
+    fetch(`${apiBase()}/api/me/gallery`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(d => setOwnGallery(Array.isArray(d?.items) ? d.items : []))
+      .catch(() => {});
+  }, [isAuthenticated]);
+
+  function detectMediaType(fileType: string, url: string): 'image' | 'video' | 'gif' {
+    if (fileType.startsWith('video/')) return 'video';
+    if (fileType === 'image/gif' || /\.gif(\?|#|$)/i.test(url)) return 'gif';
+    return 'image';
+  }
+
+  async function postStoryFromFile(file: File) {
+    setStoryUploading(true);
+    try {
+      const url = await uploadFileToR2(file, 'stories');
+      const mediaType = detectMediaType(file.type, url);
+      const res = await fetch(`${apiBase()}/api/stories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ mediaUrl: url, mediaType }),
+      });
+      if (!res.ok) throw new Error('Falha ao publicar story');
+      const data = await res.json();
+      if (data?.story) setOwnStories(prev => [data.story, ...prev]);
+      toast({ title: 'Story publicado!', description: 'Visível por 24h.' });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setStoryUploading(false);
+    }
+  }
+
+  async function deleteStory(id: number) {
+    try {
+      await fetch(`${apiBase()}/api/stories/${id}`, { method: 'DELETE', headers: authHeader() });
+      setOwnStories(prev => prev.filter(s => s.id !== id));
+    } catch (err: any) {
+      toast({ title: 'Erro ao apagar', description: String(err?.message || err), variant: 'destructive' });
+    }
+  }
+
+  async function addGalleryFromFile(file: File) {
+    setGalleryUploading(true);
+    try {
+      const url = await uploadFileToR2(file, 'gallery');
+      const mediaType = detectMediaType(file.type, url);
+      const res = await fetch(`${apiBase()}/api/profile/gallery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ mediaUrl: url, mediaType }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error || 'Falha ao adicionar à galeria');
+      }
+      const data = await res.json();
+      if (data?.item) setOwnGallery(prev => [...prev, data.item]);
+    } catch (err: any) {
+      toast({ title: 'Erro', description: String(err?.message || err), variant: 'destructive' });
+    } finally {
+      setGalleryUploading(false);
+    }
+  }
+
+  async function deleteGalleryItem(id: number) {
+    try {
+      await fetch(`${apiBase()}/api/profile/gallery/${id}`, { method: 'DELETE', headers: authHeader() });
+      setOwnGallery(prev => prev.filter(i => i.id !== id));
+    } catch (err: any) {
+      toast({ title: 'Erro ao apagar', description: String(err?.message || err), variant: 'destructive' });
+    }
+  }
+
+  async function moveGalleryItem(id: number, direction: -1 | 1) {
+    const idx = ownGallery.findIndex(i => i.id === id);
+    if (idx < 0) return;
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= ownGallery.length) return;
+    const next = [...ownGallery];
+    [next[idx], next[swapIdx]] = [next[swapIdx]!, next[idx]!];
+    setOwnGallery(next);
+    try {
+      await fetch(`${apiBase()}/api/profile/gallery/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ ids: next.map(i => i.id) }),
+      });
+    } catch {}
+  }
 
   const set = (key: keyof ProfileFormState, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -1095,18 +1217,6 @@ export default function EditProfile() {
   };
 
   const save = async () => {
-    // Nome de exibição precisa estar vazio (cai pro @username) ou ter 3+ caracteres.
-    // Nomes de 1–2 letras são reservados (admins liberam isso pelo painel keefaren).
-    const trimmedName = (form.displayName || '').trim();
-    if (trimmedName.length > 0 && trimmedName.length < 3) {
-      toast({
-        title: "Nome muito curto",
-        description: "Use um nome com pelo menos 3 caracteres, ou deixe em branco para usar @" + ((profile as any)?.username || 'seuuser') + ".",
-        variant: "destructive",
-        duration: 3500,
-      });
-      return;
-    }
     const verifiedTypes = ['verified', 'verified_gold', 'verified_white'];
     const currentVerifiedBadge = (profile as any)?.badges?.find((b: string) => verifiedTypes.includes(b));
     const otherBadges = form.badges.filter((b: string) => !verifiedTypes.includes(b)).slice(0, 6);
@@ -1293,12 +1403,6 @@ export default function EditProfile() {
                     onChange={e => set('displayName', e.target.value)}
                     placeholder="Seu nome"
                   />
-                  <p className="mt-1.5 text-[11px] text-white/35 leading-relaxed">
-                    Mínimo 3 caracteres, ou deixe em branco para usar @{(profile as any)?.username || 'seuuser'}.
-                    {(form.displayName || '').trim().length > 0 && (form.displayName || '').trim().length < 3 && (
-                      <span className="text-red-400/90 ml-1">Muito curto.</span>
-                    )}
-                  </p>
                 </FieldRow>
 
                 <FieldRow label="Bio">
@@ -1786,7 +1890,7 @@ export default function EditProfile() {
                     title="Adicionar uma rede"
                     subtitle="Selecione uma rede para abrir o formulário de cadastro."
                   />
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {SOCIAL_PLATFORMS.map(plat => {
                       const isSelected = selectedPlatform === plat.value;
                       const Icon = plat.icon;
@@ -1802,6 +1906,7 @@ export default function EditProfile() {
                           icon={<Icon className="w-3.5 h-3.5" />}
                           color={plat.color}
                           label={plat.label}
+                          truncate
                           data-testid={`platform-${plat.value}`}
                         />
                       );
@@ -1856,6 +1961,132 @@ export default function EditProfile() {
                       </motion.div>
                     )}
                   </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── MÍDIA TAB ──────────────────────────── */}
+            {activeTab === 'Mídia' && (
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-7">
+                {/* STORIES SECTION */}
+                <div>
+                  <SectionHeader
+                    title="Stories"
+                    subtitle="Publique fotos, GIFs ou vídeos curtos. Aparecem por 24 horas com a borda azul brilhante no seu avatar."
+                  />
+                  <div className="flex items-center gap-3 mb-4">
+                    <FileUploadButton
+                      onFile={(_url, file) => postStoryFromFile(file)}
+                      accept="image/*,video/*,image/gif"
+                      prefix="stories"
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
+                    >
+                      {storyUploading ? 'Publicando...' : 'Publicar story'}
+                    </FileUploadButton>
+                    <p className="text-[11px] text-white/40">
+                      {ownStories.length === 0 ? 'Nenhum story ativo.' : `${ownStories.length} ${ownStories.length === 1 ? 'story ativo' : 'stories ativos'}`}
+                    </p>
+                  </div>
+                  {ownStories.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                      {ownStories.map((s) => {
+                        const isVid = s.mediaType === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(s.mediaUrl);
+                        const expHours = Math.max(0, Math.round((new Date(s.expiresAt).getTime() - Date.now()) / 3600000));
+                        return (
+                          <div key={s.id} className="relative aspect-[9/16] rounded-xl overflow-hidden border border-white/10 bg-black/40 group">
+                            {isVid ? (
+                              <video src={s.mediaUrl} muted className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={s.mediaUrl} alt="" className="w-full h-full object-cover" />
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-2">
+                              <p className="text-[10px] text-white/80 font-semibold uppercase tracking-wider">{expHours}h restantes</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => deleteStory(s.id)}
+                              className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/65 hover:bg-red-500 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              aria-label="Apagar story"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="glow-line" />
+
+                {/* GALLERY SECTION */}
+                <div>
+                  <SectionHeader
+                    title="Galeria"
+                    subtitle="Adicione fotos, GIFs e vídeos ao seu perfil. Aparece em grade estilo Instagram no Layout 4 (Largo)."
+                  />
+                  <div className="flex items-center gap-3 mb-4">
+                    <FileUploadButton
+                      onFile={(_url, file) => addGalleryFromFile(file)}
+                      accept="image/*,video/*,image/gif"
+                      prefix="gallery"
+                      onError={(msg) => toast({ title: 'Upload falhou', description: msg, variant: 'destructive' })}
+                    >
+                      {galleryUploading ? 'Enviando...' : 'Adicionar mídia'}
+                    </FileUploadButton>
+                    <p className="text-[11px] text-white/40">
+                      {ownGallery.length === 0 ? 'Galeria vazia.' : `${ownGallery.length} ${ownGallery.length === 1 ? 'item' : 'itens'} (máx. 60)`}
+                    </p>
+                  </div>
+                  {ownGallery.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {ownGallery.map((it, idx) => {
+                        const isVid = it.mediaType === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(it.mediaUrl);
+                        return (
+                          <div key={it.id} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 bg-black/40 group">
+                            {isVid ? (
+                              <video src={it.mediaUrl} muted className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={it.mediaUrl} alt="" className="w-full h-full object-cover" />
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/85 to-transparent p-1.5">
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => moveGalleryItem(it.id, -1)}
+                                  disabled={idx === 0}
+                                  className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white text-xs disabled:opacity-30"
+                                  aria-label="Mover para a esquerda"
+                                >
+                                  ←
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveGalleryItem(it.id, 1)}
+                                  disabled={idx === ownGallery.length - 1}
+                                  className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 text-white text-xs disabled:opacity-30"
+                                  aria-label="Mover para a direita"
+                                >
+                                  →
+                                </button>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => deleteGalleryItem(it.id)}
+                                className="w-6 h-6 rounded bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white"
+                                aria-label="Apagar item"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-white/35 mt-3">
+                    Dica: troque o layout para <strong className="text-white/55">Largo</strong> na aba Layout para mostrar a galeria no seu perfil público.
+                  </p>
                 </div>
               </motion.div>
             )}

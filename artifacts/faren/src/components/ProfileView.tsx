@@ -13,11 +13,19 @@ import { FaPlaystation, FaLinkedin } from "react-icons/fa";
 import {
   Link as LinkIcon, Music, BadgeCheck, Code, Gamepad2,
   Mic, Palette, Headphones, Star, Zap, Crown, Globe, Heart, Eye,
-  Users, Mail, Gem, Play, Pause, SkipBack, SkipForward, Clock,
+  Users, Mail, Gem, Play, Pause, SkipBack, SkipForward,
 } from "lucide-react";
 import ParticleCanvas from "./ParticleCanvas";
 import ClickEffect from "./ClickEffect";
 import TypewriterText from "./TypewriterText";
+import { StoriesViewer, type StoryItem } from "./StoriesViewer";
+
+interface GalleryItemPublic {
+  id: number;
+  mediaUrl: string;
+  mediaType: string;
+  caption?: string | null;
+}
 
 interface ProfileViewProps {
   profile: Partial<PublicProfile>;
@@ -338,6 +346,36 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
   const [reportSent, setReportSent] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [entered, setEntered] = useState(!!isOwner);
+  const [stories, setStories] = useState<StoryItem[]>([]);
+  const [storiesOpen, setStoriesOpen] = useState(false);
+  const [galleryItems, setGalleryItems] = useState<GalleryItemPublic[]>([]);
+  const [galleryLightbox, setGalleryLightbox] = useState<GalleryItemPublic | null>(null);
+
+  // Fetch active stories for this profile
+  useEffect(() => {
+    const target = (username || profile.username || "").toLowerCase();
+    if (!target) return;
+    let cancelled = false;
+    fetch(`${apiBase()}/api/users/${encodeURIComponent(target)}/stories`)
+      .then(r => r.ok ? r.json() : { stories: [] })
+      .then(data => { if (!cancelled) setStories(Array.isArray(data?.stories) ? data.stories : []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [username, profile.username]);
+
+  // Fetch gallery for this profile (only used in wide layout, but cheap to fetch)
+  useEffect(() => {
+    const target = (username || profile.username || "").toLowerCase();
+    if (!target) return;
+    let cancelled = false;
+    fetch(`${apiBase()}/api/users/${encodeURIComponent(target)}/gallery`)
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(data => { if (!cancelled) setGalleryItems(Array.isArray(data?.items) ? data.items : []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [username, profile.username]);
+
+  const hasActiveStories = stories.length > 0;
 
   const handleReport = async () => {
     if (!reportReason || reportLoading) return;
@@ -535,7 +573,19 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
       />
 
       {/* Content */}
-      <div className={`relative z-10 ${isWide ? 'max-w-3xl' : isFloating ? 'max-w-sm' : 'max-w-md'} mx-auto px-5 ${isFloating ? 'py-8' : 'py-14 md:py-20'} flex flex-col ${alignClass} gap-0`}>
+      <div
+        className={`relative z-10 ${isWide ? 'max-w-3xl' : isFloating ? 'max-w-sm' : 'max-w-md'} mx-auto px-5 ${isFloating ? 'py-8' : 'py-14 md:py-20'} flex flex-col ${alignClass} gap-0`}
+        style={isFloating && nameBorderOpacity > 0 ? {
+          background: 'rgba(20,20,22,0.45)',
+          border: `1px solid ${nameBorderColor}`,
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          boxShadow: `0 12px 40px rgba(0,0,0,0.45), 0 0 24px ${glow}10`,
+          borderRadius: '24px',
+          marginTop: '2rem',
+          marginBottom: '2rem',
+        } : undefined}
+      >
 
         {/* Banner */}
         {profile.bannerUrl && (
@@ -556,32 +606,59 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 220, damping: 26 }}
           className={`flex ${isLeft ? '' : 'self-center'} items-center gap-3 mb-5 px-3.5 py-2.5 rounded-2xl`}
-          style={{
-            background: nameBorderOpacity <= 0 ? 'transparent' : 'rgba(20,20,22,0.45)',
-            border: `1px solid ${nameBorderColor}`,
-            backdropFilter: nameBorderOpacity <= 0 ? 'none' : 'blur(14px)',
-            WebkitBackdropFilter: nameBorderOpacity <= 0 ? 'none' : 'blur(14px)',
-            boxShadow: nameBorderOpacity <= 0
-              ? 'none'
-              : `0 6px 30px rgba(0,0,0,0.35), 0 0 18px ${glow}12`,
-          }}
+          style={
+            isFloating
+              ? { background: 'transparent', border: '1px solid transparent' }
+              : {
+                  background: nameBorderOpacity <= 0 ? 'transparent' : 'rgba(20,20,22,0.45)',
+                  border: `1px solid ${nameBorderColor}`,
+                  backdropFilter: nameBorderOpacity <= 0 ? 'none' : 'blur(14px)',
+                  WebkitBackdropFilter: nameBorderOpacity <= 0 ? 'none' : 'blur(14px)',
+                  boxShadow: nameBorderOpacity <= 0
+                    ? 'none'
+                    : `0 6px 30px rgba(0,0,0,0.35), 0 0 18px ${glow}12`,
+                }
+          }
         >
           <div className="relative flex-shrink-0">
-            <div
-              className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden relative"
-              style={{ border: `1px solid ${accent}33` }}
+            {/* Edge-style blue/gray gradient ring when there are active stories.
+               Acts as a button that opens the Stories viewer. */}
+            <button
+              type="button"
+              onClick={() => { if (hasActiveStories) setStoriesOpen(true); }}
+              disabled={!hasActiveStories}
+              aria-label={hasActiveStories ? "Ver stories" : "Avatar"}
+              className={`block rounded-full ${hasActiveStories ? 'cursor-pointer hover:opacity-90 transition-opacity' : 'cursor-default'}`}
+              style={{
+                padding: hasActiveStories ? 2 : 0,
+                background: hasActiveStories
+                  ? 'linear-gradient(135deg, #0078D4 0%, #50E6FF 45%, #8E9BAA 100%)'
+                  : 'transparent',
+                boxShadow: hasActiveStories
+                  ? '0 0 14px rgba(80,230,255,0.55), 0 0 26px rgba(0,120,212,0.35)'
+                  : 'none',
+              }}
             >
-              {profile.avatarUrl ? (
-                <MediaFill src={profile.avatarUrl} alt={profile.username} />
-              ) : (
-                <div
-                  className="w-full h-full flex items-center justify-center text-base font-bold"
-                  style={{ backgroundColor: `${accent}20`, color: accent }}
-                >
-                  {profile.username?.substring(0, 2).toUpperCase()}
-                </div>
-              )}
-            </div>
+              <div
+                className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden relative"
+                style={{
+                  border: hasActiveStories
+                    ? `2px solid #000`
+                    : `1px solid ${accent}33`,
+                }}
+              >
+                {profile.avatarUrl ? (
+                  <MediaFill src={profile.avatarUrl} alt={profile.username} />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center text-base font-bold"
+                    style={{ backgroundColor: `${accent}20`, color: accent }}
+                  >
+                    {profile.username?.substring(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </button>
 
             {profile.discordConnected && showDiscordPresence && (
               <div
@@ -625,42 +702,6 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             <p className={`${isWide ? 'max-w-2xl' : 'max-w-sm'} text-sm leading-relaxed opacity-70 mb-4 whitespace-pre-wrap break-words`}>
               {renderBio(profile.bio, accent)}
             </p>
-          )}
-
-          {/* "Anteriormente conhecido como" — históricos de @ deste usuário (preenchido pelo painel admin) */}
-          {Array.isArray((profile as any).previousUsernames) && (profile as any).previousUsernames.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }}
-              className={`flex flex-wrap items-center gap-1.5 mb-5 ${isLeft || isWide ? '' : 'justify-center'}`}
-            >
-              <div
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.15em] font-semibold"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  color: 'rgba(255,255,255,0.55)',
-                }}
-              >
-                <Clock className="w-3 h-3" />
-                <span>Antes</span>
-              </div>
-              {((profile as any).previousUsernames as string[]).slice(0, 5).map((u) => (
-                <span
-                  key={u}
-                  className="px-2 py-1 rounded-full text-[11px] font-medium tracking-tight"
-                  style={{
-                    background: `${accent}10`,
-                    border: `1px solid ${accent}28`,
-                    color: accent,
-                  }}
-                  title={`Esse usuário já foi @${u}`}
-                >
-                  @{u}
-                </span>
-              ))}
-            </motion.div>
           )}
 
           {/* Badges (exclude verified types — shown inline next to name) */}
@@ -900,6 +941,83 @@ export default function ProfileView({ profile, isOwner, onFollow, onLike, isFoll
             })}
           </div>
         )}
+
+        {/* Gallery (wide layout only — Instagram-style 3-col grid) */}
+        {isWide && galleryItems.length > 0 && (
+          <div className="w-full mt-10">
+            <div className="grid grid-cols-3 gap-1 md:gap-1.5">
+              {galleryItems.map((item, i) => (
+                <motion.button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setGalleryLightbox(item)}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 + i * 0.02 }}
+                  className="relative aspect-square overflow-hidden bg-white/5 group"
+                  aria-label={item.caption || `Item ${i + 1}`}
+                >
+                  <MediaFill src={item.mediaUrl} alt={item.caption || ''} className="transition-transform duration-300 group-hover:scale-105" />
+                  {(item.mediaType === 'video' || isVideoMedia(item.mediaUrl)) && (
+                    <div className="absolute top-1.5 right-1.5 rounded-full bg-black/55 p-1">
+                      <Play className="w-3 h-3 text-white fill-white" />
+                    </div>
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Gallery lightbox */}
+        {galleryLightbox && (
+          <div
+            className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setGalleryLightbox(null)}
+          >
+            <button
+              type="button"
+              onClick={() => setGalleryLightbox(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+              aria-label="Fechar"
+            >
+              ×
+            </button>
+            <div className="max-w-3xl max-h-[85vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+              {(galleryLightbox.mediaType === 'video' || isVideoMedia(galleryLightbox.mediaUrl)) ? (
+                <video src={galleryLightbox.mediaUrl} controls autoPlay className="max-h-[85vh] max-w-full object-contain" />
+              ) : (
+                <img src={galleryLightbox.mediaUrl} alt={galleryLightbox.caption || ''} className="max-h-[85vh] max-w-full object-contain" />
+              )}
+            </div>
+            {galleryLightbox.caption && (
+              <p className="absolute bottom-6 left-1/2 -translate-x-1/2 max-w-md px-3 py-1.5 rounded-lg bg-black/60 text-white text-sm">
+                {galleryLightbox.caption}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Stories Viewer */}
+        <StoriesViewer
+          open={storiesOpen}
+          stories={stories}
+          username={username || profile.username || ''}
+          avatarUrl={profile.avatarUrl}
+          onClose={() => setStoriesOpen(false)}
+          onDelete={isOwner ? async (id) => {
+            const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
+            try {
+              await fetch(`${apiBase()}/api/stories/${id}`, {
+                method: 'DELETE',
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+              });
+              const remaining = stories.filter(s => s.id !== id);
+              setStories(remaining);
+              if (remaining.length === 0) setStoriesOpen(false);
+            } catch {}
+          } : undefined}
+        />
 
         {/* Footer */}
         <div className="mt-12 flex flex-col items-center gap-3">
