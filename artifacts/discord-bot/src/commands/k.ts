@@ -65,5 +65,5 @@ export async function handleKCommand(interaction: ChatInputCommandInteraction): 
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
-  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  await interaction.reply({ embeds: [embed], components: [row] });
 }
