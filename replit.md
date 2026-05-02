@@ -117,10 +117,18 @@ Pacote standalone no monorepo que roda o bot do Faren no Discord.
 - `DISCORD_REDIRECT_URI` — `https://faren.com.br/` (configurado no Render bot + API)
 
 ### Comportamento do `/k`
-- Reply é **ephemeral** — só o usuário que usou o comando vê o painel
+- Reply é **público** — todos no canal veem o painel
 - `integration_types: [GuildInstall, UserInstall]` — funciona instalado em servidor OU em conta de usuário
 - `contexts: [Guild, BotDM, PrivateChannel]` — funciona em servidores, DM com o bot e grupos/DMs privados
 - Para usar em DMs/grupos: o usuário precisa adicionar o bot ao próprio perfil via link de instalação com `integration_type=1` (user install)
+
+### Fluxo de imagem RPC (catbox.moe)
+1. Bot pede imagem no canal (`envie a imagem...`)
+2. Usuário envia a imagem no chat
+3. Bot faz upload no catbox.moe
+4. Bot posta o link direto **como mensagem no chat** (para copiar)
+5. RPC usa `largeImageKey: "mp:external/<url>"` — formato correto para imagens externas no Discord
+6. Modal de configuração abre em seguida para título/subtítulo/detalhe/status
 
 ### UptimeRobot
 - Monitor `faren-discord-bot` criado em 2026-05-02 (id: `802975552`)
