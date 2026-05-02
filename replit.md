@@ -110,10 +110,23 @@ Pacote standalone no monorepo que roda o bot do Faren no Discord.
 - **Store** (`src/store.ts`) — Map em memória por userId: token, config RPC, estado de coleta de imagem.
 
 ### Variáveis necessárias
-- `DISCORD_BOT_TOKEN` — token do bot (já configurado)
-- `DISCORD_CLIENT_ID` — ID do app (já configurado: `1500071757925584996`)
-- `DISCORD_CLIENT_SECRET` — necessário para OAuth2 (obter no Discord Developer Portal)
-- `DISCORD_REDIRECT_URI` — `https://faren.com.br/` (já configurado)
+- `DISCORD_BOT_TOKEN` — token do bot (configurado no Render bot + API)
+- `DISCORD_CLIENT_ID` — `1500071757925584996` (configurado no Render bot + API)
+- `DISCORD_CLIENT_SECRET` — configurado no Render bot + API (2026-05-02)
+- `DISCORD_REDIRECT_URI` — `https://faren.com.br/` (configurado no Render bot + API)
+
+### Comportamento do `/k`
+- Reply é **ephemeral** — só o usuário que usou o comando vê o painel
+- `integration_types: [GuildInstall, UserInstall]` — funciona instalado em servidor OU em conta de usuário
+- `contexts: [Guild, BotDM, PrivateChannel]` — funciona em servidores, DM com o bot e grupos/DMs privados
+- Para usar em DMs/grupos: o usuário precisa adicionar o bot ao próprio perfil via link de instalação com `integration_type=1` (user install)
+
+### UptimeRobot
+- Monitor `faren-discord-bot` criado em 2026-05-02 (id: `802975552`)
+- URL monitorada: `https://faren-discord-bot.onrender.com/`
+- Intervalo: 5 minutos
+- Main API key: `u3404353-fb8a8f4f9cd610250f560437`
+- Read-only key: `ur3404353-fae989c7b3971bf2834da265`
 
 ### Scripts
 - `pnpm --filter @workspace/discord-bot run start` — inicia o bot (workflow "Discord Bot")
