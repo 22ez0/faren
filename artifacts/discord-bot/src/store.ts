@@ -12,6 +12,8 @@ export interface UserSession {
   rpc?: RpcConfig;
   awaitingImage?: boolean;
   pendingRpcFields?: Omit<RpcConfig, "iconUrl">;
+  pendingIconUrl?: string;
+  pendingStatusType?: "playing" | "watching" | "streaming";
 }
 
 const sessions = new Map<string, UserSession>();
