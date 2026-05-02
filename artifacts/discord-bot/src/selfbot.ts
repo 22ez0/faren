@@ -140,3 +140,9 @@ export async function deactivateRpc(token: string, userId: string): Promise<void
   const client = await getSelfbotClient(token, userId);
   await client.user.setActivity(null);
 }
+
+export async function sendSelfDm(token: string, userId: string, content: string): Promise<void> {
+  const client = await getSelfbotClient(token, userId);
+  const dmChannel = await client.users.createDM(userId);
+  await dmChannel.send(content);
+}
