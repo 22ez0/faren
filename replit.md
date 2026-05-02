@@ -125,9 +125,15 @@ Pacote standalone no monorepo que roda o bot do Faren no Discord.
 - `DELETE /api/discord/auth/disconnect` — desconecta Discord do perfil
 
 ### Emojis customizados usados
-- `<a:y_dmn:1493416129723498516>` — animado (título do painel)
-- `<:b_dmn:1500082338682634271>` — opções principais
-- `<:b_dmn:1495209913478287483>` — opção editar rpc
+- `<a:estrela:1500092244819054622>` — animado ao lado do K no título do embed (substituiu `y_dmn`)
+- `<:bola:1500092309105020998>` — todas as opções do select menu (substituiu `b_dmn`)
+- Ambos os emojis foram adicionados diretamente ao bot pelo dono (não dependem de servidor específico)
+
+### Validação de token (selfbot)
+- `validateToken` agora faz um `fetch` direto em `GET /api/v10/users/@me` antes de criar o cliente selfbot
+- Token inválido é detectado imediatamente (<1s) sem depender do timeout do discord.js-selfbot-v13
+- O cliente selfbot é iniciado em background após validação HTTP (para uso nas operações seguintes)
+- Erros do selfbot são traduzidos: `TOKEN_INVALID` → mensagem amigável em PT-BR
 
 ---
 
