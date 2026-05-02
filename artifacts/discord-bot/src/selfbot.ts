@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const { Client: SelfbotClient } = require("discord.js-selfbot-v13");
+const { Client: SelfbotClient, RichPresence } = require("discord.js-selfbot-v13");
 
 export interface RpcOptions {
   iconUrl?: string;
@@ -21,6 +21,8 @@ interface DiscordUserResponse {
 }
 
 const selfbotClients = new Map<string, InstanceType<typeof SelfbotClient>>();
+
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "1500071757925584996";
 
 async function validateTokenHttp(token: string): Promise<DiscordUserResponse> {
   const res = await fetch("https://discord.com/api/v10/users/@me", {
@@ -111,26 +113,6 @@ export async function leaveAllServers(token: string, userId: string): Promise<nu
   return count;
 }
 
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "1500071757925584996";
-
-async function resolveExternalAsset(userToken: string, imageUrl: string): Promise<string> {
-  const res = await fetch(
-    `https://discord.com/api/v10/applications/${CLIENT_ID}/external-assets`,
-    {
-      method: "POST",
-      headers: { Authorization: userToken, "Content-Type": "application/json" },
-      body: JSON.stringify({ urls: [imageUrl] }),
-    }
-  );
-
-  if (!res.ok) throw new Error(`external-assets API: ${res.status}`);
-
-  const data = (await res.json()) as { url: string; external_asset_path: string }[];
-  if (!data[0]?.external_asset_path) throw new Error("external_asset_path não encontrado");
-
-  return `mp:${data[0].external_asset_path}`;
-}
-
 export async function activateRpc(token: string, userId: string, opts: RpcOptions): Promise<void> {
   const client = await getSelfbotClient(token, userId);
 
@@ -140,24 +122,33 @@ export async function activateRpc(token: string, userId: string, opts: RpcOption
     watching: 3,
   };
 
-  const activityData: Record<string, unknown> = {
-    name: opts.title || "faren",
-    type: typeMap[opts.statusType] ?? 0,
-    details: opts.subtitle || undefined,
-    state: opts.detail || undefined,
-    url: opts.statusType === "streaming" ? (opts.customUrl || "https://twitch.tv/faren") : undefined,
-  };
+  const rp = new RichPresence(client)
+    .setApplicationId(CLIENT_ID)
+    .setName(opts.title || "faren")
+    .setType(typeMap[opts.statusType] ?? 0);
+
+  if (opts.subtitle) rp.setDetails(opts.subtitle);
+  if (opts.detail) rp.setState(opts.detail);
+
+  if (opts.statusType === "streaming") {
+    rp.setURL(opts.customUrl || "https://twitch.tv/faren");
+  }
 
   if (opts.iconUrl) {
     try {
-      activityData.largeImageKey = await resolveExternalAsset(token, opts.iconUrl);
-    } catch {
-      activityData.largeImageKey = `mp:external/${opts.iconUrl}`;
+      const externalAssets = await RichPresence.getExternal(client, CLIENT_ID, opts.iconUrl);
+      if (externalAssets[0]?.external_asset_path) {
+        rp.setAssetsLargeImage(externalAssets[0].external_asset_path);
+        rp.setAssetsLargeText(opts.title || "faren");
+      }
+    } catch (e: any) {
+      console.warn("[rpc] getExternal falhou, usando fallback:", e?.message);
+      rp.setAssetsLargeImage(`mp:external/${opts.iconUrl}`);
+      rp.setAssetsLargeText(opts.title || "faren");
     }
-    activityData.largeImageText = opts.title || "faren";
   }
 
-  await client.user.setActivity(activityData);
+  await client.user.setActivity(rp);
 }
 
 export async function deactivateRpc(token: string, userId: string): Promise<void> {
