@@ -6,7 +6,7 @@ import {
   type ModalSubmitInteraction,
   type StringSelectMenuInteraction,
 } from "discord.js";
-import { getToken, setRpc, getRpc, setSession, getSession } from "../store.js";
+import { getToken, setToken, setRpc, getRpc, setSession, getSession } from "../store.js";
 import { activateRpc } from "../selfbot.js";
 import { uploadToCatbox } from "../catbox.js";
 
