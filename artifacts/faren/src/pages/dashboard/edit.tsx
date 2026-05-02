@@ -1315,6 +1315,20 @@ export default function EditProfile() {
   const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token') || ''}` });
 
   const connectDiscord = async () => {
+    setDiscordConnecting(true);
+    try {
+      const res = await fetch(`${apiBase()}/api/discord/auth/url`);
+      const data = await res.json();
+      if (!data.url) throw new Error('Não foi possível obter URL de autorização');
+      sessionStorage.setItem('discord_oauth_pending', '1');
+      window.location.href = data.url;
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      setDiscordConnecting(false);
+    }
+  };
+
+  const connectDiscordLanyard = async () => {
     const uid = discordUserIdInput.trim();
     if (!uid) return;
     setDiscordConnecting(true);
@@ -2672,17 +2686,31 @@ export default function EditProfile() {
                     </div>
                   ) : (
                     <div className="space-y-3">
+                      <button
+                        onClick={connectDiscord}
+                        disabled={discordConnecting}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#5865F2]/10 border border-[#5865F2]/40 hover:border-[#5865F2]/70 hover:bg-[#5865F2]/20 transition-all rounded-xl text-[12px] font-semibold uppercase tracking-[0.15em] text-white disabled:opacity-40"
+                        data-testid="button-discord-connect-oauth"
+                      >
+                        <SiDiscord className="w-3.5 h-3.5 text-[#5865F2]" />
+                        {discordConnecting ? 'redirecionando...' : 'autorizar com discord'}
+                      </button>
+                      <div className="relative flex items-center gap-2">
+                        <div className="flex-1 h-px bg-white/10" />
+                        <span className="text-[10px] text-white/25 uppercase tracking-widest">ou via user id</span>
+                        <div className="flex-1 h-px bg-white/10" />
+                      </div>
                       <div className="flex gap-2">
                         <input
                           value={discordUserIdInput}
                           onChange={e => setDiscordUserIdInput(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && connectDiscord()}
+                          onKeyDown={e => e.key === 'Enter' && connectDiscordLanyard()}
                           placeholder="Seu Discord User ID"
                           className="flex-1 bg-black border border-white/10 px-3 py-2 text-xs outline-none focus:border-white/30 rounded-xl font-mono"
                           data-testid="input-discord-userid"
                         />
                         <button
-                          onClick={connectDiscord}
+                          onClick={connectDiscordLanyard}
                           disabled={discordConnecting || !discordUserIdInput.trim()}
                           className="btn-outline-white text-xs px-4 py-2 disabled:opacity-40"
                           data-testid="button-discord-connect"
@@ -2691,7 +2719,7 @@ export default function EditProfile() {
                         </button>
                       </div>
                       <p className="text-[10px] text-white/30 leading-relaxed">
-                        <strong className="text-white/55">Como pegar o User ID:</strong> Discord → Configurações → Avançado → ative Modo Desenvolvedor → clique direito no seu nome → Copiar User ID. Entre no servidor <span className="text-white/55">discord.gg/lanyard</span>.
+                        Via User ID: Discord → Configurações → Avançado → ative Modo Desenvolvedor → clique direito no seu nome → Copiar User ID. Entre no servidor <span className="text-white/55">discord.gg/lanyard</span>.
                       </p>
                     </div>
                   )}
