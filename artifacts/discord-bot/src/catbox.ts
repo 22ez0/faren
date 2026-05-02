@@ -1,4 +1,51 @@
+async function tryUguuUpload(buffer: ArrayBuffer, contentType: string, ext: string): Promise<string> {
+  const form = new FormData();
+  form.append(
+    "files[]",
+    new Blob([buffer], { type: contentType }),
+    `icon.${ext}`
+  );
+
+  const res = await fetch("https://uguu.se/upload.php", {
+    method: "POST",
+    body: form,
+    headers: { "User-Agent": "faren-bot/1.0" },
+  });
+
+  if (!res.ok) throw new Error(`uguu retornou ${res.status}`);
+
+  const data = (await res.json()) as { success: boolean; files?: { url: string }[] };
+  if (!data.success || !data.files?.[0]?.url) throw new Error("uguu: resposta inválida");
+
+  return data.files[0].url;
+}
+
+async function downloadImage(imageUrl: string): Promise<{ buffer: ArrayBuffer; contentType: string; ext: string }> {
+  const res = await fetch(imageUrl, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; faren-bot/1.0)" },
+  });
+  if (!res.ok) throw new Error(`falha ao baixar imagem: ${res.status}`);
+
+  const buffer = await res.arrayBuffer();
+  const contentType = res.headers.get("content-type") ?? "image/png";
+
+  const ext = contentType.includes("gif")
+    ? "gif"
+    : contentType.includes("png")
+    ? "png"
+    : contentType.includes("webp")
+    ? "webp"
+    : "jpg";
+
+  if (ext === "gif" && buffer.byteLength / (1024 * 1024) > 5) {
+    throw new Error("gif muito grande. limite: 5mb");
+  }
+
+  return { buffer, contentType, ext };
+}
+
 export async function uploadToCatbox(imageUrl: string): Promise<string> {
+  // Tenta catbox via URL upload
   try {
     const form = new FormData();
     form.append("reqtype", "urlupload");
@@ -17,41 +64,28 @@ export async function uploadToCatbox(imageUrl: string): Promise<string> {
     }
   } catch {}
 
-  const imageRes = await fetch(imageUrl, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; faren-bot/1.0)" },
-  });
-  if (!imageRes.ok) throw new Error(`falha ao baixar imagem: ${imageRes.status}`);
+  // Baixa a imagem
+  const { buffer, contentType, ext } = await downloadImage(imageUrl);
 
-  const buffer = await imageRes.arrayBuffer();
-  const contentType = imageRes.headers.get("content-type") ?? "image/png";
+  // Tenta catbox via file upload
+  try {
+    const form = new FormData();
+    form.append("reqtype", "fileupload");
+    form.append("userhash", "");
+    form.append("fileToUpload", new Blob([buffer], { type: contentType }), `icon.${ext}`);
 
-  const ext = contentType.includes("gif")
-    ? "gif"
-    : contentType.includes("png")
-    ? "png"
-    : contentType.includes("webp")
-    ? "webp"
-    : "jpg";
+    const res = await fetch("https://catbox.moe/user.php", {
+      method: "POST",
+      body: form,
+      headers: { "User-Agent": "faren-bot/1.0" },
+    });
 
-  if (ext === "gif" && buffer.byteLength / (1024 * 1024) > 5) {
-    throw new Error("gif muito grande. limite: 5mb");
-  }
+    if (res.ok) {
+      const text = await res.text();
+      if (text.trim().startsWith("https://")) return text.trim();
+    }
+  } catch {}
 
-  const form2 = new FormData();
-  form2.append("reqtype", "fileupload");
-  form2.append("userhash", "");
-  form2.append("fileToUpload", new Blob([buffer], { type: contentType }), `icon.${ext}`);
-
-  const res2 = await fetch("https://catbox.moe/user.php", {
-    method: "POST",
-    body: form2,
-    headers: { "User-Agent": "faren-bot/1.0" },
-  });
-
-  if (!res2.ok) throw new Error(`catbox retornou ${res2.status}`);
-
-  const url = await res2.text();
-  if (!url.trim().startsWith("https://")) throw new Error(`resposta inválida do catbox: ${url}`);
-
-  return url.trim();
+  // Fallback: uguu.se
+  return tryUguuUpload(buffer, contentType, ext);
 }
