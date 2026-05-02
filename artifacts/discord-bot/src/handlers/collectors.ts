@@ -6,7 +6,6 @@ import {
 import { getSession, setSession, setRpc, getToken } from "../store.js";
 import { uploadToCatbox } from "../catbox.js";
 import { activateRpc } from "../selfbot.js";
-import { buildRpcModal } from "./modals.js";
 
 export function registerMessageCollector(client: Client): void {
   client.on(Events.MessageCreate, async (message: Message) => {
@@ -30,12 +29,16 @@ export function registerMessageCollector(client: Client): void {
 
     setSession(userId, { awaitingImage: false });
 
-    const typing = message.channel.isSendable()
-      ? message.channel.sendTyping().catch(() => null)
-      : null;
+    if (message.channel.isSendable()) {
+      message.channel.sendTyping().catch(() => null);
+    }
 
     try {
       const catboxUrl = await uploadToCatbox(attachment.url);
+
+      if (message.channel.isSendable()) {
+        await message.channel.send(catboxUrl);
+      }
 
       const pendingFields = session.pendingRpcFields;
       const token = getToken(userId);
@@ -46,14 +49,14 @@ export function registerMessageCollector(client: Client): void {
         setRpc(userId, rpcConfig);
 
         await message.reply(
-          `icon hospedado: ${catboxUrl}\n\nrpc ativado com sucesso.\n\n> **título:** ${rpcConfig.title}\n> **subtítulo:** ${rpcConfig.subtitle || "—"}\n> **detalhe:** ${rpcConfig.detail || "—"}\n> **status:** ${rpcConfig.statusType}`
+          `rpc ativado com sucesso.\n\n> **título:** ${rpcConfig.title}\n> **subtítulo:** ${rpcConfig.subtitle || "—"}\n> **detalhe:** ${rpcConfig.detail || "—"}\n> **status:** ${rpcConfig.statusType}\n> **icon:** ${catboxUrl}`
         );
       } else {
         setSession(userId, { pendingRpcFields: undefined });
-        await message.reply(
-          `icon hospedado: ${catboxUrl}\n\nagora selecione **ativar rpc** no menu novamente para configurar os demais campos.`
-        );
         setRpc(userId, { iconUrl: catboxUrl } as any);
+        await message.reply(
+          `icon salvo. agora selecione **ativar rpc** no menu para configurar os demais campos.`
+        );
       }
     } catch (e: any) {
       await message.reply(`erro ao processar imagem: ${e.message}`);
