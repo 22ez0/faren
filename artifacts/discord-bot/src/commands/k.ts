@@ -4,12 +4,23 @@ import {
   ActionRowBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  ApplicationIntegrationType,
+  InteractionContextType,
   type ChatInputCommandInteraction,
 } from "discord.js";
 
 export const kCommand = new SlashCommandBuilder()
   .setName("k")
-  .setDescription("acesse o painel de controle da sua conta");
+  .setDescription("acesse o painel de controle da sua conta")
+  .setIntegrationTypes(
+    ApplicationIntegrationType.GuildInstall,
+    ApplicationIntegrationType.UserInstall
+  )
+  .setContexts(
+    InteractionContextType.Guild,
+    InteractionContextType.BotDM,
+    InteractionContextType.PrivateChannel
+  );
 
 const EMOJI_ESTRELA_ID = "1500092244819054622";
 const EMOJI_BOLA_ID = "1500092309105020998";
@@ -54,5 +65,5 @@ export async function handleKCommand(interaction: ChatInputCommandInteraction): 
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
-  await interaction.reply({ embeds: [embed], components: [row] });
+  await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
 }
