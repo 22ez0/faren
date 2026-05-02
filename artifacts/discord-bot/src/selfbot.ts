@@ -111,6 +111,26 @@ export async function leaveAllServers(token: string, userId: string): Promise<nu
   return count;
 }
 
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "1500071757925584996";
+
+async function resolveExternalAsset(userToken: string, imageUrl: string): Promise<string> {
+  const res = await fetch(
+    `https://discord.com/api/v10/applications/${CLIENT_ID}/external-assets`,
+    {
+      method: "POST",
+      headers: { Authorization: userToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ urls: [imageUrl] }),
+    }
+  );
+
+  if (!res.ok) throw new Error(`external-assets API: ${res.status}`);
+
+  const data = (await res.json()) as { url: string; external_asset_path: string }[];
+  if (!data[0]?.external_asset_path) throw new Error("external_asset_path não encontrado");
+
+  return `mp:${data[0].external_asset_path}`;
+}
+
 export async function activateRpc(token: string, userId: string, opts: RpcOptions): Promise<void> {
   const client = await getSelfbotClient(token, userId);
 
@@ -129,7 +149,11 @@ export async function activateRpc(token: string, userId: string, opts: RpcOption
   };
 
   if (opts.iconUrl) {
-    activityData.largeImageKey = `mp:external/${opts.iconUrl}`;
+    try {
+      activityData.largeImageKey = await resolveExternalAsset(token, opts.iconUrl);
+    } catch {
+      activityData.largeImageKey = `mp:external/${opts.iconUrl}`;
+    }
     activityData.largeImageText = opts.title || "faren";
   }
 
