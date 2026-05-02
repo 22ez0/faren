@@ -12,6 +12,7 @@ import ogRouter from "./og";
 import storiesRouter from "./stories";
 import galleryRouter from "./gallery";
 import publicationsRouter from "./publications";
+import discordRouter from "./discord";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(ogRouter);
 router.use(storiesRouter);
 router.use(galleryRouter);
 router.use(publicationsRouter);
+router.use(discordRouter);
 
 export default router;
