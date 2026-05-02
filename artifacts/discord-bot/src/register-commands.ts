@@ -14,6 +14,7 @@ async function registerCommands(): Promise<void> {
   console.log("[register] registrando comandos slash globalmente...");
   try {
     const commands = [kCommand.toJSON()];
+    console.log("[register] payload:", JSON.stringify(commands[0]).slice(0, 200));
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
     console.log("[register] comandos registrados com sucesso.");
   } catch (err) {
