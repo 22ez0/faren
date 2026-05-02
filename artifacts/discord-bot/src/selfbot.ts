@@ -11,13 +11,34 @@ export interface RpcOptions {
   customUrl: string;
 }
 
+interface DiscordUserResponse {
+  id: string;
+  username: string;
+  global_name?: string;
+  discriminator?: string;
+  code?: number;
+  message?: string;
+}
+
 const selfbotClients = new Map<string, InstanceType<typeof SelfbotClient>>();
+
+async function validateTokenHttp(token: string): Promise<DiscordUserResponse> {
+  const res = await fetch("https://discord.com/api/v10/users/@me", {
+    headers: { Authorization: token },
+  });
+  const data = (await res.json()) as DiscordUserResponse;
+  if (!res.ok || data.code) {
+    throw new Error("token inválido ou sem permissão");
+  }
+  return data;
+}
 
 async function getSelfbotClient(token: string, userId: string): Promise<InstanceType<typeof SelfbotClient>> {
   if (selfbotClients.has(userId)) {
     const existing = selfbotClients.get(userId)!;
     if (existing.user) return existing;
     existing.destroy();
+    selfbotClients.delete(userId);
   }
 
   return new Promise((resolve, reject) => {
@@ -25,8 +46,8 @@ async function getSelfbotClient(token: string, userId: string): Promise<Instance
 
     const timeout = setTimeout(() => {
       client.destroy();
-      reject(new Error("timeout ao conectar ao discord"));
-    }, 15000);
+      reject(new Error("timeout ao conectar ao discord — tente novamente"));
+    }, 20000);
 
     client.once("ready", () => {
       clearTimeout(timeout);
@@ -41,17 +62,25 @@ async function getSelfbotClient(token: string, userId: string): Promise<Instance
 
     client.login(token).catch((err: Error) => {
       clearTimeout(timeout);
-      reject(err);
+      const msg = err?.message ?? String(err);
+      if (msg.includes("TOKEN_INVALID") || msg.includes("Improper token")) {
+        reject(new Error("token inválido — verifique e tente novamente"));
+      } else {
+        reject(new Error(`erro ao conectar: ${msg}`));
+      }
     });
   });
 }
 
 export async function validateToken(token: string, userId: string): Promise<{ username: string; id: string }> {
-  const client = await getSelfbotClient(token, userId);
-  return {
-    username: client.user.tag,
-    id: client.user.id,
-  };
+  const data = await validateTokenHttp(token);
+  const username = data.global_name || data.username || "desconhecido";
+
+  getSelfbotClient(token, userId).catch((err) => {
+    console.warn(`[selfbot] pré-conexão falhou para ${userId}:`, err?.message);
+  });
+
+  return { username, id: data.id };
 }
 
 export async function clearDm(token: string, userId: string, targetId: string): Promise<void> {
