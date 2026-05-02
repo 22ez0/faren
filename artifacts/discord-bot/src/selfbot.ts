@@ -21,8 +21,11 @@ interface DiscordUserResponse {
 }
 
 const selfbotClients = new Map<string, InstanceType<typeof SelfbotClient>>();
+const activeRpcOptions = new Map<string, RpcOptions>();
+const rpcIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "1500071757925584996";
+const RPC_REFRESH_MS = 4 * 60 * 1000; // re-aplica a cada 4 minutos
 
 async function validateTokenHttp(token: string): Promise<DiscordUserResponse> {
   const res = await fetch("https://discord.com/api/v10/users/@me", {
@@ -113,9 +116,10 @@ export async function leaveAllServers(token: string, userId: string): Promise<nu
   return count;
 }
 
-export async function activateRpc(token: string, userId: string, opts: RpcOptions): Promise<void> {
-  const client = await getSelfbotClient(token, userId);
-
+async function buildRichPresence(
+  client: InstanceType<typeof SelfbotClient>,
+  opts: RpcOptions
+): Promise<InstanceType<typeof RichPresence>> {
   const typeMap: Record<string, number> = {
     playing: 0,
     streaming: 1,
@@ -139,19 +143,65 @@ export async function activateRpc(token: string, userId: string, opts: RpcOption
       const externalAssets = await RichPresence.getExternal(client, CLIENT_ID, opts.iconUrl);
       if (externalAssets[0]?.external_asset_path) {
         rp.setAssetsLargeImage(externalAssets[0].external_asset_path);
-        rp.setAssetsLargeText(opts.title || "faren");
+        // hover text: usa subtitle se existir, senão detalhe — nunca duplica o título
+        const hoverText = opts.subtitle || opts.detail || "";
+        if (hoverText) rp.setAssetsLargeText(hoverText);
       }
     } catch (e: any) {
       console.warn("[rpc] getExternal falhou, usando fallback:", e?.message);
       rp.setAssetsLargeImage(`mp:external/${opts.iconUrl}`);
-      rp.setAssetsLargeText(opts.title || "faren");
+      const hoverText = opts.subtitle || opts.detail || "";
+      if (hoverText) rp.setAssetsLargeText(hoverText);
     }
   }
 
+  return rp;
+}
+
+function stopRpcInterval(userId: string): void {
+  const existing = rpcIntervals.get(userId);
+  if (existing) {
+    clearInterval(existing);
+    rpcIntervals.delete(userId);
+  }
+}
+
+function startRpcInterval(token: string, userId: string): void {
+  stopRpcInterval(userId);
+
+  const interval = setInterval(async () => {
+    const opts = activeRpcOptions.get(userId);
+    if (!opts) {
+      stopRpcInterval(userId);
+      return;
+    }
+
+    try {
+      const client = await getSelfbotClient(token, userId);
+      const rp = await buildRichPresence(client, opts);
+      await client.user.setActivity(rp);
+      console.log(`[rpc] keep-alive re-aplicado para ${userId}`);
+    } catch (e: any) {
+      console.warn(`[rpc] keep-alive falhou para ${userId}:`, e?.message);
+    }
+  }, RPC_REFRESH_MS);
+
+  rpcIntervals.set(userId, interval);
+}
+
+export async function activateRpc(token: string, userId: string, opts: RpcOptions): Promise<void> {
+  const client = await getSelfbotClient(token, userId);
+  const rp = await buildRichPresence(client, opts);
   await client.user.setActivity(rp);
+
+  activeRpcOptions.set(userId, opts);
+  startRpcInterval(token, userId);
 }
 
 export async function deactivateRpc(token: string, userId: string): Promise<void> {
+  stopRpcInterval(userId);
+  activeRpcOptions.delete(userId);
+
   const client = await getSelfbotClient(token, userId);
   await client.user.setActivity(null);
 }
