@@ -213,6 +213,40 @@ export default function Home() {
     gain.gain.linearRampToValueAtTime(newMuted ? 0 : 1.8, now + 0.08);
   };
 
+  // Discord OAuth2 callback handler — triggered when Discord redirects back with ?code=
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const pending = sessionStorage.getItem("discord_oauth_pending");
+    if (!code || !pending) return;
+
+    sessionStorage.removeItem("discord_oauth_pending");
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+
+    fetch(`${apiBase}/api/discord/auth/callback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ code }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          window.history.replaceState({}, "", window.location.pathname);
+          window.location.href = "/dashboard/edit";
+        }
+      })
+      .catch(() => {
+        window.history.replaceState({}, "", window.location.pathname);
+      });
+  }, []);
+
   const t = lang === 'PT' ? PT : EN;
   const { isAuthenticated, user, logout } = useAuth();
   const initials = (user?.displayName || user?.username || '?').slice(0, 2).toUpperCase();
