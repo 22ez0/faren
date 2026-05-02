@@ -2,10 +2,37 @@ import {
   type Client,
   type Message,
   Events,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } from "discord.js";
 import { getSession, setSession, setRpc, getToken } from "../store.js";
 import { uploadToCatbox } from "../catbox.js";
-import { activateRpc, sendSelfDm } from "../selfbot.js";
+import { sendSelfDm } from "../selfbot.js";
+
+function buildStatusSelectRow() {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("rpc_status_select")
+    .setPlaceholder("escolha o tipo de status")
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel("playing")
+        .setDescription("status vermelho")
+        .setValue("playing")
+        .setEmoji("🔴"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("watching")
+        .setDescription("status azul")
+        .setValue("watching")
+        .setEmoji("🔵"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("streaming")
+        .setDescription("status roxo — url da twitch preenchida automaticamente")
+        .setValue("streaming")
+        .setEmoji("🟣")
+    );
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
+}
 
 export function registerMessageCollector(client: Client): void {
   client.on(Events.MessageCreate, async (message: Message) => {
@@ -17,10 +44,11 @@ export function registerMessageCollector(client: Client): void {
     if (!session.awaitingImage) return;
 
     if (message.content?.toLowerCase() === "pular") {
-      setSession(userId, { awaitingImage: false });
-      await message.reply(
-        "ok. agora configure o rpc respondendo ao menu novamente com a opção **ativar rpc**."
-      );
+      setSession(userId, { awaitingImage: false, pendingIconUrl: undefined });
+      await message.reply({
+        content: "ok, sem icon. agora escolha o tipo de status do rpc:",
+        components: [buildStatusSelectRow()],
+      });
       return;
     }
 
@@ -36,47 +64,22 @@ export function registerMessageCollector(client: Client): void {
     try {
       const catboxUrl = await uploadToCatbox(attachment.url);
       const mpExternalUrl = `mp:external/${catboxUrl}`;
+
+      setSession(userId, { pendingIconUrl: catboxUrl });
+
       const token = getToken(userId);
-
       if (token) {
-        try {
-          await sendSelfDm(
-            token,
-            userId,
-            `**link da mídia:** ${catboxUrl}\n**mp:external:** \`${mpExternalUrl}\``
-          );
-        } catch {
-          if (message.channel.isSendable()) {
-            await message.channel.send(
-              `**link da mídia:** ${catboxUrl}\n**mp:external:** \`${mpExternalUrl}\``
-            );
-          }
-        }
-      } else {
-        if (message.channel.isSendable()) {
-          await message.channel.send(
-            `**link da mídia:** ${catboxUrl}\n**mp:external:** \`${mpExternalUrl}\``
-          );
-        }
+        sendSelfDm(
+          token,
+          userId,
+          `**link da mídia:** ${catboxUrl}\n**mp:external:** \`${mpExternalUrl}\``
+        ).catch(() => null);
       }
 
-      const pendingFields = session.pendingRpcFields;
-
-      if (pendingFields && token) {
-        const rpcConfig = { ...pendingFields, iconUrl: catboxUrl };
-        await activateRpc(token, userId, rpcConfig);
-        setRpc(userId, rpcConfig);
-
-        await message.reply(
-          `rpc ativado.\n\n> **título:** ${rpcConfig.title}\n> **subtítulo:** ${rpcConfig.subtitle || "—"}\n> **detalhe:** ${rpcConfig.detail || "—"}\n> **status:** ${rpcConfig.statusType}`
-        );
-      } else {
-        setSession(userId, { pendingRpcFields: undefined });
-        setRpc(userId, { iconUrl: catboxUrl } as any);
-        await message.reply(
-          `icon salvo. agora selecione **ativar rpc** no menu para configurar os demais campos.`
-        );
-      }
+      await message.reply({
+        content: `icon hospedado. agora escolha o tipo de status do rpc:`,
+        components: [buildStatusSelectRow()],
+      });
     } catch (e: any) {
       await message.reply(`erro ao processar imagem: ${e.message}`);
     }
