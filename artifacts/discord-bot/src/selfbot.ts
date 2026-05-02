@@ -129,7 +129,7 @@ export async function activateRpc(token: string, userId: string, opts: RpcOption
   };
 
   if (opts.iconUrl) {
-    activityData.largeImageKey = opts.iconUrl;
+    activityData.largeImageKey = `mp:external/${opts.iconUrl}`;
     activityData.largeImageText = opts.title || "faren";
   }
 
