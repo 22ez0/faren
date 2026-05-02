@@ -92,6 +92,45 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `cyber@faren.com` → username: `cyberkat` (with Discord: dnd)
 - `void@faren.com` → username: `voidwalker`
 
+## Discord Bot (`artifacts/discord-bot`)
+
+Pacote standalone no monorepo que roda o bot do Faren no Discord.
+
+### Funcionalidades
+
+- **`/k` slash command** — painel global (funciona em DM, grupos e servidores). Envia embed preto absoluto (`#000000`) com select menu "selecionar opções".
+- **Opções do painel:**
+  - `conectar` — modal para informar token do Discord (selfbot). Token salvo em memória por sessão.
+  - `limpar dm` — modal para ID de usuário. Deleta mensagens próprias na DM via selfbot.
+  - `sair dos servidores` — sai de todos os servidores do token conectado.
+  - `ativar rpc` — fluxo em 2 etapas: (1) usuário envia imagem no canal → bot faz upload no catbox.moe, (2) modal com status (playing/watching/streaming), título, subtítulo, detalhe, url personalizada → selfbot ativa RPC.
+  - `editar rpc` — abre o mesmo modal pré-preenchido com a config salva.
+- **Selfbot** (`src/selfbot.ts`) — usa `discord.js-selfbot-v13` para operações em nome do usuário com token fornecido.
+- **catbox.moe** (`src/catbox.ts`) — upload de imagem/gif (limite 5MB para gif) via multipart form-data.
+- **Store** (`src/store.ts`) — Map em memória por userId: token, config RPC, estado de coleta de imagem.
+
+### Variáveis necessárias
+- `DISCORD_BOT_TOKEN` — token do bot (já configurado)
+- `DISCORD_CLIENT_ID` — ID do app (já configurado: `1500071757925584996`)
+- `DISCORD_CLIENT_SECRET` — necessário para OAuth2 (obter no Discord Developer Portal)
+- `DISCORD_REDIRECT_URI` — `https://faren.com.br/` (já configurado)
+
+### Scripts
+- `pnpm --filter @workspace/discord-bot run start` — inicia o bot (workflow "Discord Bot")
+- `pnpm --filter @workspace/discord-bot run register` — registra/atualiza os slash commands globalmente
+
+### OAuth2 (site)
+- `GET /api/discord/auth/url` — retorna a URL de autorização OAuth2
+- `POST /api/discord/auth/callback` — troca o code por token, salva `discordUserId/Username/AvatarUrl/Nitro` no perfil
+- `DELETE /api/discord/auth/disconnect` — desconecta Discord do perfil
+
+### Emojis customizados usados
+- `<a:y_dmn:1493416129723498516>` — animado (título do painel)
+- `<:b_dmn:1500082338682634271>` — opções principais
+- `<:b_dmn:1495209913478287483>` — opção editar rpc
+
+---
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
