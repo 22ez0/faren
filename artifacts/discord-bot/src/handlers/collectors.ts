@@ -5,7 +5,7 @@ import {
 } from "discord.js";
 import { getSession, setSession, setRpc, getToken } from "../store.js";
 import { uploadToCatbox } from "../catbox.js";
-import { activateRpc } from "../selfbot.js";
+import { activateRpc, sendSelfDm } from "../selfbot.js";
 
 export function registerMessageCollector(client: Client): void {
   client.on(Events.MessageCreate, async (message: Message) => {
@@ -35,13 +35,32 @@ export function registerMessageCollector(client: Client): void {
 
     try {
       const catboxUrl = await uploadToCatbox(attachment.url);
+      const mpExternalUrl = `mp:external/${catboxUrl}`;
+      const token = getToken(userId);
 
-      if (message.channel.isSendable()) {
-        await message.channel.send(catboxUrl);
+      if (token) {
+        try {
+          await sendSelfDm(
+            token,
+            userId,
+            `**link da mídia:** ${catboxUrl}\n**mp:external:** \`${mpExternalUrl}\``
+          );
+        } catch {
+          if (message.channel.isSendable()) {
+            await message.channel.send(
+              `**link da mídia:** ${catboxUrl}\n**mp:external:** \`${mpExternalUrl}\``
+            );
+          }
+        }
+      } else {
+        if (message.channel.isSendable()) {
+          await message.channel.send(
+            `**link da mídia:** ${catboxUrl}\n**mp:external:** \`${mpExternalUrl}\``
+          );
+        }
       }
 
       const pendingFields = session.pendingRpcFields;
-      const token = getToken(userId);
 
       if (pendingFields && token) {
         const rpcConfig = { ...pendingFields, iconUrl: catboxUrl };
@@ -49,7 +68,7 @@ export function registerMessageCollector(client: Client): void {
         setRpc(userId, rpcConfig);
 
         await message.reply(
-          `rpc ativado com sucesso.\n\n> **título:** ${rpcConfig.title}\n> **subtítulo:** ${rpcConfig.subtitle || "—"}\n> **detalhe:** ${rpcConfig.detail || "—"}\n> **status:** ${rpcConfig.statusType}\n> **icon:** ${catboxUrl}`
+          `rpc ativado.\n\n> **título:** ${rpcConfig.title}\n> **subtítulo:** ${rpcConfig.subtitle || "—"}\n> **detalhe:** ${rpcConfig.detail || "—"}\n> **status:** ${rpcConfig.statusType}`
         );
       } else {
         setSession(userId, { pendingRpcFields: undefined });
