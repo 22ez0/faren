@@ -56,6 +56,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **GitHub Actions secrets needed**: `RENDER_DEPLOY_HOOK_URL` (from Render dashboard → service → deploy hook URL)
 - **DNS for faren.com.br**: Add CNAME record pointing `www` → `22ez0.github.io` and A records for apex (185.199.108-111.153.153.153) → GitHub Pages IP addresses
 - **Portability**: All configuration is in env vars (`.env.example`). Switching hosts = change `DATABASE_URL`, `SESSION_SECRET`, `CORS_ALLOWED_ORIGINS`, `VITE_API_URL`
+- **IMPORTANTE — build command**: NUNCA usar `--frozen-lockfile` nos serviços do Render. O lockfile muda a cada novo pacote adicionado ao workspace. Build command correto: `npm install -g pnpm@10 && pnpm install && pnpm --filter @workspace/<pkg> run build`. Isso vale para `faren-api` (srv-d7gjdc5ckfvc73ftk79g) e `faren-discord-bot` (srv-d7qtjf28qa3s73d4sdgg).
 
 ### Admin Access
 - Admin route: `/devkeefnow`
