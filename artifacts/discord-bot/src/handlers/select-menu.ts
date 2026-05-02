@@ -1,15 +1,59 @@
 import {
   type StringSelectMenuInteraction,
-  EmbedBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } from "discord.js";
-import { buildConnectModal, buildClearDmModal, buildRpcModal } from "./modals.js";
-import { getToken, getRpc, setSession } from "../store.js";
+import { buildConnectModal, buildClearDmModal, buildRpcFieldsModal } from "./modals.js";
+import { getToken, getRpc, setSession, getSession } from "../store.js";
+
+function buildStatusSelectRow() {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("rpc_status_select")
+    .setPlaceholder("escolha o tipo de status")
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel("playing")
+        .setDescription("status vermelho")
+        .setValue("playing")
+        .setEmoji("🔴"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("watching")
+        .setDescription("status azul")
+        .setValue("watching")
+        .setEmoji("🔵"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("streaming")
+        .setDescription("status roxo — url da twitch preenchida automaticamente")
+        .setValue("streaming")
+        .setEmoji("🟣")
+    );
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
+}
 
 export async function handleSelectMenu(interaction: StringSelectMenuInteraction): Promise<void> {
-  if (interaction.customId !== "k_panel_select") return;
+  const { customId, user } = interaction;
+  const userId = user.id;
+
+  if (customId === "rpc_status_select") {
+    const statusType = interaction.values[0] as "playing" | "watching" | "streaming";
+    setSession(userId, { pendingStatusType: statusType });
+
+    const saved = getRpc(userId);
+    await interaction.showModal(
+      buildRpcFieldsModal(statusType, {
+        title: saved?.title,
+        subtitle: saved?.subtitle,
+        detail: saved?.detail,
+        customUrl: saved?.customUrl,
+      })
+    );
+    return;
+  }
+
+  if (customId !== "k_panel_select") return;
 
   const value = interaction.values[0];
-  const userId = interaction.user.id;
 
   if (value === "connect_token") {
     await interaction.showModal(buildConnectModal());
@@ -19,10 +63,7 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
   if (value === "clear_dm") {
     const token = getToken(userId);
     if (!token) {
-      await interaction.reply({
-        content: "conecte primeiro usando a opção **conectar**.",
-        ephemeral: true,
-      });
+      await interaction.reply({ content: "conecte primeiro usando a opção **conectar**.", ephemeral: true });
       return;
     }
     await interaction.showModal(buildClearDmModal());
@@ -32,10 +73,7 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
   if (value === "leave_servers") {
     const token = getToken(userId);
     if (!token) {
-      await interaction.reply({
-        content: "conecte primeiro usando a opção **conectar**.",
-        ephemeral: true,
-      });
+      await interaction.reply({ content: "conecte primeiro usando a opção **conectar**.", ephemeral: true });
       return;
     }
 
@@ -44,9 +82,7 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
     try {
       const { leaveAllServers } = await import("../selfbot.js");
       const count = await leaveAllServers(token, userId);
-      await interaction.editReply({
-        content: `saiu de **${count}** servidor${count !== 1 ? "es" : ""}.`,
-      });
+      await interaction.editReply({ content: `saiu de **${count}** servidor${count !== 1 ? "es" : ""}.` });
     } catch (e: any) {
       await interaction.editReply({ content: `erro: ${e.message}` });
     }
@@ -56,14 +92,11 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
   if (value === "activate_rpc") {
     const token = getToken(userId);
     if (!token) {
-      await interaction.reply({
-        content: "conecte primeiro usando a opção **conectar**.",
-        ephemeral: true,
-      });
+      await interaction.reply({ content: "conecte primeiro usando a opção **conectar**.", ephemeral: true });
       return;
     }
 
-    setSession(userId, { awaitingImage: true });
+    setSession(userId, { awaitingImage: true, pendingIconUrl: undefined, pendingStatusType: undefined });
     await interaction.reply({
       content:
         "envie a imagem para o icon do rpc neste canal. ela será hospedada automaticamente.\n\ngif suporta até **5mb**. envie `pular` para continuar sem icon.",
@@ -75,23 +108,16 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
   if (value === "edit_rpc") {
     const token = getToken(userId);
     if (!token) {
-      await interaction.reply({
-        content: "conecte primeiro usando a opção **conectar**.",
-        ephemeral: true,
-      });
+      await interaction.reply({ content: "conecte primeiro usando a opção **conectar**.", ephemeral: true });
       return;
     }
 
-    const saved = getRpc(userId);
-    await interaction.showModal(
-      buildRpcModal({
-        statusType: saved?.statusType,
-        title: saved?.title,
-        subtitle: saved?.subtitle,
-        detail: saved?.detail,
-        customUrl: saved?.customUrl,
-      })
-    );
+    setSession(userId, { pendingStatusType: undefined });
+    await interaction.reply({
+      content: "escolha o tipo de status do rpc:",
+      components: [buildStatusSelectRow()],
+      ephemeral: true,
+    });
     return;
   }
 }
