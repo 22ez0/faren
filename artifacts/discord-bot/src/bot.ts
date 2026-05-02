@@ -2,6 +2,7 @@ import {
   Client,
   GatewayIntentBits,
   Partials,
+  ActivityType,
 } from "discord.js";
 import { registerInteractionHandlers } from "./handlers/interactions.js";
 import { registerMessageCollector } from "./handlers/collectors.js";
@@ -24,6 +25,19 @@ registerMessageCollector(client);
 
 client.once("ready", () => {
   console.log(`[bot] conectado como ${client.user?.tag}`);
+
+  client.user?.setPresence({
+    status: "online",
+    activities: [
+      {
+        name: "/k",
+        type: ActivityType.Streaming,
+        url: "https://twitch.tv/faren",
+      },
+    ],
+  });
+
+  console.log("[bot] status de streaming definido: /k");
 });
 
 export async function startBot(): Promise<void> {
