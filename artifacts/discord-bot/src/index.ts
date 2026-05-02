@@ -1,4 +1,8 @@
 import { startBot } from "./bot.js";
+import { startHealthServer } from "./health.js";
+
+const PORT = parseInt(process.env.PORT ?? "3000", 10);
+startHealthServer(PORT);
 
 process.on("unhandledRejection", (err) => {
   console.error("[unhandledRejection]", err);
