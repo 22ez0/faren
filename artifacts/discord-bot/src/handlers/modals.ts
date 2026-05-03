@@ -6,7 +6,7 @@ import {
   type ModalSubmitInteraction,
 } from "discord.js";
 import { getToken, setToken, setRpc, getRpc, setSession, getSession } from "../store.js";
-import { activateRpc, deactivateRpc } from "../selfbot.js";
+import { activateRpc } from "../selfbot.js";
 
 export function buildConnectModal(): ModalBuilder {
   return new ModalBuilder()
@@ -71,7 +71,6 @@ export function buildRpcFieldsModal(
     subtitle?: string;
     detail?: string;
     customUrl?: string;
-    iconUrl?: string;
     buttonLabel?: string;
     buttonUrl?: string;
   }
@@ -106,15 +105,6 @@ export function buildRpcFieldsModal(
         .setStyle(TextInputStyle.Short)
         .setPlaceholder("segunda linha de descrição")
         .setValue(existing?.detail ?? "")
-        .setRequired(false)
-    ),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder()
-        .setCustomId("rpc_icon_url")
-        .setLabel("url do ícone (opcional)")
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder("cole a url da imagem — ou deixe vazio se enviou arquivo")
-        .setValue(existing?.iconUrl ?? "")
         .setRequired(false)
     )
   );
@@ -164,11 +154,13 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
       const info = await validateToken(token, user.id);
       setToken(user.id, token);
       await interaction.editReply({
-        content: `conectado como **${info.username}** (\`${info.id}\`). token salvo para uso nesta sessão.`,
+        content: `conectado como **${info.username}** (\`${info.id}\`). token salvo.`,
       });
-    } catch {
+    } catch (e: any) {
+      console.error("[modal_connect_token] erro:", e?.message ?? e);
+      const msg = e?.message ?? String(e);
       await interaction.editReply({
-        content: "token inválido ou expirado. verifique e tente novamente.",
+        content: `erro ao conectar: ${msg}`,
       });
     }
     return;
@@ -187,7 +179,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
       await clearDm(token, user.id, targetId);
       await interaction.editReply({ content: `dm com \`${targetId}\` limpa.` });
     } catch (e: any) {
-      await interaction.editReply({ content: `erro: ${e.message}` });
+      await interaction.editReply({ content: `erro: ${e?.message ?? e}` });
     }
     return;
   }
@@ -222,7 +214,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
           errLine,
       });
     } catch (e: any) {
-      await interaction.editReply({ content: `erro ao clonar: ${e.message}` });
+      await interaction.editReply({ content: `erro ao clonar: ${e?.message ?? e}` });
     }
     return;
   }
@@ -243,9 +235,8 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
     const subtitle = interaction.fields.getTextInputValue("rpc_subtitle").trim();
     const detail = interaction.fields.getTextInputValue("rpc_detail").trim();
 
-    // url do ícone: modal tem prioridade, senão usa o arquivo enviado, senão o rpc salvo
-    const iconUrlField = interaction.fields.getTextInputValue("rpc_icon_url").trim();
-    const iconUrl = iconUrlField || session.pendingIconUrl || getRpc(user.id)?.iconUrl || "";
+    // ícone: usa o arquivo enviado antes, ou o rpc salvo anteriormente
+    const iconUrl = session.pendingIconUrl ?? getRpc(user.id)?.iconUrl ?? "";
 
     let customUrl = "";
     let buttonLabel = "";
@@ -276,7 +267,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
 
       const statusEmoji = statusType === "streaming" ? "🟣" : statusType === "watching" ? "🔵" : "🔴";
       const buttonLine = buttonLabel && buttonUrl ? `\n> **botão:** ${buttonLabel} → ${buttonUrl}` : "";
-      const iconLine = iconUrl ? `\n> **ícone:** ${iconUrl}` : "";
+      const iconLine = iconUrl ? `\n> **ícone:** definido` : "";
 
       await interaction.editReply({
         content:
@@ -289,7 +280,8 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
           buttonLine,
       });
     } catch (e: any) {
-      await interaction.editReply({ content: `erro ao ativar rpc: ${e.message}` });
+      console.error("[modal_rpc_fields] erro ao ativar rpc:", e?.message ?? e);
+      await interaction.editReply({ content: `erro ao ativar rpc: ${e?.message ?? e}` });
     }
     return;
   }
