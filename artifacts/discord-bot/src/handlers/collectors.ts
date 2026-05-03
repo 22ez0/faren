@@ -6,7 +6,7 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from "discord.js";
-import { getSession, setSession, setRpc, getToken } from "../store.js";
+import { getSession, setSession, getToken } from "../store.js";
 import { uploadToCatbox } from "../catbox.js";
 import { sendSelfDm } from "../selfbot.js";
 
@@ -43,12 +43,25 @@ export function registerMessageCollector(client: Client): void {
 
     if (!session.awaitingImage) return;
 
+    // garantir que o canal DM está disponível mesmo quando parcial
+    if (message.channel.partial) {
+      try {
+        await message.channel.fetch();
+      } catch {
+        return;
+      }
+    }
+
     if (message.content?.toLowerCase() === "pular") {
       setSession(userId, { awaitingImage: false, pendingIconUrl: undefined });
-      await message.reply({
-        content: "ok, sem icon. agora escolha o tipo de status do rpc:",
-        components: [buildStatusSelectRow()],
-      });
+      try {
+        await message.reply({
+          content: "ok, sem ícone. agora escolha o tipo de status do rpc:",
+          components: [buildStatusSelectRow()],
+        });
+      } catch (e: any) {
+        console.warn("[collector] reply falhou:", e?.message);
+      }
       return;
     }
 
@@ -57,9 +70,11 @@ export function registerMessageCollector(client: Client): void {
 
     setSession(userId, { awaitingImage: false });
 
-    if (message.channel.isSendable()) {
-      message.channel.sendTyping().catch(() => null);
-    }
+    try {
+      if (message.channel.isSendable()) {
+        message.channel.sendTyping().catch(() => null);
+      }
+    } catch {}
 
     try {
       const catboxUrl = await uploadToCatbox(attachment.url);
@@ -77,11 +92,14 @@ export function registerMessageCollector(client: Client): void {
       }
 
       await message.reply({
-        content: `icon hospedado. agora escolha o tipo de status do rpc:`,
+        content: `ícone hospedado ✓ agora escolha o tipo de status do rpc:`,
         components: [buildStatusSelectRow()],
       });
     } catch (e: any) {
-      await message.reply(`erro ao processar imagem: ${e.message}`);
+      console.error("[collector] erro ao processar imagem:", e?.message);
+      try {
+        await message.reply(`erro ao hospedar imagem: ${e?.message ?? e}`);
+      } catch {}
     }
   });
 }
