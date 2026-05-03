@@ -6,7 +6,7 @@ import {
   type ModalSubmitInteraction,
 } from "discord.js";
 import { getToken, setToken, setRpc, getRpc, setSession, getSession } from "../store.js";
-import { activateRpc } from "../selfbot.js";
+import { activateRpc, deactivateRpc } from "../selfbot.js";
 
 export function buildConnectModal(): ModalBuilder {
   return new ModalBuilder()
@@ -40,6 +40,30 @@ export function buildClearDmModal(): ModalBuilder {
     );
 }
 
+export function buildCloneServerModal(): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId("modal_clone_server")
+    .setTitle("clonar servidor")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("source_guild_id")
+          .setLabel("id do servidor de origem")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("id do servidor a ser clonado")
+          .setRequired(true)
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("target_guild_id")
+          .setLabel("id do servidor de destino")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("id do servidor que vai receber a clonagem")
+          .setRequired(true)
+      )
+    );
+}
+
 export function buildRpcFieldsModal(
   statusType: "playing" | "watching" | "streaming",
   existing?: {
@@ -47,6 +71,9 @@ export function buildRpcFieldsModal(
     subtitle?: string;
     detail?: string;
     customUrl?: string;
+    iconUrl?: string;
+    buttonLabel?: string;
+    buttonUrl?: string;
   }
 ): ModalBuilder {
   const modal = new ModalBuilder()
@@ -57,41 +84,66 @@ export function buildRpcFieldsModal(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
         .setCustomId("rpc_title")
-        .setLabel("título")
+        .setLabel("nome da atividade")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("título do rpc")
+        .setPlaceholder("ex: assistindo anime, ouvindo música...")
         .setValue(existing?.title ?? "")
         .setRequired(true)
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
         .setCustomId("rpc_subtitle")
-        .setLabel("subtítulo")
+        .setLabel("linha 1 (subtítulo)")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("subtítulo do rpc")
+        .setPlaceholder("primeira linha de descrição")
         .setValue(existing?.subtitle ?? "")
         .setRequired(false)
     ),
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
         .setCustomId("rpc_detail")
-        .setLabel("detalhe")
+        .setLabel("linha 2 (detalhe)")
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder("detalhe adicional")
+        .setPlaceholder("segunda linha de descrição")
         .setValue(existing?.detail ?? "")
+        .setRequired(false)
+    ),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(
+      new TextInputBuilder()
+        .setCustomId("rpc_icon_url")
+        .setLabel("url do ícone (opcional)")
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder("cole a url da imagem — ou deixe vazio se enviou arquivo")
+        .setValue(existing?.iconUrl ?? "")
         .setRequired(false)
     )
   );
 
-  if (statusType !== "streaming") {
+  if (statusType === "streaming") {
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
-          .setCustomId("rpc_url")
-          .setLabel("url personalizada (opcional)")
+          .setCustomId("rpc_stream_url")
+          .setLabel("url da stream (twitch/youtube)")
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder("https://")
+          .setPlaceholder("https://twitch.tv/seucanal")
           .setValue(existing?.customUrl ?? "")
+          .setRequired(false)
+      )
+    );
+  } else {
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("rpc_button")
+          .setLabel("botão: nome | url (opcional)")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("ex: meu perfil | https://faren.com.br/user")
+          .setValue(
+            existing?.buttonLabel && existing?.buttonUrl
+              ? `${existing.buttonLabel} | ${existing.buttonUrl}`
+              : ""
+          )
           .setRequired(false)
       )
     );
@@ -140,6 +192,41 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
     return;
   }
 
+  if (customId === "modal_clone_server") {
+    await interaction.deferReply({ ephemeral: true });
+    const token = getToken(user.id);
+    if (!token) {
+      await interaction.editReply({ content: "conecte primeiro usando a opção **conectar**." });
+      return;
+    }
+
+    const sourceId = interaction.fields.getTextInputValue("source_guild_id").trim();
+    const targetId = interaction.fields.getTextInputValue("target_guild_id").trim();
+
+    await interaction.editReply({ content: "⏳ clonando servidor... isso pode levar alguns minutos." });
+
+    try {
+      const { cloneServer } = await import("../selfbot.js");
+      const result = await cloneServer(token, user.id, sourceId, targetId);
+
+      const errLine = result.errors.length
+        ? `\n> **erros (${result.errors.length}):** ${result.errors.slice(0, 3).join(", ")}${result.errors.length > 3 ? "..." : ""}`
+        : "";
+
+      await interaction.editReply({
+        content:
+          `clonagem concluída!\n\n` +
+          `> **cargos criados:** ${result.roles}\n` +
+          `> **categorias criadas:** ${result.categories}\n` +
+          `> **canais criados:** ${result.channels}` +
+          errLine,
+      });
+    } catch (e: any) {
+      await interaction.editReply({ content: `erro ao clonar: ${e.message}` });
+    }
+    return;
+  }
+
   if (customId === "modal_rpc_fields") {
     await interaction.deferReply({ ephemeral: true });
 
@@ -156,19 +243,31 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
     const subtitle = interaction.fields.getTextInputValue("rpc_subtitle").trim();
     const detail = interaction.fields.getTextInputValue("rpc_detail").trim();
 
+    // url do ícone: modal tem prioridade, senão usa o arquivo enviado, senão o rpc salvo
+    const iconUrlField = interaction.fields.getTextInputValue("rpc_icon_url").trim();
+    const iconUrl = iconUrlField || session.pendingIconUrl || getRpc(user.id)?.iconUrl || "";
+
     let customUrl = "";
-    if (statusType !== "streaming") {
+    let buttonLabel = "";
+    let buttonUrl = "";
+
+    if (statusType === "streaming") {
       try {
-        customUrl = interaction.fields.getTextInputValue("rpc_url").trim();
+        customUrl = interaction.fields.getTextInputValue("rpc_stream_url").trim();
       } catch {}
+      if (!customUrl) customUrl = getRpc(user.id)?.customUrl || "https://twitch.tv/twitch";
     } else {
-      const saved = getRpc(user.id);
-      customUrl = saved?.customUrl || "https://twitch.tv/twitch";
+      try {
+        const buttonRaw = interaction.fields.getTextInputValue("rpc_button").trim();
+        if (buttonRaw.includes("|")) {
+          const parts = buttonRaw.split("|").map((s) => s.trim());
+          buttonLabel = parts[0] ?? "";
+          buttonUrl = parts.slice(1).join("|").trim();
+        }
+      } catch {}
     }
 
-    const iconUrl = session.pendingIconUrl ?? getRpc(user.id)?.iconUrl;
-
-    const rpcConfig = { statusType, title, subtitle, detail, customUrl, iconUrl };
+    const rpcConfig = { statusType, title, subtitle, detail, customUrl, iconUrl, buttonLabel, buttonUrl };
 
     try {
       await activateRpc(token, user.id, rpcConfig);
@@ -176,8 +275,18 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
       setSession(user.id, { pendingStatusType: undefined, pendingIconUrl: undefined });
 
       const statusEmoji = statusType === "streaming" ? "🟣" : statusType === "watching" ? "🔵" : "🔴";
+      const buttonLine = buttonLabel && buttonUrl ? `\n> **botão:** ${buttonLabel} → ${buttonUrl}` : "";
+      const iconLine = iconUrl ? `\n> **ícone:** ${iconUrl}` : "";
+
       await interaction.editReply({
-        content: `rpc ativado ${statusEmoji}\n\n> **título:** ${title}\n> **subtítulo:** ${subtitle || "—"}\n> **detalhe:** ${detail || "—"}\n> **status:** ${statusType}${iconUrl ? `\n> **icon:** ${iconUrl}` : ""}`,
+        content:
+          `rpc ativado ${statusEmoji}\n\n` +
+          `> **nome:** ${title}\n` +
+          `> **linha 1:** ${subtitle || "—"}\n` +
+          `> **linha 2:** ${detail || "—"}\n` +
+          `> **status:** ${statusType}` +
+          iconLine +
+          buttonLine,
       });
     } catch (e: any) {
       await interaction.editReply({ content: `erro ao ativar rpc: ${e.message}` });
