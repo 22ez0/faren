@@ -1,3 +1,5 @@
+import { persistUser } from "./persistence.js";
+
 export interface RpcConfig {
   iconUrl?: string;
   statusType: "playing" | "watching" | "streaming";
@@ -36,6 +38,7 @@ export function clearSession(userId: string): void {
 
 export function setToken(userId: string, token: string): void {
   setSession(userId, { token });
+  persistUser(userId, { token });
 }
 
 export function getToken(userId: string): string | undefined {
@@ -44,8 +47,21 @@ export function getToken(userId: string): string | undefined {
 
 export function setRpc(userId: string, rpc: RpcConfig): void {
   setSession(userId, { rpc });
+  persistUser(userId, { rpc });
 }
 
 export function getRpc(userId: string): RpcConfig | undefined {
   return getSession(userId).rpc;
+}
+
+export function loadSessionFromPersisted(
+  userId: string,
+  data: { token?: string; rpc?: RpcConfig }
+): void {
+  const current = getSession(userId);
+  sessions.set(userId, {
+    ...current,
+    token: data.token ?? current.token,
+    rpc: data.rpc ?? current.rpc,
+  });
 }
