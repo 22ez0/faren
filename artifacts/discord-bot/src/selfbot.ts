@@ -9,6 +9,8 @@ export interface RpcOptions {
   subtitle: string;
   detail: string;
   customUrl: string;
+  buttonLabel?: string;
+  buttonUrl?: string;
 }
 
 interface DiscordUserResponse {
@@ -21,11 +23,12 @@ interface DiscordUserResponse {
 }
 
 const selfbotClients = new Map<string, InstanceType<typeof SelfbotClient>>();
+const selfbotTokens = new Map<string, string>();
 const activeRpcOptions = new Map<string, RpcOptions>();
 const rpcIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "1500071757925584996";
-const RPC_REFRESH_MS = 4 * 60 * 1000; // re-aplica a cada 4 minutos
+const RPC_REFRESH_MS = 2 * 60 * 1000;
 
 async function validateTokenHttp(token: string): Promise<DiscordUserResponse> {
   const res = await fetch("https://discord.com/api/v10/users/@me", {
@@ -57,6 +60,21 @@ async function getSelfbotClient(token: string, userId: string): Promise<Instance
     client.once("ready", () => {
       clearTimeout(timeout);
       selfbotClients.set(userId, client);
+      selfbotTokens.set(userId, token);
+
+      // re-aplica o RPC imediatamente ao reconectar
+      client.on("ready", async () => {
+        const opts = activeRpcOptions.get(userId);
+        if (!opts) return;
+        try {
+          const rp = await buildRichPresence(client, opts);
+          await client.user.setActivity(rp);
+          console.log(`[rpc] re-aplicado após reconexão para ${userId}`);
+        } catch (e: any) {
+          console.warn(`[rpc] falhou ao re-aplicar após reconexão para ${userId}:`, e?.message);
+        }
+      });
+
       resolve(client);
     });
 
@@ -143,7 +161,6 @@ async function buildRichPresence(
       const externalAssets = await RichPresence.getExternal(client, CLIENT_ID, opts.iconUrl);
       if (externalAssets[0]?.external_asset_path) {
         rp.setAssetsLargeImage(externalAssets[0].external_asset_path);
-        // hover text: usa subtitle se existir, senão detalhe — nunca duplica o título
         const hoverText = opts.subtitle || opts.detail || "";
         if (hoverText) rp.setAssetsLargeText(hoverText);
       }
@@ -152,6 +169,14 @@ async function buildRichPresence(
       rp.setAssetsLargeImage(`mp:external/${opts.iconUrl}`);
       const hoverText = opts.subtitle || opts.detail || "";
       if (hoverText) rp.setAssetsLargeText(hoverText);
+    }
+  }
+
+  if (opts.buttonLabel && opts.buttonUrl) {
+    try {
+      rp.addButton(opts.buttonLabel, opts.buttonUrl);
+    } catch (e: any) {
+      console.warn("[rpc] addButton falhou:", e?.message);
     }
   }
 
@@ -180,7 +205,7 @@ function startRpcInterval(token: string, userId: string): void {
       const client = await getSelfbotClient(token, userId);
       const rp = await buildRichPresence(client, opts);
       await client.user.setActivity(rp);
-      console.log(`[rpc] keep-alive re-aplicado para ${userId}`);
+      console.log(`[rpc] keep-alive para ${userId}`);
     } catch (e: any) {
       console.warn(`[rpc] keep-alive falhou para ${userId}:`, e?.message);
     }
@@ -210,4 +235,92 @@ export async function sendSelfDm(token: string, userId: string, content: string)
   const client = await getSelfbotClient(token, userId);
   const dmChannel = await client.users.createDM(userId);
   await dmChannel.send(content);
+}
+
+export interface CloneResult {
+  roles: number;
+  categories: number;
+  channels: number;
+  errors: string[];
+}
+
+export async function cloneServer(
+  token: string,
+  userId: string,
+  sourceGuildId: string,
+  targetGuildId: string
+): Promise<CloneResult> {
+  const client = await getSelfbotClient(token, userId);
+
+  const source = client.guilds.cache.get(sourceGuildId);
+  if (!source) throw new Error(`servidor de origem \`${sourceGuildId}\` não encontrado — certifique-se de estar nele`);
+
+  const target = client.guilds.cache.get(targetGuildId);
+  if (!target) throw new Error(`servidor de destino \`${targetGuildId}\` não encontrado — certifique-se de estar nele`);
+
+  await source.fetch();
+  await target.fetch();
+
+  const result: CloneResult = { roles: 0, categories: 0, channels: 0, errors: [] };
+  const categoryMap = new Map<string, string>();
+
+  // clonar cargos (exceto @everyone)
+  const sourceRoles = [...source.roles.cache.values()]
+    .filter((r: any) => r.name !== "@everyone")
+    .sort((a: any, b: any) => a.position - b.position);
+
+  for (const role of sourceRoles) {
+    try {
+      await target.roles.create({
+        name: role.name,
+        color: role.color,
+        hoist: role.hoist,
+        mentionable: role.mentionable,
+        permissions: role.permissions,
+      });
+      result.roles++;
+      await new Promise((r) => setTimeout(r, 300));
+    } catch (e: any) {
+      result.errors.push(`cargo "${role.name}": ${e.message}`);
+    }
+  }
+
+  // clonar categorias primeiro
+  const categories = [...source.channels.cache.values()].filter((c: any) => c.type === 4);
+  for (const cat of categories) {
+    try {
+      const newCat = await target.channels.create({
+        name: cat.name,
+        type: 4,
+      });
+      categoryMap.set(cat.id, newCat.id);
+      result.categories++;
+      await new Promise((r) => setTimeout(r, 300));
+    } catch (e: any) {
+      result.errors.push(`categoria "${cat.name}": ${e.message}`);
+    }
+  }
+
+  // clonar canais (texto e voz)
+  const channels = [...source.channels.cache.values()].filter((c: any) => c.type === 0 || c.type === 2);
+  for (const ch of channels) {
+    try {
+      const parentId = ch.parentId ? categoryMap.get(ch.parentId) : undefined;
+      await target.channels.create({
+        name: ch.name,
+        type: ch.type,
+        topic: ch.topic ?? undefined,
+        nsfw: ch.nsfw ?? false,
+        bitrate: ch.bitrate ?? undefined,
+        userLimit: ch.userLimit ?? undefined,
+        parent: parentId,
+      });
+      result.channels++;
+      await new Promise((r) => setTimeout(r, 300));
+    } catch (e: any) {
+      result.errors.push(`canal "${ch.name}": ${e.message}`);
+    }
+  }
+
+  return result;
 }
