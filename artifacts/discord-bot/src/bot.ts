@@ -6,9 +6,10 @@ import {
 } from "discord.js";
 import { registerInteractionHandlers } from "./handlers/interactions.js";
 import { registerMessageCollector } from "./handlers/collectors.js";
-import { loadPersistence, getPersistedData } from "./persistence.js";
-import { loadSessionFromPersisted } from "./store.js";
+import { initDb, loadAllUsers } from "./db.js";
+import { loadSessionFromDb } from "./store.js";
 import { activateRpc } from "./selfbot.js";
+import { startKeepalive } from "./keepalive.js";
 
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error("DISCORD_BOT_TOKEN não definido");
@@ -31,45 +32,45 @@ client.once("ready", async () => {
 
   client.user?.setPresence({
     status: "online",
-    activities: [
-      {
-        name: "/k",
-        type: ActivityType.Streaming,
-        url: "https://twitch.tv/faren",
-      },
-    ],
+    activities: [{ name: "/k", type: ActivityType.Streaming, url: "https://twitch.tv/faren" }],
   });
 
   console.log("[bot] status de streaming definido: /k");
 
-  const saved = loadPersistence();
-  const entries = Object.entries(saved);
+  // inicializar DB e restaurar sessões
+  try {
+    await initDb();
+    const users = await loadAllUsers();
 
-  if (entries.length === 0) return;
+    if (users.length > 0) {
+      console.log(`[db] restaurando ${users.length} sessão(ões)...`);
+      let delay = 3000;
 
-  console.log(`[persist] restaurando ${entries.length} sessão(ões)...`);
+      for (const u of users) {
+        loadSessionFromDb(u.user_id, { token: u.token, rpc: u.rpc });
 
-  let delay = 3000;
-  for (const [userId, data] of entries) {
-    loadSessionFromPersisted(userId, data);
-
-    if (data.token && data.rpc) {
-      const capturedDelay = delay;
-      const capturedUserId = userId;
-      const capturedData = data;
-
-      setTimeout(async () => {
-        try {
-          await activateRpc(capturedData.token!, capturedUserId, capturedData.rpc!);
-          console.log(`[persist] rpc restaurado: ${capturedUserId}`);
-        } catch (e: any) {
-          console.warn(`[persist] falha ao restaurar rpc ${capturedUserId}:`, e?.message);
+        if (u.token && u.rpc) {
+          const uid = u.user_id;
+          const tok = u.token;
+          const rpc = u.rpc;
+          setTimeout(async () => {
+            try {
+              await activateRpc(tok, uid, rpc);
+              console.log(`[db] rpc restaurado: ${uid}`);
+            } catch (e: any) {
+              console.warn(`[db] falha ao restaurar rpc ${uid}:`, e?.message);
+            }
+          }, delay);
+          delay += 2000;
         }
-      }, capturedDelay);
-
-      delay += 2000;
+      }
     }
+  } catch (e: any) {
+    console.warn("[db] erro na inicialização:", e?.message);
   }
+
+  // manter Render ativo (free tier dorme após 15min sem requests)
+  startKeepalive();
 });
 
 export async function startBot(): Promise<void> {
