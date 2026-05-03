@@ -5,8 +5,8 @@ import {
   ActionRowBuilder,
   type ModalSubmitInteraction,
 } from "discord.js";
-import { getToken, setToken, setRpc, getRpc, setSession, getSession } from "../store.js";
-import { activateRpc } from "../selfbot.js";
+import { getToken, setToken, setRpc, getRpc, setSession, getSession, clearRpc } from "../store.js";
+import { activateRpc, deactivateRpc } from "../selfbot.js";
 
 export function buildConnectModal(): ModalBuilder {
   return new ModalBuilder()
@@ -92,7 +92,7 @@ export function buildRpcFieldsModal(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
         .setCustomId("rpc_subtitle")
-        .setLabel("linha 1 (subtítulo)")
+        .setLabel("linha 1")
         .setStyle(TextInputStyle.Short)
         .setPlaceholder("primeira linha de descrição")
         .setValue(existing?.subtitle ?? "")
@@ -101,7 +101,7 @@ export function buildRpcFieldsModal(
     new ActionRowBuilder<TextInputBuilder>().addComponents(
       new TextInputBuilder()
         .setCustomId("rpc_detail")
-        .setLabel("linha 2 (detalhe)")
+        .setLabel("linha 2")
         .setStyle(TextInputStyle.Short)
         .setPlaceholder("segunda linha de descrição")
         .setValue(existing?.detail ?? "")
@@ -122,18 +122,24 @@ export function buildRpcFieldsModal(
       )
     );
   } else {
+    // dois campos separados para botão (max 5 campos no modal)
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
-          .setCustomId("rpc_button")
-          .setLabel("botão: nome | url (opcional)")
+          .setCustomId("rpc_button_label")
+          .setLabel("nome do botão (opcional)")
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder("ex: meu perfil | https://faren.com.br/user")
-          .setValue(
-            existing?.buttonLabel && existing?.buttonUrl
-              ? `${existing.buttonLabel} | ${existing.buttonUrl}`
-              : ""
-          )
+          .setPlaceholder("ex: meu perfil")
+          .setValue(existing?.buttonLabel ?? "")
+          .setRequired(false)
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("rpc_button_url")
+          .setLabel("url do botão (opcional)")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("https://faren.com.br/seuuser")
+          .setValue(existing?.buttonUrl ?? "")
           .setRequired(false)
       )
     );
@@ -158,10 +164,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
       });
     } catch (e: any) {
       console.error("[modal_connect_token] erro:", e?.message ?? e);
-      const msg = e?.message ?? String(e);
-      await interaction.editReply({
-        content: `erro ao conectar: ${msg}`,
-      });
+      await interaction.editReply({ content: `erro ao conectar: ${e?.message ?? e}` });
     }
     return;
   }
@@ -208,9 +211,9 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
       await interaction.editReply({
         content:
           `clonagem concluída!\n\n` +
-          `> **cargos criados:** ${result.roles}\n` +
-          `> **categorias criadas:** ${result.categories}\n` +
-          `> **canais criados:** ${result.channels}` +
+          `> **cargos:** ${result.roles}\n` +
+          `> **categorias:** ${result.categories}\n` +
+          `> **canais:** ${result.channels}` +
           errLine,
       });
     } catch (e: any) {
@@ -234,8 +237,6 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
     const title = interaction.fields.getTextInputValue("rpc_title").trim();
     const subtitle = interaction.fields.getTextInputValue("rpc_subtitle").trim();
     const detail = interaction.fields.getTextInputValue("rpc_detail").trim();
-
-    // ícone: usa o arquivo enviado antes, ou o rpc salvo anteriormente
     const iconUrl = session.pendingIconUrl ?? getRpc(user.id)?.iconUrl ?? "";
 
     let customUrl = "";
@@ -243,19 +244,11 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
     let buttonUrl = "";
 
     if (statusType === "streaming") {
-      try {
-        customUrl = interaction.fields.getTextInputValue("rpc_stream_url").trim();
-      } catch {}
+      try { customUrl = interaction.fields.getTextInputValue("rpc_stream_url").trim(); } catch {}
       if (!customUrl) customUrl = getRpc(user.id)?.customUrl || "https://twitch.tv/twitch";
     } else {
-      try {
-        const buttonRaw = interaction.fields.getTextInputValue("rpc_button").trim();
-        if (buttonRaw.includes("|")) {
-          const parts = buttonRaw.split("|").map((s) => s.trim());
-          buttonLabel = parts[0] ?? "";
-          buttonUrl = parts.slice(1).join("|").trim();
-        }
-      } catch {}
+      try { buttonLabel = interaction.fields.getTextInputValue("rpc_button_label").trim(); } catch {}
+      try { buttonUrl = interaction.fields.getTextInputValue("rpc_button_url").trim(); } catch {}
     }
 
     const rpcConfig = { statusType, title, subtitle, detail, customUrl, iconUrl, buttonLabel, buttonUrl };
@@ -265,22 +258,18 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
       setRpc(user.id, rpcConfig);
       setSession(user.id, { pendingStatusType: undefined, pendingIconUrl: undefined });
 
-      const statusEmoji = statusType === "streaming" ? "🟣" : statusType === "watching" ? "🔵" : "🔴";
-      const buttonLine = buttonLabel && buttonUrl ? `\n> **botão:** ${buttonLabel} → ${buttonUrl}` : "";
+      const emoji = statusType === "streaming" ? "🟣" : statusType === "watching" ? "🔵" : "🔴";
+      const btnLine = buttonLabel && buttonUrl ? `\n> **botão:** ${buttonLabel} → ${buttonUrl}` : "";
       const iconLine = iconUrl ? `\n> **ícone:** definido` : "";
 
       await interaction.editReply({
         content:
-          `rpc ativado ${statusEmoji}\n\n` +
-          `> **nome:** ${title}\n` +
-          `> **linha 1:** ${subtitle || "—"}\n` +
-          `> **linha 2:** ${detail || "—"}\n` +
-          `> **status:** ${statusType}` +
-          iconLine +
-          buttonLine,
+          `rpc ativado ${emoji}\n\n` +
+          `> **nome:** ${title}\n> **linha 1:** ${subtitle || "—"}\n> **linha 2:** ${detail || "—"}\n> **status:** ${statusType}` +
+          iconLine + btnLine,
       });
     } catch (e: any) {
-      console.error("[modal_rpc_fields] erro ao ativar rpc:", e?.message ?? e);
+      console.error("[modal_rpc_fields] erro:", e?.message ?? e);
       await interaction.editReply({ content: `erro ao ativar rpc: ${e?.message ?? e}` });
     }
     return;
