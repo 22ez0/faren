@@ -1,21 +1,12 @@
-import { persistUser } from "./persistence.js";
+import { dbSetToken, dbSetRpc, dbClearRpc } from "./db.js";
+import type { RpcRow } from "./db.js";
 
-export interface RpcConfig {
-  iconUrl?: string;
-  statusType: "playing" | "watching" | "streaming";
-  title: string;
-  subtitle: string;
-  detail: string;
-  customUrl: string;
-  buttonLabel?: string;
-  buttonUrl?: string;
-}
+export type RpcConfig = RpcRow;
 
 export interface UserSession {
   token?: string;
   rpc?: RpcConfig;
   awaitingImage?: boolean;
-  pendingRpcFields?: Omit<RpcConfig, "iconUrl">;
   pendingIconUrl?: string;
   pendingStatusType?: "playing" | "watching" | "streaming";
 }
@@ -38,7 +29,9 @@ export function clearSession(userId: string): void {
 
 export function setToken(userId: string, token: string): void {
   setSession(userId, { token });
-  persistUser(userId, { token });
+  dbSetToken(userId, token).catch((e) =>
+    console.warn("[store] dbSetToken falhou:", e?.message)
+  );
 }
 
 export function getToken(userId: string): string | undefined {
@@ -47,14 +40,23 @@ export function getToken(userId: string): string | undefined {
 
 export function setRpc(userId: string, rpc: RpcConfig): void {
   setSession(userId, { rpc });
-  persistUser(userId, { rpc });
+  dbSetRpc(userId, rpc).catch((e) =>
+    console.warn("[store] dbSetRpc falhou:", e?.message)
+  );
+}
+
+export function clearRpc(userId: string): void {
+  setSession(userId, { rpc: undefined });
+  dbClearRpc(userId).catch((e) =>
+    console.warn("[store] dbClearRpc falhou:", e?.message)
+  );
 }
 
 export function getRpc(userId: string): RpcConfig | undefined {
   return getSession(userId).rpc;
 }
 
-export function loadSessionFromPersisted(
+export function loadSessionFromDb(
   userId: string,
   data: { token?: string; rpc?: RpcConfig }
 ): void {
