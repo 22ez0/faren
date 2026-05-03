@@ -102,9 +102,10 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
     setSession(userId, { awaitingImage: true, pendingIconUrl: undefined, pendingStatusType: undefined });
     await interaction.reply({
       content:
-        "envie a imagem para o ícone do rpc neste canal e o bot responde com o menu de status.\n\n" +
-        "**não está no mesmo servidor que o bot?** envie `pular` e cole a url do ícone diretamente no campo do modal.\n\n" +
-        "gif suporta até **5mb**. envie `pular` para continuar sem enviar arquivo.",
+        "envie o arquivo de imagem (png/gif) em **qualquer lugar onde o bot possa ver**:\n\n" +
+        "• neste servidor (se o bot estiver aqui)\n" +
+        "• em **dm com o bot** ← funciona sempre\n\n" +
+        "gif suporta até **5mb**. envie `pular` para continuar sem ícone.",
       ephemeral: true,
     });
     return;
