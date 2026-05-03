@@ -13,15 +13,6 @@ export interface RpcOptions {
   buttonUrl?: string;
 }
 
-interface DiscordUserResponse {
-  id: string;
-  username: string;
-  global_name?: string;
-  discriminator?: string;
-  code?: number;
-  message?: string;
-}
-
 const selfbotClients = new Map<string, InstanceType<typeof SelfbotClient>>();
 const selfbotTokens = new Map<string, string>();
 const activeRpcOptions = new Map<string, RpcOptions>();
@@ -29,17 +20,6 @@ const rpcIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "1500071757925584996";
 const RPC_REFRESH_MS = 2 * 60 * 1000;
-
-async function validateTokenHttp(token: string): Promise<DiscordUserResponse> {
-  const res = await fetch("https://discord.com/api/v10/users/@me", {
-    headers: { Authorization: token },
-  });
-  const data = (await res.json()) as DiscordUserResponse;
-  if (!res.ok || data.code) {
-    throw new Error("token inválido ou sem permissão");
-  }
-  return data;
-}
 
 async function getSelfbotClient(token: string, userId: string): Promise<InstanceType<typeof SelfbotClient>> {
   if (selfbotClients.has(userId)) {
@@ -96,14 +76,13 @@ async function getSelfbotClient(token: string, userId: string): Promise<Instance
 }
 
 export async function validateToken(token: string, userId: string): Promise<{ username: string; id: string }> {
-  const data = await validateTokenHttp(token);
-  const username = data.global_name || data.username || "desconhecido";
-
-  getSelfbotClient(token, userId).catch((err) => {
-    console.warn(`[selfbot] pré-conexão falhou para ${userId}:`, err?.message);
-  });
-
-  return { username, id: data.id };
+  // usa login via WebSocket — o Discord bloqueia HTTP requests com user token sem headers do browser
+  const client = await getSelfbotClient(token, userId);
+  const u = client.user;
+  return {
+    username: u.globalName || u.username || "desconhecido",
+    id: u.id,
+  };
 }
 
 export async function clearDm(token: string, userId: string, targetId: string): Promise<void> {
