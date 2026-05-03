@@ -19,7 +19,7 @@ const activeRpcOptions = new Map<string, RpcOptions>();
 const rpcIntervals = new Map<string, ReturnType<typeof setInterval>>();
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID ?? "1500071757925584996";
-const RPC_REFRESH_MS = 2 * 60 * 1000;
+const RPC_REFRESH_MS = 90 * 1000; // 90 segundos
 
 async function getSelfbotClient(token: string, userId: string): Promise<InstanceType<typeof SelfbotClient>> {
   if (selfbotClients.has(userId)) {
@@ -37,23 +37,26 @@ async function getSelfbotClient(token: string, userId: string): Promise<Instance
       reject(new Error("timeout ao conectar ao discord — tente novamente"));
     }, 20000);
 
+    const onReconnect = async () => {
+      const opts = activeRpcOptions.get(userId);
+      if (!opts) return;
+      try {
+        const rp = await buildRichPresence(client, opts);
+        await client.user.setActivity(rp);
+        console.log(`[rpc] re-aplicado após reconexão ${userId}`);
+      } catch (e: any) {
+        console.warn(`[rpc] falhou ao re-aplicar reconexão ${userId}:`, e?.message);
+      }
+    };
+
     client.once("ready", () => {
       clearTimeout(timeout);
       selfbotClients.set(userId, client);
       selfbotTokens.set(userId, token);
 
-      // re-aplica o RPC imediatamente ao reconectar
-      client.on("ready", async () => {
-        const opts = activeRpcOptions.get(userId);
-        if (!opts) return;
-        try {
-          const rp = await buildRichPresence(client, opts);
-          await client.user.setActivity(rp);
-          console.log(`[rpc] re-aplicado após reconexão para ${userId}`);
-        } catch (e: any) {
-          console.warn(`[rpc] falhou ao re-aplicar após reconexão para ${userId}:`, e?.message);
-        }
-      });
+      // reconexão: gateway READY + WebSocket resume
+      client.on("ready", onReconnect);
+      client.on("resumed", onReconnect);
 
       resolve(client);
     });
@@ -82,6 +85,15 @@ export async function validateToken(token: string, userId: string): Promise<{ us
   return {
     username: u.globalName || u.username || "desconhecido",
     id: u.id,
+  };
+}
+
+export function getConnectedUser(userId: string): { username: string; id: string } | null {
+  const client = selfbotClients.get(userId);
+  if (!client?.user) return null;
+  return {
+    username: client.user.globalName || client.user.username || "desconhecido",
+    id: client.user.id,
   };
 }
 
