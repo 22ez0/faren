@@ -46,7 +46,6 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
         subtitle: saved?.subtitle,
         detail: saved?.detail,
         customUrl: saved?.customUrl,
-        iconUrl: saved?.iconUrl,
         buttonLabel: saved?.buttonLabel,
         buttonUrl: saved?.buttonUrl,
       })
@@ -60,6 +59,44 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
 
   if (value === "connect_token") {
     await interaction.showModal(buildConnectModal());
+    return;
+  }
+
+  if (value === "view_status") {
+    await interaction.deferReply({ ephemeral: true });
+
+    const token = getToken(userId);
+    const rpc = getRpc(userId);
+
+    if (!token) {
+      await interaction.editReply({
+        content: "❌ **sem conexão** — use a opção **conectar** para informar seu token.",
+      });
+      return;
+    }
+
+    // checar se o selfbot está de fato conectado
+    let connectedAs = "verificando...";
+    try {
+      const { getConnectedUser } = await import("../selfbot.js");
+      const info = getConnectedUser(userId);
+      connectedAs = info ? `**${info.username}** (\`${info.id}\`)` : "token salvo mas cliente desconectado";
+    } catch {}
+
+    const rpcStatus = rpc
+      ? `🟢 ativo\n> **nome:** ${rpc.title}\n> **tipo:** ${rpc.statusType}` +
+        (rpc.subtitle ? `\n> **linha 1:** ${rpc.subtitle}` : "") +
+        (rpc.detail ? `\n> **linha 2:** ${rpc.detail}` : "") +
+        (rpc.buttonLabel && rpc.buttonUrl ? `\n> **botão:** ${rpc.buttonLabel} → ${rpc.buttonUrl}` : "") +
+        (rpc.iconUrl ? `\n> **ícone:** definido` : "")
+      : "🔴 inativo";
+
+    await interaction.editReply({
+      content:
+        `**status da conexão**\n\n` +
+        `> **conta:** ${connectedAs}\n\n` +
+        `**rpc**\n> ${rpcStatus}`,
+    });
     return;
   }
 
@@ -81,13 +118,12 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
     }
 
     await interaction.deferReply({ ephemeral: true });
-
     try {
       const { leaveAllServers } = await import("../selfbot.js");
       const count = await leaveAllServers(token, userId);
       await interaction.editReply({ content: `saiu de **${count}** servidor${count !== 1 ? "es" : ""}.` });
     } catch (e: any) {
-      await interaction.editReply({ content: `erro: ${e.message}` });
+      await interaction.editReply({ content: `erro: ${e?.message ?? e}` });
     }
     return;
   }
@@ -135,13 +171,16 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
     }
 
     await interaction.deferReply({ ephemeral: true });
-
     try {
       const { deactivateRpc } = await import("../selfbot.js");
       await deactivateRpc(token, userId);
-      await interaction.editReply({ content: "rpc desativado. sua atividade foi removida do perfil." });
+
+      const { clearRpc } = await import("../store.js");
+      clearRpc(userId);
+
+      await interaction.editReply({ content: "rpc desativado. atividade removida do perfil." });
     } catch (e: any) {
-      await interaction.editReply({ content: `erro ao desativar rpc: ${e.message}` });
+      await interaction.editReply({ content: `erro ao desativar: ${e?.message ?? e}` });
     }
     return;
   }
