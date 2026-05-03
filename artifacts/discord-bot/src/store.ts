@@ -5,6 +5,8 @@ export interface RpcConfig {
   subtitle: string;
   detail: string;
   customUrl: string;
+  buttonLabel?: string;
+  buttonUrl?: string;
 }
 
 export interface UserSession {
