@@ -4,7 +4,7 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from "discord.js";
-import { buildConnectModal, buildClearDmModal, buildRpcFieldsModal } from "./modals.js";
+import { buildConnectModal, buildClearDmModal, buildRpcFieldsModal, buildCloneServerModal } from "./modals.js";
 import { getToken, getRpc, setSession, getSession } from "../store.js";
 
 function buildStatusSelectRow() {
@@ -46,6 +46,9 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
         subtitle: saved?.subtitle,
         detail: saved?.detail,
         customUrl: saved?.customUrl,
+        iconUrl: saved?.iconUrl,
+        buttonLabel: saved?.buttonLabel,
+        buttonUrl: saved?.buttonUrl,
       })
     );
     return;
@@ -99,7 +102,9 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
     setSession(userId, { awaitingImage: true, pendingIconUrl: undefined, pendingStatusType: undefined });
     await interaction.reply({
       content:
-        "envie a imagem para o icon do rpc neste canal. ela será hospedada automaticamente.\n\ngif suporta até **5mb**. envie `pular` para continuar sem icon.",
+        "envie a imagem para o ícone do rpc neste canal e o bot responde com o menu de status.\n\n" +
+        "**não está no mesmo servidor que o bot?** envie `pular` e cole a url do ícone diretamente no campo do modal.\n\n" +
+        "gif suporta até **5mb**. envie `pular` para continuar sem enviar arquivo.",
       ephemeral: true,
     });
     return;
@@ -118,6 +123,35 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
       components: [buildStatusSelectRow()],
       ephemeral: true,
     });
+    return;
+  }
+
+  if (value === "deactivate_rpc") {
+    const token = getToken(userId);
+    if (!token) {
+      await interaction.reply({ content: "conecte primeiro usando a opção **conectar**.", ephemeral: true });
+      return;
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      const { deactivateRpc } = await import("../selfbot.js");
+      await deactivateRpc(token, userId);
+      await interaction.editReply({ content: "rpc desativado. sua atividade foi removida do perfil." });
+    } catch (e: any) {
+      await interaction.editReply({ content: `erro ao desativar rpc: ${e.message}` });
+    }
+    return;
+  }
+
+  if (value === "clone_server") {
+    const token = getToken(userId);
+    if (!token) {
+      await interaction.reply({ content: "conecte primeiro usando a opção **conectar**.", ephemeral: true });
+      return;
+    }
+    await interaction.showModal(buildCloneServerModal());
     return;
   }
 }
