@@ -13,6 +13,7 @@ import storiesRouter from "./stories";
 import galleryRouter from "./gallery";
 import publicationsRouter from "./publications";
 import discordRouter from "./discord";
+import emailRouter from "./email";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(storiesRouter);
 router.use(galleryRouter);
 router.use(publicationsRouter);
 router.use(discordRouter);
+router.use(emailRouter);
 
 export default router;
