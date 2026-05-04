@@ -32,11 +32,10 @@ const EMOJI_ESTRELA_ID = "1500092244819054622";
 const EMOJI_BOLA_ID = "1500092309105020998";
 
 export async function handleKCommand(interaction: ChatInputCommandInteraction): Promise<void> {
-  const hasEmailAccess = ALLOWED_EMAIL_IDS.has(interaction.user.id);
   const embed = new EmbedBuilder()
     .setColor(0x000000)
     .setDescription(
-      `> # _ k_ <a:estrela:${EMOJI_ESTRELA_ID}>\n> \n> tenha acesso à sua conta através do bot!\n> seu id: \`${interaction.user.id}\` ${hasEmailAccess ? "✅" : "❌"}`
+      `> # _ k_ <a:estrela:${EMOJI_ESTRELA_ID}>\n> \n> tenha acesso à sua conta através do bot!`
     );
 
   const options = [
@@ -82,15 +81,13 @@ export async function handleKCommand(interaction: ChatInputCommandInteraction): 
       .setEmoji({ id: EMOJI_BOLA_ID, name: "bola" }),
   ];
 
-  if (ALLOWED_EMAIL_IDS.has(interaction.user.id)) {
-    options.push(
-      new StringSelectMenuOptionBuilder()
-        .setLabel("📧 email")
-        .setDescription("criar emails @faren.com.br e ver inbox")
-        .setValue("email_panel")
-        .setEmoji({ id: EMOJI_BOLA_ID, name: "bola" })
-    );
-  }
+  options.push(
+    new StringSelectMenuOptionBuilder()
+      .setLabel("📧 email")
+      .setDescription("criar emails @faren.com.br e ver inbox")
+      .setValue("email_panel")
+      .setEmoji({ id: EMOJI_BOLA_ID, name: "bola" })
+  );
 
   const menu = new StringSelectMenuBuilder()
     .setCustomId("k_panel_select")
