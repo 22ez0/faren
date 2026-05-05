@@ -1,6 +1,7 @@
 import {
   type StringSelectMenuInteraction,
   ActionRowBuilder,
+  EmbedBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from "discord.js";
@@ -263,13 +264,57 @@ export async function handleEmailPanelSelect(interaction: StringSelectMenuIntera
         return;
       }
 
-      const lines = emails.map((e) => {
+      const embeds = emails.map((e) => {
         const when = new Date(e.received_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-        const codeStr = e.code ? `  🔑 \`${e.code}\`` : "";
-        return `**[${when}]** \`${e.address}\`\n> **De:** ${e.from_addr}\n> **Assunto:** ${e.subject}${codeStr}`;
-      }).join("\n\n");
+        const rawBody = (e.body ?? "").trim();
 
-      await interaction.editReply({ content: `**📥 inbox (últimos ${emails.length}):**\n\n${lines}` });
+        // limpar corpo: remover sequências de whitespace excessivas
+        const cleanBody = rawBody
+          .replace(/\r\n/g, "\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+
+        const hasCode = Boolean(e.code);
+
+        const embed = new EmbedBuilder()
+          .setColor(hasCode ? 0x00e676 : 0x5865f2)
+          .setTitle(`📧 ${(e.subject || "(sem assunto)").slice(0, 256)}`)
+          .addFields(
+            { name: "De", value: e.from_addr.slice(0, 1024), inline: true },
+            { name: "Para", value: e.address.slice(0, 1024), inline: true },
+            { name: "Recebido", value: when, inline: true },
+          );
+
+        if (hasCode) {
+          embed.addFields({ name: "🔑 Código de verificação", value: `\`\`\`\n${e.code}\n\`\`\`` });
+        }
+
+        if (cleanBody) {
+          // Discord limita campos a 1024 chars — quebra em pedaços se necessário
+          const MAX = 1024;
+          const chunks: string[] = [];
+          let remaining = cleanBody;
+          while (remaining.length > 0) {
+            chunks.push(remaining.slice(0, MAX));
+            remaining = remaining.slice(MAX);
+            if (chunks.length >= 4) {
+              // máx 4 chunks de corpo (4096 chars total)
+              if (remaining.length > 0) chunks[chunks.length - 1] += "\n…(mensagem truncada)";
+              break;
+            }
+          }
+          chunks.forEach((chunk, i) => {
+            embed.addFields({ name: i === 0 ? "📄 Conteúdo" : "​", value: chunk });
+          });
+        }
+
+        return embed;
+      });
+
+      await interaction.editReply({
+        content: `**📥 inbox — ${emails.length} email${emails.length > 1 ? "s" : ""}:**`,
+        embeds,
+      });
     } catch (e: any) {
       await interaction.editReply({ content: `erro: ${e?.message}` });
     }
