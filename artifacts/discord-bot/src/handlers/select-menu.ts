@@ -1,6 +1,7 @@
 import {
   type StringSelectMenuInteraction,
   ActionRowBuilder,
+  AttachmentBuilder,
   EmbedBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
@@ -8,7 +9,9 @@ import {
 import { buildConnectModal, buildClearDmModal, buildRpcFieldsModal, buildCloneServerModal, buildCreateEmailModal } from "./modals.js";
 import { getToken, getRpc, setSession, getSession } from "../store.js";
 import { getEmailAllowedUsers } from "../db.js";
-import { getEmailAddresses, getInbox } from "../email-api.js";
+import { getEmailAddresses, getInbox, type InboxEmail } from "../email-api.js";
+
+const inboxCache = new Map<string, InboxEmail[]>();
 
 function buildStatusSelectRow() {
   const menu = new StringSelectMenuBuilder()
@@ -258,66 +261,94 @@ export async function handleEmailPanelSelect(interaction: StringSelectMenuIntera
   if (value === "email_inbox") {
     await interaction.deferReply({ ephemeral: true });
     try {
-      const emails = await getInbox(userId, undefined, 5);
+      const emails = await getInbox(userId, undefined, 10);
       if (emails.length === 0) {
         await interaction.editReply({ content: "📭 inbox vazio. nenhum email recebido ainda." });
         return;
       }
 
-      const embeds = emails.map((e) => {
-        const when = new Date(e.received_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-        const rawBody = (e.body ?? "").trim();
+      inboxCache.set(userId, emails);
 
-        // limpar corpo: remover sequências de whitespace excessivas
-        const cleanBody = rawBody
-          .replace(/\r\n/g, "\n")
-          .replace(/\n{3,}/g, "\n\n")
-          .trim();
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId("email_inbox_select")
+        .setPlaceholder("escolha um email para ler")
+        .addOptions(
+          emails.map((e) => {
+            const when = new Date(e.received_at).toLocaleString("pt-BR", {
+              timeZone: "America/Sao_Paulo",
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            const label = (e.subject || "(sem assunto)").slice(0, 100);
+            const desc = `${e.from_addr.slice(0, 60)}  •  ${when}${e.code ? "  🔑" : ""}`.slice(0, 100);
+            return new StringSelectMenuOptionBuilder()
+              .setLabel(label)
+              .setDescription(desc)
+              .setValue(String(e.id));
+          })
+        );
 
-        const hasCode = Boolean(e.code);
-
-        const embed = new EmbedBuilder()
-          .setColor(hasCode ? 0x00e676 : 0x5865f2)
-          .setTitle(`📧 ${(e.subject || "(sem assunto)").slice(0, 256)}`)
-          .addFields(
-            { name: "De", value: e.from_addr.slice(0, 1024), inline: true },
-            { name: "Para", value: e.address.slice(0, 1024), inline: true },
-            { name: "Recebido", value: when, inline: true },
-          );
-
-        if (hasCode) {
-          embed.addFields({ name: "🔑 Código de verificação", value: `\`\`\`\n${e.code}\n\`\`\`` });
-        }
-
-        if (cleanBody) {
-          // Discord limita campos a 1024 chars — quebra em pedaços se necessário
-          const MAX = 1024;
-          const chunks: string[] = [];
-          let remaining = cleanBody;
-          while (remaining.length > 0) {
-            chunks.push(remaining.slice(0, MAX));
-            remaining = remaining.slice(MAX);
-            if (chunks.length >= 4) {
-              // máx 4 chunks de corpo (4096 chars total)
-              if (remaining.length > 0) chunks[chunks.length - 1] += "\n…(mensagem truncada)";
-              break;
-            }
-          }
-          chunks.forEach((chunk, i) => {
-            embed.addFields({ name: i === 0 ? "📄 Conteúdo" : "​", value: chunk });
-          });
-        }
-
-        return embed;
-      });
-
+      const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
       await interaction.editReply({
-        content: `**📥 inbox — ${emails.length} email${emails.length > 1 ? "s" : ""}:**`,
-        embeds,
+        content: `**📥 inbox — ${emails.length} email${emails.length > 1 ? "s" : ""} recebidos. selecione para ler:**`,
+        components: [row],
       });
     } catch (e: any) {
       await interaction.editReply({ content: `erro: ${e?.message}` });
     }
     return;
   }
+}
+
+export async function handleEmailInboxSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  const userId = interaction.user.id;
+
+  const allowed = await getEmailAllowedUsers();
+  if (!allowed.has(userId)) {
+    await interaction.reply({ content: "❌ sem permissão.", ephemeral: true });
+    return;
+  }
+
+  const emailId = Number(interaction.values[0]);
+  const cached = inboxCache.get(userId) ?? [];
+  const email = cached.find((e) => e.id === emailId);
+
+  if (!email) {
+    await interaction.reply({
+      content: "❌ email não encontrado. abra o inbox novamente para atualizar a lista.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const when = new Date(email.received_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const hasCode = Boolean(email.code);
+
+  const embed = new EmbedBuilder()
+    .setColor(hasCode ? 0x00e676 : 0x5865f2)
+    .setTitle((email.subject || "(sem assunto)").slice(0, 256))
+    .addFields(
+      { name: "✉️ De", value: email.from_addr.slice(0, 1024), inline: true },
+      { name: "📬 Para", value: email.address.slice(0, 1024), inline: true },
+      { name: "🕐 Recebido", value: when, inline: false },
+    );
+
+  if (hasCode) {
+    embed.setDescription(`## 🔑 Código de verificação\n\`\`\`\n${email.code}\n\`\`\``);
+  }
+
+  const files: AttachmentBuilder[] = [];
+  const rawBody = (email.body ?? "").trim();
+  if (rawBody) {
+    const cleanBody = rawBody.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n");
+    const safeSubject = (email.subject || "email").replace(/[^a-zA-Z0-9\-_\u00C0-\u017F ]/g, "").slice(0, 40).trim() || "email";
+    const buf = Buffer.from(cleanBody, "utf8");
+    files.push(new AttachmentBuilder(buf, { name: `${safeSubject}.txt`, description: email.subject || "conteúdo do email" }));
+  }
+
+  await interaction.editReply({ embeds: [embed], files });
 }
